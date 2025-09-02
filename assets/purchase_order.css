@@ -1,0 +1,95 @@
+ body {background: #f6f7fb; font-family: 'Prompt',sans-serif; color: #21252e; margin: 0; padding: 0;}
+    .container {max-width: 750px; margin: 30px auto 0 auto; padding-bottom: 30px;}
+    .back-link {
+      display: flex; align-items: center; margin-bottom: 14px; color: #21252e; text-decoration: none; font-size: 16px;
+    }
+    .back-link .material-icons {font-size:20px; margin-right:6px;}
+    h2 {font-size: 26px; font-weight: bold; margin-bottom: 8px;}
+    .desc {color:#7d869c; margin-bottom:22px;}
+    .card {background: #fff; border-radius: 14px; border: 1.2px solid #efefef; margin-bottom: 20px; padding: 22px 22px 16px 22px;}
+    .card-title {font-size:18px; font-weight:600; margin-bottom:22px;}
+    .form-grid {display: grid; grid-gap:18px 20px; grid-template-columns: 1fr 1fr;}
+    .form-row {display:flex; gap:19px;}
+    .form-section {margin-bottom:13px;}
+    .form-control, textarea, select {
+      border: 1.1px solid #e1e4ec; outline: none; border-radius:8px; padding: 11px 14px;
+      font-size:16px; width:100%; transition: border .18s;
+      background:#f8fafc;}
+    .form-control:focus, textarea:focus, select:focus {border:1.1px solid #1634ab;}
+    textarea {font-family:inherit; resize: vertical; min-height:38px;}
+    .label {font-weight: 500; margin-bottom: 6px; display:block;}
+    .select-btn {display:flex; align-items:center; border:1.1px solid #e1e4ec; background:#f8fafc; border-radius:8px; padding: 10px 14px;}
+    .select-btn .material-icons {font-size:20px; margin:0 7px;}
+    .flex-between {display:flex; justify-content: space-between; align-items: center;}
+    .small-btn, .icon-btn {
+      border:none; background:#f5f5fa; color:#21252e; border-radius:8px; padding:7px 17px;font-size:15px; font-weight:600;
+      cursor:pointer; transition:background .17s;
+      display:flex;align-items:center;gap:5px;
+    }
+    .small-btn .material-icons, .icon-btn .material-icons {font-size:19px; margin-right:4px;}
+    .small-btn:hover, .icon-btn:hover {background:#eee;}
+    .add-btn {background:#1578ff; color:#fff;}
+    .add-btn:hover {background: #2772e2;}
+    .remove-btn {color:#f56565;}
+    .unit {min-width: 80px;}
+    .product-table {width:100%;}
+    .product-item-grid {display:grid; gap:14px 10px; grid-template-columns:2fr 90px 90px 170px 35px;}
+    .sub-label {font-size:14px; color:#7d869c;}
+    .sum-area {margin-top:13px; text-align:right; color:#444;}
+    .sum-area strong {font-size: 16px; color:#212b6c;}
+    .footer-btns {margin-top: 37px; display:flex; gap:15px; justify-content: flex-end;}
+    .footer-btns .icon-btn {background:#f5f8ff;}
+    .create-btn {background:#1578ff; color:#fff;}
+    .create-btn:hover {background:#2362d2;}
+    @media(max-width:800px) {
+      .form-grid, .product-item-grid {grid-template-columns:1fr; }
+      .footer-btns {flex-direction: column;}
+      .container {padding:0 8px;}
+    }
+
+        /*  style เพิ่มมผู้ขาย */
+    .modal-backdrop {
+        position: fixed; z-index: 99;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(30,40,50, .18);
+        backdrop-filter: blur(2px);
+        }
+        .modal-popup {
+        position: fixed; z-index: 110;
+        left: 50%; top: 50%;
+        transform: translate(-50%, -50%);
+        min-width: 350px; max-width: 99vw; width: 410px;
+        background: #fff; border-radius: 18px;
+        box-shadow: 0 16px 54px 0 #212b6c33;
+        padding: 24px 28px 14px 28px;
+        animation: fadeIn .15s;
+        }
+        @keyframes fadeIn {
+        0% {opacity:0;transform:translate(-50%,-60%);}
+        100%{opacity:1;}
+        }
+        .modal-header {
+        display: flex; justify-content: space-between; align-items: start;
+        margin-bottom: 13px;
+        }
+        .modal-title {font-size: 22px; font-weight: bold;}
+        .modal-desc  {color: #838ba7;font-size:15px; margin-top:2px;}
+        .modal-close {
+        background:none; border:none; color:#848fd9; cursor:pointer; margin-left:12px;margin-top:3px;
+        padding:2px 3px; border-radius:5px;
+        }
+        .modal-close:hover {background:#e5eafd;}
+        #supplierForm .label {margin-top: 11px; margin-bottom:5px;}
+        #supplierForm .form-control, #supplierForm textarea {
+        font-size: 16px; border-radius: 8px;
+        border: 1px solid #dbdee9;
+        margin-bottom:0px;
+        background:#f7f8fd;
+        }
+        #supplierForm .form-control:focus, #supplierForm textarea:focus {
+        border: 1.3px solid #1156e6; background:#fff;}
+        #supplierForm textarea { resize: vertical; min-height:34px;}
+        .modal-actions {
+        display: flex; justify-content: flex-end; gap:12px;
+        margin-top: 28px;
+        }
