@@ -125,7 +125,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <td class="price-cost"><?= number_format($row['price_per_unit'],2) ?></td>
                 <td class="price-sale"><?= number_format($row['sale_price'],2) ?></td>
                 <td><?= getTypeLabel($row['po_remark']) ?></td>
-                <td data-expiry="<?= htmlspecialchars($row['expiry_date']) ?>"><?= htmlspecialchars($row['remark']) ?></td>
+                <td data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>"><?= htmlspecialchars($row['remark']) ?></td>
                 <td><button class="btn btn-sm btn-warning edit-btn" data-id="<?= $row['receive_id'] ?>">แก้ไข</button></td>
             </tr>
         <?php endforeach; ?>
@@ -231,32 +231,61 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // บันทึกการแก้ไข
         $('#save-edit').on('click', function(){
-            // ปรับจำนวนตามประเภท
+            // ป้องกันกดซ้ำ
+            let $btn = $(this);
+            if ($btn.prop('disabled')) return;
+            $btn.prop('disabled', true);
+
+            // Validate
             let qty = parseInt($('#edit-receive-qty').val()) || 0;
+            let priceCost = parseFloat($('#edit-price-cost').val()) || 0;
+            let priceSale = parseFloat($('#edit-price-sale').val()) || 0;
+            let remark = $('#edit-remark').val().trim();
+            if (isNaN(qty) || $('#edit-receive-qty').val() === '') {
+                Swal.fire('กรุณากรอกจำนวน', '', 'warning'); $btn.prop('disabled', false); return;
+            }
+            if (isNaN(priceCost) || $('#edit-price-cost').val() === '') {
+                Swal.fire('กรุณากรอกราคาต้นทุน', '', 'warning'); $btn.prop('disabled', false); return;
+            }
+            if (isNaN(priceSale) || $('#edit-price-sale').val() === '') {
+                Swal.fire('กรุณากรอกราคาขาย', '', 'warning'); $btn.prop('disabled', false); return;
+            }
+
+            // ปรับจำนวนตามประเภท
             let qtyType = $('#edit-qty-type').val();
             if(qtyType === 'minus') qty = -Math.abs(qty);
             else qty = Math.abs(qty);
             $('#edit-receive-qty').val(qty);
+
             // รวมตำแหน่งเป็น description ด้วย (optionally ส่งไป backend)
             let rowCode = $('#edit-row-code').val();
             let bin = $('#edit-bin').val();
             let shelf = $('#edit-shelf').val();
-            // เพิ่ม hidden input สำหรับตำแหน่งรวม
             if($('#edit-form input[name="location_desc"]').length === 0){
                 $('#edit-form').append('<input type="hidden" name="location_desc" id="edit-location-desc">');
             }
             let locDesc = rowCode && bin && shelf ? `${rowCode}-${bin}-${shelf}` : '';
             $('#edit-location-desc').val(locDesc);
+
             let formData = $('#edit-form').serialize();
+            Swal.fire({
+                title: 'กำลังบันทึก...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
             $.post('receive_edit.php', formData, function(resp){
+                $btn.prop('disabled', false);
                 if(resp.success){
-                    Swal.fire('สำเร็จ', 'บันทึกการแก้ไขเรียบร้อย', 'success').then(()=>location.reload());
+                    Swal.fire({icon:'success',title:'บันทึกสำเร็จ',text:'บันทึกการแก้ไขเรียบร้อย'}).then(()=>location.reload());
                     var modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
                     modal.hide();
                 }else{
                     Swal.fire('ผิดพลาด', resp.message || 'ไม่สามารถบันทึกได้', 'error');
                 }
-            }, 'json');
+            },'json').fail(function(xhr){
+                $btn.prop('disabled', false);
+                Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+            });
         });
     });
     </script>
