@@ -311,25 +311,26 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <div class="col-4">
                                 <select class="form-select" name="row_code" id="edit-row-code">
                                     <option value="">แถว</option>
-                                    <?php if(isset($rowCodes)): foreach($rowCodes as $rc): ?>
-                                        <option value="<?= htmlspecialchars($rc) ?>"><?= htmlspecialchars($rc) ?></option>
-                                    <?php endforeach; endif; ?>
+                                    <?php
+                                    foreach (range('A','X') as $c) {
+                                        echo '<option value="'.$c.'">'.$c.'</option>';
+                                    }
+                                    echo '<option value="T">T(ตู้)</option>';
+                                    echo '<option value="sale(บน)">sale(บน)</option>';
+                                    echo '<option value="sale(ล่าง)">sale(ล่าง)</option>';
+                                    ?>
                                 </select>
                             </div>
                             <div class="col-4">
                                 <select class="form-select" name="bin" id="edit-bin">
                                     <option value="">ล๊อค</option>
-                                    <?php if(isset($bins)): foreach($bins as $b): ?>
-                                        <option value="<?= htmlspecialchars($b) ?>"><?= htmlspecialchars($b) ?></option>
-                                    <?php endforeach; endif; ?>
+                                    <?php for($i=1;$i<=10;$i++) echo '<option value="'.$i.'">'.$i.'</option>'; ?>
                                 </select>
                             </div>
                             <div class="col-4">
                                 <select class="form-select" name="shelf" id="edit-shelf">
                                     <option value="">ชั้น</option>
-                                    <?php if(isset($shelves)): foreach($shelves as $s): ?>
-                                        <option value="<?= htmlspecialchars($s) ?>"><?= htmlspecialchars($s) ?></option>
-                                    <?php endforeach; endif; ?>
+                                    <?php for($i=1;$i<=10;$i++) echo '<option value="'.$i.'">'.$i.'</option>'; ?>
                                 </select>
                             </div>
                         </div>
