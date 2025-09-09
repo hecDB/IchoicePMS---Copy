@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'sidebar.php';
+
 require 'db_connect.php';
 
 $user_name = $_SESSION['user_name'] ?? 'Guest';
@@ -12,207 +12,155 @@ $user_role = $_SESSION['user_role'] ?? 'user';
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
-<!-- Bootstrap 5 CSS (สำคัญมากสำหรับให้ modal สวยงาม!) -->
+<!-- Bootstrap 5 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Material+Icons&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
-<!-- ... style tag ... -->
 
-<!-- jQuery -->
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
+<!-- jQuery & DataTables JS -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<!-- Bootstrap Bundle JS (รวม modal) -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- <style>
+/* --- ใส่ style ของคุณที่นี่ --- */
+.table-card{
+    background:#fff;
+    border-radius:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    overflow:hidden;
+    margin-top:15px;
+}
+</style> -->
 </head>
-
-<style>
-
-    /* .mainwrap { 
-        max-width:1100px; 
-        margin:30px auto; 
-        padding:20px; 
-        background:#fff; 
-        border-radius:16px; 
-        box-shadow:0 6px 18px rgba(0,0,0,0.08);
-    } */
-    h2 { 
-        text-align:center; 
-        margin-bottom:20px; 
-        color:#375dfa; 
-        font-weight:600;
-    }
-    .search-bar { 
-        margin-bottom:20px; 
-        display:flex; 
-        gap:8px; 
-    }
-    .search-bar input { 
-        flex:1; 
-        padding:10px 14px; 
-        border-radius:12px; 
-        border:1px solid #d0d7de; 
-        font-size:15px;
-        transition:0.3s;
-    }
-    .search-bar input:focus {
-        border-color:#375dfa;
-        box-shadow:0 0 6px rgba(55,93,250,0.2);
-        outline:none;
-    }
-
-    /* พื้นที่ตารางเป็นการ์ด */
-    .table-card {
-        background:#fff;
-        border-radius:12px;
-        box-shadow:0 4px 12px rgba(0,0,0,0.08);
-        overflow:hidden;
-        margin-top:15px;
-    }
-
-    /* ตาราง */
-    table { 
-        width:100%; 
-        border-collapse:collapse; 
-        font-size:15px;
-    }
-    th { 
-        background:#f1f4ff; 
-        color:#375dfa; 
-        font-weight:600; 
-        text-align:left; 
-        padding:12px 14px; 
-        border-bottom:2px solid #e0e6f0;
-    }
-    td { 
-        padding:12px 14px; 
-        border-bottom:1px solid #eee; 
-    }
-    tr:hover td { 
-        background:#f9fbff; 
-    }
-    td.center { text-align:center; }
-
-
-</style>
-
 <body>
- <div class="mainwrap">
-       <div class="topbar">
-   ความเคลื่อนไหวสินค้า 
-    </div>  
-
-    <div class="table-card">
-<div class="table-card">
-    <div class="search-bar">
-        <input type="text" id="search" placeholder="ค้นหาสินค้าด้วยชื่อ, SKU หรือ Barcode">
+  <?php include 'sidebar.php'; ?>
+<div class="topbar">
+        ความเคลื่อนไหวสินค้า
     </div>
 
-    <div id="result-table">
-        <div class="table-card">
-        <!-- ตารางผลลัพธ์จะแสดงตรงนี้ -->
-         </div>
+    <div class="card-sec">
+    <div class="card">
+    <div class="d-flex justify-content-end mb-3">
+        <button id="delete-selected" class="btn btn-danger">ลบรายการที่เลือก</button>
+    </div>
+
+    <div class="table-responsive">
+        <table id="activity-table" class="display table table-striped" style="width:100%">
+            <thead>
+            <tr>
+                <th><input type="checkbox" id="select-all"></th>
+                <th>SKU Merchant</th>
+                <th>ผู้ทำรายการ</th>
+                <th>เวลา</th>
+                <th>ประเภท</th>
+                <th>จาก</th>
+                <th>ไป</th>
+                <th>จำนวน</th>
+                <th>หมายเหตุ/เอกสาร</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
     </div>
- </div>
-
-
-  
-<!-- Bootstrap Modal -->
-<div class="modal fade" id="editProductModal" tabindex="-1">
-  <div class="modal-dialog">
-    <form id="formEditProduct">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">แก้ไขข้อมูลสินค้า</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" name="product_id" id="edit_product_id">
-          <div class="mb-2">
-            <label>ชื่อสินค้า</label>
-            <input type="text" class="form-control" name="name" id="edit_name">
-          </div>
-          <div class="mb-2">
-            <label>SKU</label>
-            <input type="text" class="form-control" name="sku" id="edit_sku">
-          </div>
-          <div class="mb-2">
-            <label>Barcode</label>
-            <input type="text" class="form-control" name="barcode" id="edit_barcode">
-          </div>
-          <div class="mb-2">
-            <label>หน่วยนับ</label>
-            <input type="text" class="form-control" name="unit" id="edit_unit">
-          </div>
-          <div class="mb-2">
-            <label>จำนวน (รับเข้า)</label>
-            <input type="number" class="form-control" name="receive_qty" id="edit_qty">
-            <small class="text-danger">* การแก้ไขจำนวนจะลบข้อมูลรับเข้าปัจจุบันออกทั้งหมด</small>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-success">บันทึก</button>
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-        </div>
-      </div>
-    </form>
-  </div>
+    </div>
 </div>
-  </div>
+
 <script>
-    $(document).ready(function(){
-        function fetchData(query='') {
-            $.ajax({
-                url: 'product_activity_search.php',
-                type: 'GET',
-                data: { q: query },
-                success: function(data){
-                    $('#result-table').html(data);
-                }
-            });
+$(document).ready(function() {
+    let table = $('#activity-table').DataTable({
+        "processing": true,
+        "serverSide": true,
+        "ajax": {
+            "url": "product_activity_search.php",
+            "type": "GET"
+        },
+        "columns": [
+            {
+                "data": "activity_id",
+                "render": function(data, type, row) {
+                    return `<input type="checkbox" class="activity-checkbox" value="${data}">`;
+                },
+                "orderable": false,
+                "searchable": false
+            },
+            { "data": "product_info", "orderable": false },
+            { "data": "user_name" },
+            { "data": "activity_date" },
+            { "data": "activity_type" },
+            { "data": "location_from" },
+            { "data": "location_to" },
+            { "data": "quantity" },
+            { "data": "reference", "orderable": false }
+        ],
+        "order": [[3, "desc"]],
+        "pageLength": 50,
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json"
+        }
+    });
+
+    // Select all checkboxes
+    $('#select-all').on('click', function(){
+        $('.activity-checkbox').prop('checked', this.checked);
+    });
+
+    // Handle click on individual checkbox to update "select-all"
+    $('#activity-table tbody').on('click', '.activity-checkbox', function(){
+        if(!this.checked){
+            $('#select-all').prop('checked', false);
+        }
+    });
+
+    // Delete Selected button
+    $('#delete-selected').on('click', function(){
+        let selectedIds = [];
+        $('.activity-checkbox:checked').each(function(){
+            selectedIds.push($(this).val());
+        });
+
+        if(selectedIds.length === 0){
+            Swal.fire('ไม่ได้เลือกรายการ', 'กรุณาเลือกรายการที่ต้องการลบ', 'info');
+            return;
         }
 
-        // เรียกครั้งแรกเพื่อแสดงทั้งหมด
-        fetchData();
-
-        // ค้นหาแบบ real-time
-        $('#search').on('keyup', function(){
-            var q = $(this).val();
-            fetchData(q);
+        Swal.fire({
+            title: 'คุณแน่ใจหรือไม่?',
+            text: `คุณต้องการลบ ${selectedIds.length} รายการที่เลือกใช่หรือไม่?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'ใช่, ลบเลย!',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('activity_delete.php', { ids: selectedIds }, function(resp){
+                    if(resp.success){
+                        table.draw(false); // refresh table หน้าเดิม
+                        Swal.fire('ลบสำเร็จ!',`รายการ ${selectedIds.length} รายการถูกลบเรียบร้อยแล้ว`,'success');
+                        $('#select-all').prop('checked', false);
+                    } else {
+                        Swal.fire('ผิดพลาด!', resp.message || 'ไม่สามารถลบได้', 'error');
+                    }
+                }, 'json');
+            }
         });
     });
-
-    // เปิด modal และเติม data ลงฟอร์ม
-    $(document).on('click', '.btn-edit-product', function() {
-        $('#edit_product_id').val($(this).data('id'));
-        $('#edit_name').val($(this).data('name'));
-        $('#edit_sku').val($(this).data('sku'));
-        $('#edit_barcode').val($(this).data('barcode'));
-        $('#edit_unit').val($(this).data('unit'));
-        $('#edit_qty').val($(this).data('qty'));
-
-        // Bootstrap 5 วิธีเปิด modal
-        var myModal = new bootstrap.Modal(document.getElementById('editProductModal'), {});
-        myModal.show();
-    });
-
-
-// บันทึกการแก้ไข
-$('#formEditProduct').on('submit', function(e) {
-    e.preventDefault();
-    $.post('product_edit_save.php', $(this).serialize(), function(resp){
-        if(resp.success){
-            Swal.fire('สำเร็จ!', resp.message, 'success').then(() => location.reload());
-        }else{
-            Swal.fire('ผิดพลาด!', resp.message, 'error');
-        }
-    }, 'json');
 });
-
 </script>
-
-
+</body>
+</html>
+</script>
 </body>
 </html>

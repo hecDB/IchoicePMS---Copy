@@ -3,6 +3,7 @@ include 'sidebar.php';
 require 'vendor/autoload.php'; 
 require 'db_connect.php';      
 
+
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 $message = "";
@@ -27,67 +28,129 @@ if(isset($_POST['submit'])) {
 
             // ====== คำนวณยอดรวม ======
             $total_amount = 0;
-            for ($i=1; $i<count($rows); $i++) {
-                $qty = floatval($rows[$i][8]);
-                $price = floatval($rows[$i][9]);
+            for ($i = 1; $i < count($rows); $i++) {
+                $qty = floatval($rows[$i][8] ?? 0);
+                $price = floatval($rows[$i][9] ?? 0);
                 $total_amount += $qty * $price;
             }
 
             // ====== เพิ่ม PO ======
             $stmt = $pdo->prepare("INSERT INTO purchase_orders 
-                (po_number, supplier_id, order_date, total_amount, ordered_by, status, remark) 
-                VALUES (?,?,?,?,?,?,?)");
-            $stmt->execute([$po_number, 1, date('Y-m-d'), $total_amount, $user_id, 'pending', 'imported from excel']);
+                (po_number, supplier_id, order_date, total_amount, ordered_by, status, remark, created_at) 
+                VALUES (?,?,?,?,?,?,?,NOW())");
+            $stmt->execute([$po_number, 1, date('Y-m-d H:i:s'), $total_amount, $user_id, 'pending', 'imported from excel']);
             $po_id = $pdo->lastInsertId();
 
-            // ====== เพิ่มสินค้า / PO Items / Receive Items ======
-            for ($i=1; $i<count($rows); $i++) {
+            // ====== Loop เพิ่มสินค้า / PO Items / Receive Items ======
+            for ($i = 1; $i < count($rows); $i++) {
                 $row = $rows[$i];
 
-                $sku      = trim($row[0] ?? '');
-                $barcode  = trim($row[1] ?? '');
-                $name     = trim($row[2] ?? '');
-                $image    = trim($row[3] ?? '');
-                $unit     = trim($row[4] ?? '');
-                $row_code = trim($row[5] ?? '');
-                $bin      = trim($row[6] ?? '');
-                $shelf    = trim($row[7] ?? '');
-                $qty      = floatval($row[8] ?? 0);
-                $price    = floatval($row[9] ?? 0);
-                $expiry_date = !empty($row[10]) ? date('Y-m-d', strtotime($row[10])) : null;
-                $remark_color = trim($row[11] ?? '');
-                $remark_split = trim($row[12] ?? '');
+                $sanitize = fn($str) => trim(preg_replace('/\s+/', ' ', str_replace("\xC2\xA0", ' ', $str ?? '')));
 
-                if(empty($sku) && empty($barcode)) continue;
+                $sku = substr(strtolower(trim($sanitize($row[0] ?? ''))), 0, 50); // varchar(50)
+                $barcode = substr(strtolower(trim($sanitize($row[1] ?? ''))), 0, 50); // varchar(50)
+                $name         = $sanitize($row[2]);
+                $image        = $sanitize($row[3]);
+                $unit         = $sanitize($row[4]);
+                $row_code     = $sanitize($row[5]);
+                $bin          = $sanitize($row[6]);
+                $shelf        = $sanitize($row[7]);
+                $qty          = floatval($row[8] ?? 0);
+                $price        = floatval($row[9] ?? 0);
+                $sale_price   = floatval($row[10] ?? 0);
+                $expiry_date  = !empty($row[11]) ? date('Y-m-d', strtotime($row[11])) : null;
+                $remark_color = strtolower(trim($sanitize($row[12] ?? '')));
+                $remark_split = intval($row[13] ?? 0);
+                $remark       = $sanitize($row[14]);
 
-                // ====== ตรวจสอบสินค้า ======
-                $stmt = $pdo->prepare("SELECT product_id, remark_color FROM products WHERE sku=? OR barcode=?");
-                $stmt->execute([$sku, $barcode]);
+                if($sku === '' && $barcode === '') continue;
+
+                // ====== ตรวจสอบสินค้าเดิม ======
+                $stmt = $pdo->prepare("
+                    SELECT product_id FROM products
+                    WHERE sku = ? AND barcode = ? AND remark_color = ? AND remark_split = ?
+                ");
+                $stmt->execute([$sku, $barcode, $remark_color, $remark_split]);
                 $product = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($product) {
-                    $product_id = $product['product_id'];
-                    // อัปเดตสีสินค้า ถ้า remark_color ใหม่ไม่ว่าง
-                    if ($remark_color !== '') {
-                        $stmt = $pdo->prepare("UPDATE products SET remark_color=? WHERE product_id=?");
-                        $stmt->execute([$remark_color, $product_id]);
+                    // ====== ตรวจสอบสินค้าเดิม (robust for NULL/empty) ======
+                    $skuParam = $sku === '' ? '' : $sku;
+                    $barcodeParam = $barcode === '' ? '' : $barcode;
+
+                    $stmt = $pdo->prepare(
+                        "SELECT product_id, sku, barcode, remark_color, remark_split FROM products WHERE " .
+                        "(sku = ? OR (sku IS NULL AND ? = '')) " .
+                        "AND (barcode = ? OR (barcode IS NULL AND ? = '')) " .
+                        "AND remark_color = ? AND remark_split = ?"
+                    );
+                    $stmt->execute([$skuParam, $skuParam, $barcodeParam, $barcodeParam, $remark_color, $remark_split]);
+                    $product = $stmt->fetch(PDO::FETCH_ASSOC);
+                    // Debug: prepare info for web if not found
+                    $debug_web = [];
+                    if (!$product) {
+                        $debug_web['select_param'] = [
+                            'sku'=>$skuParam, 'barcode'=>$barcodeParam, 'remark_color'=>$remark_color, 'remark_split'=>$remark_split
+                        ];
+                        $stmt2 = $pdo->prepare("SELECT product_id, sku, barcode, remark_color, remark_split FROM products WHERE sku LIKE ? OR barcode LIKE ?");
+                        $stmt2->execute(['%'.substr($skuParam,0,8).'%', '%'.substr($barcodeParam,0,5).'%']);
+                        $all = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+                        $debug_web['similar_products'] = $all;
                     }
-                } else {
-                    // insert product ใหม่
-                    $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, remark_color, created_at) 
-                                           VALUES (?,?,?,?,?,?,NOW())");
-                    $stmt->execute([$name, $sku, $barcode, $unit, 'images/'.$image, $remark_color]);
-                    $product_id = $pdo->lastInsertId();
-                }
+
+                    if ($product) {
+                        $product_id = $product['product_id'];
+                    } else {
+                        try {
+                            $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, remark_color, remark_split, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,NOW())");
+                            $stmt->execute([$name, $sku === '' ? null : $sku, $barcode === '' ? null : $barcode, $unit, 'images/'.$image, $remark_color, $remark_split, $user_id]);
+                            $product_id = $pdo->lastInsertId();
+                        } catch (PDOException $pe) {
+                            if ($pe->getCode() === '23000') {
+                                // Duplicate entry: re-query to get product_id
+                                $stmt = $pdo->prepare(
+                                    "SELECT product_id FROM products WHERE (sku = ? OR (sku IS NULL AND ? = '')) " .
+                                    "AND (barcode = ? OR (barcode IS NULL AND ? = '')) AND remark_color = ? AND remark_split = ?"
+                                );
+                                $stmt->execute([$skuParam, $skuParam, $barcodeParam, $barcodeParam, $remark_color, $remark_split]);
+                                $product = $stmt->fetch(PDO::FETCH_ASSOC);
+                                if ($product) {
+                                    $product_id = $product['product_id'];
+                                } else {
+                                    $debug = [
+                                        'sku' => $sku,
+                                        'barcode' => $barcode,
+                                        'remark_color' => $remark_color,
+                                        'remark_split' => $remark_split,
+                                        'name' => $name,
+                                        'select_param' => $debug_web['select_param'] ?? null,
+                                        'similar_products' => $debug_web['similar_products'] ?? null
+                                    ];
+                                    throw new Exception('Duplicate entry but cannot find product.', 0, $pe);
+                                }
+                            } else {
+                                throw $pe;
+                            }
+                        } catch (Exception $e) {
+                            $debug = [
+                                'sku' => $sku,
+                                'barcode' => $barcode,
+                                'remark_color' => $remark_color,
+                                'remark_split' => $remark_split,
+                                'name' => $name,
+                                'select_param' => $debug_web['select_param'] ?? null,
+                                'similar_products' => $debug_web['similar_products'] ?? null
+                            ];
+                            throw new Exception('General error in product insert.', 0, $e);
+                        }
+                    }
 
                 // ====== ตรวจสอบ/เพิ่ม location ======
                 $stmt = $pdo->prepare("SELECT location_id FROM locations WHERE row_code=? AND bin=? AND shelf=?");
                 $stmt->execute([$row_code, $bin, $shelf]);
                 $location = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($location) {
-                    $location_id = $location['location_id'];
-                } else {
+                $location_id = $location ? $location['location_id'] : null;
+                if(!$location_id){
                     $desc = "แถว $row_code ล็อค $bin ชั้น $shelf";
                     $stmt = $pdo->prepare("INSERT INTO locations (row_code, bin, shelf, description) VALUES (?,?,?,?)");
                     $stmt->execute([$row_code, $bin, $shelf, $desc]);
@@ -97,21 +160,23 @@ if(isset($_POST['submit'])) {
                 // ====== เชื่อม product_location ======
                 $stmt = $pdo->prepare("SELECT 1 FROM product_location WHERE product_id=? AND location_id=?");
                 $stmt->execute([$product_id, $location_id]);
-                if(!$stmt->fetch()) {
+                if(!$stmt->fetch()){
                     $stmt = $pdo->prepare("INSERT INTO product_location (product_id, location_id) VALUES (?, ?)");
                     $stmt->execute([$product_id, $location_id]);
                 }
 
                 // ====== เพิ่ม PO Item ======
-                $stmt = $pdo->prepare("INSERT INTO purchase_order_items (po_id, product_id, qty, price_per_unit, total) 
-                                       VALUES (?,?,?,?,?)");
-                $stmt->execute([$po_id, $product_id, $qty, $price, $qty*$price]);
+                $stmt = $pdo->prepare("INSERT INTO purchase_order_items 
+                    (po_id, product_id, qty, price_per_unit, sale_price, total) 
+                    VALUES (?,?,?,?,?,?)");
+                $stmt->execute([$po_id, $product_id, $qty, $price, $sale_price, $qty*$price]);
                 $item_id = $pdo->lastInsertId();
 
                 // ====== เพิ่ม Receive Item ======
-                $stmt = $pdo->prepare("INSERT INTO receive_items (receive_date, po_id, item_id, receive_qty, received_by, remark_sale, expiry_date) 
-                                       VALUES (?,?,?,?,?,?,?)");
-                $stmt->execute([date('Y-m-d'), $po_id, $item_id, $qty, $user_id, $remark_split, $expiry_date]);
+                $stmt = $pdo->prepare("INSERT INTO receive_items 
+                    (po_id, item_id, receive_qty, remark_color, remark_split, created_by, expiry_date, remark) 
+                    VALUES (?,?,?,?,?,?,?,?)");
+                $stmt->execute([$po_id, $item_id, $qty, $remark_color, $remark_split, $user_id, $expiry_date, $remark]);
             }
 
             $pdo->commit();
@@ -119,13 +184,26 @@ if(isset($_POST['submit'])) {
 
         } catch (Exception $e) {
             $pdo->rollBack();
-            $message = "Import ล้มเหลว: ".$e->getMessage();
+            $error_row = isset($i) ? " at row " . ($i + 1) : "";
+            $debug = '';
+            if ($e->getPrevious() && method_exists($e->getPrevious(), 'getMessage')) {
+                $debug .= $e->getPrevious()->getMessage();
+            }
+            if (isset($debug_web) && !empty($debug_web)) {
+                $debug .= '<br><b>DEBUG:</b> <pre>' . htmlspecialchars(json_encode($debug_web, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) . '</pre>';
+            }
+            if (isset($debug)) {
+                $debug .= '<br><b>EXCEPTION:</b> <pre>' . htmlspecialchars(json_encode($e, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) . '</pre>';
+            }
+            $message = "Import ล้มเหลว{$error_row}: " . $e->getMessage() . $debug;
         }
 
     } else {
         $message = "กรุณาเลือกไฟล์ Excel ให้ถูกต้อง";
     }
 }
+
+
 ?>
 
 
@@ -227,18 +305,51 @@ if(isset($_POST['submit'])) {
         <?php if($message): ?>
            <script>
                 Swal.fire({
-                    icon: 'success',
-                    title: 'สำเร็จ',
+                    icon: '<?= strpos($message, "สำเร็จ") !== false ? "success" : "error" ?>',
+                    title: '<?= strpos($message, "สำเร็จ") !== false ? "สำเร็จ" : "เกิดข้อผิดพลาด" ?>',
                     text: <?= json_encode($message) ?>,
-                    timer: 2000,
+                    timer: 3000,
                     showConfirmButton: false
                 }).then(() => {
-                    window.location.href = "product_activity.php";
+                    <?php if(strpos($message, "สำเร็จ") !== false): ?>
+                        window.location.href = "product_activity.php";
+                    <?php else: ?>
+                        window.location.href = "import_excel.php";
+                    <?php endif; ?>
                 });
             </script>
 
         <?php endif; ?>
 
+        <form method="post" enctype="multipart/form-data">
+            <div class="file-upload">
+                <input type="file" id="excel_file" name="excel_file" accept=".xlsx" required hidden>
+                <label for="excel_file" class="file-label">
+                    <span class="material-icons" style="vertical-align:middle;color:#0072ff;">attach_file</span>
+                    เลือกไฟล์ Excel (.xlsx)
+                </label>
+                <p class="note">รองรับไฟล์ Excel เท่านั้น (.xlsx)</p>
+                <p id="file-name" class="file-name"></p>
+            </div>
+
+            <script>
+            document.getElementById('excel_file').addEventListener('change', function() {
+                const fileName = this.files.length > 0 ? this.files[0].name : "ยังไม่ได้เลือกไฟล์";
+                document.getElementById('file-name').textContent = "ไฟล์ที่เลือก: " + fileName;
+            });
+            </script>
+
+            <button type="submit" name="submit" class="btn btn-submit">
+                <span class="material-icons">cloud_upload</span> Import
+            </button>
+        </form>
+    </div>
+</div>
+</body>
+</html>
+</div>
+</body>
+</html>
         <form method="post" enctype="multipart/form-data">
             <div class="file-upload">
                 <input type="file" id="excel_file" name="excel_file" accept=".xlsx" required hidden>

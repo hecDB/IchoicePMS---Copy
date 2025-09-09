@@ -4,9 +4,9 @@
 // ข้อมูลการเชื่อมต่อ
 $host = 'localhost';
 $port = '3307';
-$db   = 'ichoice_PMS';
-$user = 'khing_IT';        // กรณีใช้งาน xampp/lampp มักใช้ root (หรือชื่อ user ของคุณ)
-$pass = 'Khing_IchoicePMS99';            // รหัสผ่าน (ใส่ให้ตรง)
+$db   = 'ichoice_'; // <--- แก้ไขจาก 'ichoiceth' เป็น 'ichoice_pms'
+$user = 'root';        // กรณีใช้งาน xampp/lampp มักใช้ root (หรือชื่อ user ของคุณ)
+$pass = '';            // รหัสผ่าน (ใส่ให้ตรง)
 
 try {
     $pdo = new PDO(

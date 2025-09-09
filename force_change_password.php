@@ -80,85 +80,8 @@ HTML;
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-
-<style>
-body {
-    background: linear-gradient(to right, #eef4fd, #d7e7fb);
-    font-family: 'Sarabun', sans-serif;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-    margin:0;
-}
-.container{
-    background:#fff;
-    border-radius:12px;
-    padding:40px 30px;
-    max-width:400px;
-    width:100%;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-    text-align:center;
-    position:relative;
-}
-h3 { margin-bottom:20px; color:#1675fb; }
-input[type=password] {
-    width:100%;
-    padding:14px;
-    margin-bottom:20px;
-    border:1px solid #ccc;
-    border-radius:8px;
-    font-size:16px;
-}
-button {
-    width:100%;
-    padding:14px;
-    font-size:16px;
-    background:#1675fb;
-    color:#fff;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-    transition: 0.3s;
-}
-button:hover { background:#0f53d0; }
-.error-msg {
-    background:#ffe0e0;
-    color:#d8000c;
-    padding:10px;
-    border-radius:8px;
-    margin-bottom:20px;
-    text-align:left;
-}
-.success-msg {
-    background:#e0ffe0;
-    color:#006400;
-    padding:10px;
-    border-radius:8px;
-    margin-bottom:20px;
-    font-weight:bold;
-}
-.password-info {
-    text-align:left;
-    font-size:14px;
-    color:#555;
-    margin-bottom:20px;
-}
-.password-group {
-    position:relative;
-    margin-bottom:20px;
-}
-.toggle-pass {
-    position:absolute;
-    right:10px;
-    top:50%;
-    transform:translateY(-50%);
-    cursor:pointer;
-    font-size:18px;
-    color:#555;
-    user-select:none;
-}
-</style>
+<link rel="stylesheet" href="assets/style.css">
+<title>ตั้งรหัสผ่านใหม่</title>
 </head>
 <body>
 <div class="container">

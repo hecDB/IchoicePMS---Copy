@@ -2,153 +2,126 @@
 session_start();
 require 'db_connect.php';
 
-$q = trim($_GET['q'] ?? '');
+$draw = intval($_GET['draw'] ?? 1);
+$start = intval($_GET['start'] ?? 0);
+$length = intval($_GET['length'] ?? 50);
+$search = trim($_GET['search']['value'] ?? '');
 
-$sql = "
-SELECT 
-    p.product_id,
-    p.name,
-    p.sku,
-    p.barcode,
-    p.unit,
-    p.image,
-    p.remark_color,
-    SUM(ri.receive_qty) AS total_qty,   -- รวมจำนวน
-    ri.remark_sale,
-    ri.expiry_date
-FROM products p
-LEFT JOIN purchase_order_items poi ON poi.product_id = p.product_id
-RIGHT JOIN receive_items ri ON ri.item_id = poi.item_id
+// Columns for ordering
+$columns = [
+    null, // checkbox
+    null, // product_info
+    'u.name',
+    'pa.activity_date',
+    'pa.activity_type',
+    'pa.location_from',
+    'pa.location_to',
+    'pa.quantity',
+    null // reference
+];
+
+$orderColumnIndex = intval($_GET['order'][0]['column'] ?? 3);
+$orderDir = $_GET['order'][0]['dir'] ?? 'desc';
+$orderBy = $columns[$orderColumnIndex] ?? 'pa.activity_date';
+
+// Base query
+$sqlBase = "
+FROM product_activity pa
+LEFT JOIN products p ON pa.product_id = p.product_id
+LEFT JOIN users u ON pa.user_id = u.user_id
+WHERE 1=1
 ";
 
-// ถ้ามีการค้นหา
+// Total records
+$totalRecords = $pdo->query("SELECT COUNT(*) FROM product_activity")->fetchColumn();
+
+// Search condition
+$searchSql = "";
 $params = [];
-if($q !== '') {
-    $sql .= " WHERE p.name LIKE :name OR p.sku LIKE :sku OR p.barcode LIKE :barcode ";
-    $params = [
-        ':name' => "%$q%",
-        ':sku' => "%$q%",
-        ':barcode' => "%$q%"
+if (!empty($search)) {
+    $searchSql = " AND (p.name LIKE :s OR p.sku LIKE :s OR u.name LIKE :s OR pa.activity_type LIKE :s OR pa.reference LIKE :s)";
+    $params[':s'] = "%$search%";
+}
+
+// Filtered records count
+$countQuery = "SELECT COUNT(*) " . $sqlBase . $searchSql;
+$stmt = $pdo->prepare($countQuery);
+$stmt->execute($params);
+$totalFiltered = $stmt->fetchColumn();
+
+// Data query
+$dataQuery = "
+SELECT
+    pa.activity_id,
+    p.name as product_name,
+    p.sku,
+    p.image,
+    u.name as user_name,
+    pa.activity_date,
+    pa.activity_type,
+    pa.location_from,
+    pa.location_to,
+    pa.quantity,
+    pa.reference
+" . $sqlBase . $searchSql . " ORDER BY $orderBy $orderDir LIMIT :start, :length";
+
+$stmt = $pdo->prepare($dataQuery);
+$stmt->bindValue(':start', $start, PDO::PARAM_INT);
+$stmt->bindValue(':length', $length, PDO::PARAM_INT);
+if (!empty($search)) {
+    $stmt->bindValue(':s', $params[':s']);
+}
+$stmt->execute();
+$activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$data = [];
+foreach ($activities as $a) {
+    $img = !empty($a['image']) ? $a['image'] : 'assets/no-image.png';
+    $product_name = $a['product_name'] ?? '[สินค้าถูกลบ]';
+    $sku = $a['sku'] ?? 'N/A';
+    $user_name = $a['user_name'] ?? 'System';
+    $activity_date = $a['activity_date'] ? date("d M Y, H:i", strtotime($a['activity_date'])) : '-';
+    $activity_type = $a['activity_type'] ?? '';
+    $location_from = $a['location_from'] ?? '';
+    $location_to = $a['location_to'] ?? '';
+    $reference = $a['reference'] ?? '';
+    $quantity = $a['quantity'] ?? 0;
+
+    $productInfo = '
+        <div class="d-flex align-items-center">
+            <img src="'.$img.'" style="width:40px;height:40px;object-fit:cover;border-radius:4px;margin-right:10px;">
+            <div>
+                <div style="font-weight:500;">'.htmlspecialchars($product_name).'</div>
+                <div class="text-muted" style="font-size:12px;">SKU: '.htmlspecialchars($sku).'</div>
+            </div>
+        </div>';
+
+    $quantity_display = '';
+    if (in_array($activity_type, ['Stock-In', 'เพิ่ม', 'รับสินค้า'])) {
+        $quantity_display = '<span class="text-success fw-bold">+' . number_format($quantity) . '</span>';
+    } elseif (in_array($activity_type, ['Stock-Out', 'การขาย', 'ตัดจ่าย'])) {
+        $quantity_display = '<span class="text-danger fw-bold">-' . number_format($quantity) . '</span>';
+    } else {
+        $quantity_display = number_format($quantity);
+    }
+
+    $data[] = [
+        "activity_id" => $a['activity_id'],
+        "product_info" => $productInfo,
+        "user_name" => htmlspecialchars($user_name),
+        "activity_date" => $activity_date,
+        "activity_type" => htmlspecialchars($activity_type),
+        "location_from" => htmlspecialchars($location_from),
+        "location_to" => htmlspecialchars($location_to),
+        "quantity" => $quantity_display,
+        "reference" => htmlspecialchars($reference),
     ];
 }
 
-// รวมจำนวนตาม SKU และ Barcode สำหรับสินค้าที่ไม่ถูกแบ่งขาย
-$sql .= " 
-GROUP BY p.product_id, p.name, p.sku, p.barcode, p.unit, p.image, p.remark_color, ri.remark_sale, ri.expiry_date
-ORDER BY p.name
-";
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+echo json_encode([
+    "draw" => $draw,
+    "recordsTotal" => $totalRecords,
+    "recordsFiltered" => $totalFiltered,
+    "data" => $data
+]);
 
-echo '<table>
-<thead>
-<tr>
-    <th>#</th>
-    <th>ภาพสินค้า</th>
-    <th>ชื่อสินค้า</th>
-    <th>SKU</th>
-    <th>Barcode</th>
-    <th>จำนวนคงคลัง</th>
-        <th>หน่วย</th>
-    <th>Remark สี</th>
-    <th>Remark แบ่งขาย</th>
-    <th>วันหมดอายุ</th>
-    <th>จัดการ</th>
-</tr>
-</thead>
-<tbody>';
-
-if($products){
- foreach($products as $k => $p){
-    $imgSrc = !empty($p['image']) ? htmlspecialchars($p['image'], ENT_QUOTES, 'UTF-8') : 'assets/no-image.png';
-    // $qty = floatval($p['receive_qty'] ?? 0); // เปลี่ยนเป็น float สำหรับคำนวณ
-    $name = htmlspecialchars($p['name'] ?? '', ENT_QUOTES, 'UTF-8');
-    $sku = htmlspecialchars($p['sku'] ?? '', ENT_QUOTES, 'UTF-8');
-    $barcode = htmlspecialchars($p['barcode'] ?? '', ENT_QUOTES, 'UTF-8');
-    $unit = htmlspecialchars($p['unit'] ?? '', ENT_QUOTES, 'UTF-8');
-    $remark_color = htmlspecialchars($p['remark_color'] ?? '', ENT_QUOTES, 'UTF-8');
-    $remark_sale = $p['remark_sale'] ?? null; // ดึงค่า raw ก่อนคำนวณ
-    $expiry_date = htmlspecialchars($p['expiry_date'] ?? '', ENT_QUOTES, 'UTF-8');
-
-    $qty = floatval($p['total_qty'] ?? 0);       // จำนวนจริง
-    $remark_sale_raw = $p['remark_sale'] ?? null;  // ค่า remark_sale จาก DB
-
-    if (!empty($remark_sale_raw) && $remark_sale_raw > 0) {
-        $display_qty = $qty / floatval($remark_sale_raw);
-    } else {
-        $display_qty = $qty;
-    }
-
-
-    // แสดงผล remark_sale
-   $display_qty = number_format($display_qty);
-
-  echo "<tr>
-        <td>".($k+1)."</td>
-        <td><img src='{$imgSrc}' style='width:60px;height:60px;object-fit:cover;border-radius:8px;'></td>
-        <td>{$name}</td>
-        <td>{$sku}</td>
-        <td>{$barcode}</td>
-        <td>{$display_qty}</td>
-        <td>{$unit}</td>
-        <td>{$remark_color}</td>
-        <td>{$remark_sale}</td>
-        <td>{$expiry_date}</td>
-        <td>
-            <button class='btn btn-sm btn-warning btn-edit-product'
-                    data-id='".$p['product_id']."'
-                    data-name='".$p['name']."'
-                    data-sku='".$p['sku']."'
-                    data-barcode='".$p['barcode']."'
-                    data-unit='".$p['unit']."'
-                    data-qty='".$display_qty ."'>
-                แก้ไข
-            </button>
-
-            <button class='btn btn-sm btn-danger btn-delete-product' data-id='".$p['product_id']."'>ลบ</button>
-        </td>
-    </tr>";
-
-
-
-    }
-} else {
-    echo '<tr><td colspan="11" class="center">ไม่พบข้อมูลสินค้า</td></tr>';
-}
-
-echo '</tbody></table>';
-?>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-$(function(){
-    $('.btn-delete-product').on('click', function(){
-        var btn = $(this);
-        var id = btn.data('id');
-
-        Swal.fire({
-            title: 'คุณแน่ใจหรือไม่?',
-            text: "หากลบแล้วจะไม่สามารถกู้คืนได้!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'ใช่, ลบเลย!',
-            cancelButtonText: 'ยกเลิก'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.post('receive_delete.php', {id: id}, function(resp){
-                    if(resp.success){
-                        btn.closest('tr').fadeOut();
-                        Swal.fire('ลบสำเร็จ!','สินค้าถูกลบเรียบร้อยแล้ว','success');
-                    } else {
-                        Swal.fire('ผิดพลาด!','ไม่สามารถลบสินค้าได้','error');
-                    }
-                }, 'json');
-            }
-        });
-    });
-});
-</script>

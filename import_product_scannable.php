@@ -305,7 +305,8 @@ if(isset($_POST['submit'])) {
                 <option value="V">V</option>
                 <option value="W">W</option>
                 <option value="X">X</option>
-                <option value="Sale">Sale</option>
+                <option value="Sale(บน)">Sale(บน)</option>
+                   <option value="Sale(ล่าง)">Sale(ล่าง)</option>
             </select>  
            </td>
            <td>
@@ -318,6 +319,8 @@ if(isset($_POST['submit'])) {
                 <option value="5">5</option>
                 <option value="6">6</option>
                 <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
             </select>
            </td>
           <td>

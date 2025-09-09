@@ -99,23 +99,22 @@ $total_stock_qty = array_sum(array_column($products, 'total_stock'));
 
 // ====== สินค้าหมดแล้ว (total_qty < 1) ======
 $sql_low_stock = "
-    SELECT 
-        p.product_id,
-        p.name,
-        p.sku,
-        p.barcode,
-        p.unit,
-        p.image,
-        p.remark_color,
-        SUM(ri.receive_qty) AS total_qty,
-        ri.remark_sale,
-        ri.expiry_date
-    FROM products p
-    LEFT JOIN purchase_order_items poi ON poi.product_id = p.product_id
-    RIGHT JOIN receive_items ri ON ri.item_id = poi.item_id
-    GROUP BY p.product_id, p.name, p.sku, p.barcode, p.unit, p.image, p.remark_color, ri.remark_sale, ri.expiry_date
-    HAVING total_qty <= 1
-    ORDER BY total_qty ASC, p.name
+  SELECT 
+    p.product_id,
+    p.name,
+    p.sku,
+    p.barcode,
+    p.unit,
+    p.image,
+    p.remark_color,
+    SUM(ri.receive_qty) AS total_qty,
+    ri.expiry_date
+  FROM products p
+  LEFT JOIN purchase_order_items poi ON poi.product_id = p.product_id
+  RIGHT JOIN receive_items ri ON ri.item_id = poi.item_id
+  GROUP BY p.product_id, p.name, p.sku, p.barcode, p.unit, p.image, p.remark_color, ri.expiry_date
+  HAVING total_qty <= 1
+  ORDER BY total_qty ASC, p.name
 ";
 $stmt = $pdo->query($sql_low_stock);
 $low_stock_products = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -131,17 +130,38 @@ $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Material+Icons&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/style.css">
+  <style>
+    body { margin:0; background:#f4f6f9; }
+    .mainwrap { min-height:100vh; padding:32px 18px 18px 18px; }
+    .topbar {
+      font-size: 22px; font-weight: 600; color: #375dfa;
+      margin-bottom: 24px; background: #fff; border-radius: 10px;
+      padding: 18px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .card-sec { max-width: 1200px; margin: 0 auto; }
+    .card {
+      background: #fff; border-radius: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      padding: 24px 22px; margin-bottom: 24px;
+    }
+    .card-title { font-size: 22px; font-weight: 600; margin-bottom: 10px; }
+    @media (max-width: 900px) {
+      .mainwrap { margin-left: 0 !important; padding: 18px 4vw 12vw 4vw; }
+      .card-sec { padding: 0; }
+    }
+    @media (min-width: 901px) {
+      .mainwrap { margin-left: 230px; transition: margin-left 0.2s; }
+    }
+  </style>
 </head>
 <body>
 <?php  include 'sidebar.php';?>
-
 <div class="mainwrap">
     <div class="topbar">
         แดชบอร์ด (Dashboard)
     </div>
     <div class="card-sec">
-        <div class="card" style="margin-bottom:30px;">
-            <div class="card-title" style="font-size:22px;">
+        <div class="card">
+            <div class="card-title">
                 <span class="material-icons" style="color:#375dfa;">dashboard</span>
                 ยินดีต้อนรับ, <span style="color:#375dfa;"><?=$user_name?></span>
             </div>
@@ -149,8 +169,7 @@ $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
                 สถานะ: <b><?=($user_role == 'admin') ? 'ผู้ดูแลระบบ' : 'สมาชิกทั่วไป'?></b>
             </div>
         </div>
-        <?php
-        if($user_role === 'admin') { ?> 
+        <?php if($user_role === 'admin') { ?>
         <div class="card" style="display:flex;gap:32px;flex-wrap:wrap;justify-content:space-between;">
           <div style="flex:1 1 170px;min-width:155px;max-width:280px;">
             <div style="display:flex;align-items:center;gap:17px;">
@@ -180,7 +199,7 @@ $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
             </div>
           </div>
         </div>
-       <?php  }; ?>
+        <?php } ?>
         <div class="card" style="display:flex;gap:32px;flex-wrap:wrap;justify-content:space-between;margin-top:20px;">
           <div style="flex:1 1 170px;min-width:155px;max-width:280px;">
             <div style="display:flex;align-items:center;gap:17px;">
@@ -191,7 +210,6 @@ $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
               </div>
             </div>
           </div>
-
           <div style="flex:1 1 170px;min-width:155px;max-width:280px;">
             <div style="display:flex;align-items:center;gap:17px;">
               <span class="material-icons" style="font-size:41px;color:#1abc9c;background:#d4f8f4;border-radius:13px;padding:7px;">inventory</span>
@@ -201,9 +219,8 @@ $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
               </div>
             </div>
           </div>
-
           <!-- สินค้าใกล้หมด -->
-              <a href="low_stock.php" 
+          <a href="low_stock.php" 
               style="flex:1 1 170px;min-width:155px;max-width:280px;
                       display:flex;align-items:center;gap:17px;
                       text-decoration:none;background:#f0f8ff;
@@ -211,7 +228,6 @@ $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
                       transition:0.2s;cursor:pointer;"
               onmouseover="this.style.background='#d4f8f4';"
               onmouseout="this.style.background='#f0f8ff';">
-              
                 <span class="material-icons" 
                       style="font-size:41px;color:#e67e22;background:#fdebd0;
                             border-radius:13px;padding:7px;">
@@ -222,13 +238,7 @@ $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
                     <div style="font-size:26px;font-weight:bold;"><?=$low_stock_qty?></div>
                 </div>
             </a>
-
-
-          
         </div>
-
-
-
         <div class="card" style="margin-top:34px;">
             <div class="card-title" style="font-size:18px;">
                 <span class="material-icons" style="color:#6c7fb0;font-size:21px;">tips_and_updates</span>

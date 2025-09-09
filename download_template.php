@@ -11,7 +11,7 @@ $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
 
 // กำหนดหัวคอลัมน์
-$headers = ['sku','barcode','name','ภาพ','หน่วยนับ','แถว','ล๊อค','ชั้น','จำนวน','ราคา/หน่วย','EXP','หมายเหตุสีสินค้า','สินค้าแบ่งขาย'];
+$headers = ['sku','barcode','name','ภาพ','หน่วยนับ','แถว','ล๊อค','ชั้น','จำนวน','ราคาต้นทุน','ราคาขาย','EXP','สีสินค้า(ถ้ามี)','ชนิดการแบ่งขาย(ถ้ามี)', 'หมายเหตุอื่นๆ'];
 
 $col = 'A';
 foreach ($headers as $header) {
@@ -36,10 +36,10 @@ $styleArray = [
 ];
 
 // นำสไตล์ไปใช้กับแถวหัวตาราง (A1:J1)
-$sheet->getStyle('A1:M1')->applyFromArray($styleArray);
+$sheet->getStyle('A1:O1')->applyFromArray($styleArray);
 
 // ปรับความกว้างคอลัมน์อัตโนมัติ
-foreach (range('A','M') as $col) {
+foreach (range('A','O') as $col) {
     $sheet->getColumnDimension($col)->setAutoSize(true);
 }
 
