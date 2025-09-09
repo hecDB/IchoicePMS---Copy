@@ -70,10 +70,10 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <div class="mainwrap">
     <div class="container-fluid py-3">
         <div class="d-flex align-items-center justify-content-between mb-3">
-            <h2 class="page-title mb-0 d-flex align-items-center" style="font-weight:600;color:#0856cd;">
-                <i class="fa-solid fa-check-square me-2" style="font-size:1.5em;vertical-align:middle;"></i>
-                รายการรับสินค้า
-            </h2>
+            <div class="page-bar shadow-sm d-flex align-items-center mb-2" style="background:#fff;border-radius:12px;padding:14px 22px 14px 18px;box-shadow:0 2px 8px 0 rgba(8,86,205,0.07);width:100%;min-width:0;">
+                <i class="fa-solid fa-check-square me-2" style="font-size:1.5em;vertical-align:middle;color:#0856cd;"></i>
+                <span class="page-title" style="font-size:1.25rem;font-weight:600;color:#0856cd;letter-spacing:0.5px;">รายการรับสินค้า</span>
+            </div>
         </div>
         <div class="card shadow-sm">
             <div class="card-body">
@@ -307,8 +307,8 @@ function getCurrentQty($sku, $created_at, $pdo) {
     return (int)$stmt->fetchColumn();
 }
 function qtyChange($qty) {
-    if($qty > 0) return '<span class="qty-plus">+'.(int)$qty.'</span>';
-    if($qty < 0) return '<span class="qty-minus">'.(int)$qty.'</span>';
+    if($qty > 0) return '<span class="qty-plus" style="color:#22bb33;font-weight:bold;">+'.(int)$qty.'</span>';
+    if($qty < 0) return '<span class="qty-minus" style="color:#e74c3c;font-weight:bold;">'.(int)$qty.'</span>';
     return $qty;
 }
 function getTypeLabel($remark) {
