@@ -34,6 +34,14 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- jQuery CDN: ต้องมาก่อน DataTables, Bootstrap JS, และ script JS อื่นๆ ที่ใช้ $ -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<!-- DataTables JS (ต้องตามหลัง jQuery) -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<!-- Bootstrap 5 JS (bundle รวม Popper) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- SweetAlert2 (สำหรับ Swal.fire) -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -77,11 +85,14 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
         <div class="card shadow-sm">
             <div class="card-body">
+                <div class="d-flex mb-2">
+                    <button id="delete-selected" class="btn btn-danger btn-sm me-2" type="button"><i class="fa fa-trash"></i> ลบรายการที่เลือก</button>
+                </div>
                 <div class="table-responsive">
                     <table id="receive-table" class="display table table-bordered align-middle" style="width:100%">
         <thead>
         <tr>
-            <th><input type="checkbox" id="select-all"></th>
+            <th>#<input type="checkbox" id="select-all"></th>
             <th>ภาพ</th>
             <th>SKU</th>
             <th>Barcode</th>
@@ -118,105 +129,138 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <td><button class="btn btn-sm btn-warning edit-btn" data-id="<?= $row['receive_id'] ?>">แก้ไข</button></td>
             </tr>
         <?php endforeach; ?>
-        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-$(function(){
-    let table = $('#receive-table').DataTable({
-        "order": [[5, "desc"]],
-        "pageLength": 50,
-        "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json" }
-    });
-    $('#select-all').on('click', function(){
-        $('.row-checkbox').prop('checked', this.checked);
-    });
+            </tbody>
+            </table>
+    <script>
+    $(function(){
+        let table = $('#receive-table').DataTable({
+            "order": [[5, "desc"]],
+            "pageLength": 50,
+            "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json" }
+        });
+        $('#select-all').on('click', function(){
+            $('.row-checkbox').prop('checked', this.checked);
+        });
 
-    // ปุ่มแก้ไข (bind ครั้งเดียว)
-    $('#receive-table').off('click', '.edit-btn').on('click', '.edit-btn', function(){
-        let row = $(this).closest('tr');
-        let id = $(this).data('id');
-        let remark = row.find('td').eq(13).text();
-        let qtyText = row.find('td').eq(7).text();
-        let qty = qtyText.replace(/[^\d]/g, '');
-        let qtyType = qtyText.indexOf('-') !== -1 ? 'minus' : 'plus';
-        let expiry = row.find('td').eq(13).attr('data-expiry') || '';
-        let priceCost = row.find('td').eq(10).text().replace(/,/g, '');
-        let priceSale = row.find('td').eq(11).text().replace(/,/g, '');
-        // ใส่ค่าอื่นใน modal ก่อน
-        $('#edit-receive-id').val(id);
-        $('#edit-remark').val(remark);
-        $('#edit-price-cost').val(priceCost);
-        $('#edit-price-sale').val(priceSale);
-        $('#edit-qty-type').val(qtyType);
-        $('#edit-receive-qty').val(qty);
-        $('#edit-expiry-date').val(expiry);
-        // clear select ก่อน
-        $('#edit-row-code').val('');
-        $('#edit-bin').val('');
-        $('#edit-shelf').val('');
-        // AJAX ไปหา row_code, bin, shelf
-        $.get('receive_position_api.php', { receive_id: id }, function(resp){
-            if(resp && resp.success) {
-                let rowCode = resp.row_code || '';
-                let bin = resp.bin || '';
-                let shelf = resp.shelf || '';
-                function setSelectWithDynamicOption(sel, val) {
-                    val = (val || '').toString().trim();
-                    if(val && sel.find('option[value="'+val+'"]').length === 0) {
-                        sel.append('<option value="'+val+'">'+val+'</option>');
-                    }
-                    sel.val(val).trigger('change');
+        // ปุ่มลบหลายรายการ
+        $('#delete-selected').on('click', function(){
+            let ids = $('.row-checkbox:checked').map(function(){ return $(this).val(); }).get();
+            if(ids.length === 0) {
+                Swal.fire({icon:'warning',title:'กรุณาเลือกรายการที่ต้องการลบ'});
+                return;
+            }
+            Swal.fire({
+                title: 'ยืนยันการลบ?',
+                text: `คุณต้องการลบ ${ids.length} รายการหรือไม่?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'ลบ',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result)=>{
+                if(result.isConfirmed){
+                    $.ajax({
+                        url: 'receive_delete.php',
+                        method: 'POST',
+                        data: { ids: ids },
+                        dataType: 'json',
+                        success: function(resp){
+                            if(resp && resp.success){
+                                // ลบแถวที่เลือกออกจาก DataTable
+                                $('.row-checkbox:checked').each(function(){
+                                    table.row($(this).closest('tr')).remove();
+                                });
+                                table.draw();
+                                Swal.fire('ลบสำเร็จ!',`รายการ ${ids.length} รายการถูกลบเรียบร้อยแล้ว`,'success');
+                                $('#select-all').prop('checked', false);
+                            } else {
+                                Swal.fire('ผิดพลาด!', (resp && resp.msg) ? resp.msg : 'ไม่สามารถลบได้', 'error');
+                            }
+                        },
+                        error: function(xhr, status, error){
+                            Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+                        }
+                    });
                 }
-                setSelectWithDynamicOption($('#edit-row-code'), rowCode);
-                setSelectWithDynamicOption($('#edit-bin'), bin);
-                setSelectWithDynamicOption($('#edit-shelf'), shelf);
-            }
-            var modal = new bootstrap.Modal(document.getElementById('editModal'));
-            modal.show();
-        }, 'json');
-    });
+            });
+        });
 
-    // บันทึกการแก้ไข
-    $('#save-edit').on('click', function(){
-        // ปรับจำนวนตามประเภท
-        let qty = parseInt($('#edit-receive-qty').val()) || 0;
-        let qtyType = $('#edit-qty-type').val();
-        if(qtyType === 'minus') qty = -Math.abs(qty);
-        else qty = Math.abs(qty);
-        $('#edit-receive-qty').val(qty);
-        // รวมตำแหน่งเป็น description ด้วย (optionally ส่งไป backend)
-        let rowCode = $('#edit-row-code').val();
-        let bin = $('#edit-bin').val();
-        let shelf = $('#edit-shelf').val();
-        // เพิ่ม hidden input สำหรับตำแหน่งรวม
-        if($('#edit-form input[name="location_desc"]').length === 0){
-            $('#edit-form').append('<input type="hidden" name="location_desc" id="edit-location-desc">');
-        }
-        let locDesc = rowCode && bin && shelf ? `${rowCode}-${bin}-${shelf}` : '';
-        $('#edit-location-desc').val(locDesc);
-        let formData = $('#edit-form').serialize();
-        $.post('receive_edit.php', formData, function(resp){
-            if(resp.success){
-                Swal.fire('สำเร็จ', 'บันทึกการแก้ไขเรียบร้อย', 'success').then(()=>location.reload());
-                var modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
-                modal.hide();
-            }else{
-                Swal.fire('ผิดพลาด', resp.message || 'ไม่สามารถบันทึกได้', 'error');
+        // ปุ่มแก้ไข (bind ครั้งเดียว)
+        $('#receive-table').off('click', '.edit-btn').on('click', '.edit-btn', function(){
+            let row = $(this).closest('tr');
+            let id = $(this).data('id');
+            let remark = row.find('td').eq(13).text();
+            let qtyText = row.find('td').eq(7).text();
+            let qty = qtyText.replace(/[^\d]/g, '');
+            let qtyType = qtyText.indexOf('-') !== -1 ? 'minus' : 'plus';
+            let expiry = row.find('td').eq(13).attr('data-expiry') || '';
+            let priceCost = row.find('td').eq(10).text().replace(/,/g, '');
+            let priceSale = row.find('td').eq(11).text().replace(/,/g, '');
+            // ใส่ค่าอื่นใน modal ก่อน
+            $('#edit-receive-id').val(id);
+            $('#edit-remark').val(remark);
+            $('#edit-price-cost').val(priceCost);
+            $('#edit-price-sale').val(priceSale);
+            $('#edit-qty-type').val(qtyType);
+            $('#edit-receive-qty').val(qty);
+            $('#edit-expiry-date').val(expiry);
+            // clear select ก่อน
+            $('#edit-row-code').val('');
+            $('#edit-bin').val('');
+            $('#edit-shelf').val('');
+            // AJAX ไปหา row_code, bin, shelf
+            $.get('receive_position_api.php', { receive_id: id }, function(resp){
+                if(resp && resp.success) {
+                    let rowCode = resp.row_code || '';
+                    let bin = resp.bin || '';
+                    let shelf = resp.shelf || '';
+                    function setSelectWithDynamicOption(sel, val) {
+                        val = (val || '').toString().trim();
+                        if(val && sel.find('option[value="'+val+'"]').length === 0) {
+                            sel.append('<option value="'+val+'">'+val+'</option>');
+                        }
+                        sel.val(val).trigger('change');
+                    }
+                    setSelectWithDynamicOption($('#edit-row-code'), rowCode);
+                    setSelectWithDynamicOption($('#edit-bin'), bin);
+                    setSelectWithDynamicOption($('#edit-shelf'), shelf);
+                }
+                var modal = new bootstrap.Modal(document.getElementById('editModal'));
+                modal.show();
+            }, 'json');
+        });
+
+        // บันทึกการแก้ไข
+        $('#save-edit').on('click', function(){
+            // ปรับจำนวนตามประเภท
+            let qty = parseInt($('#edit-receive-qty').val()) || 0;
+            let qtyType = $('#edit-qty-type').val();
+            if(qtyType === 'minus') qty = -Math.abs(qty);
+            else qty = Math.abs(qty);
+            $('#edit-receive-qty').val(qty);
+            // รวมตำแหน่งเป็น description ด้วย (optionally ส่งไป backend)
+            let rowCode = $('#edit-row-code').val();
+            let bin = $('#edit-bin').val();
+            let shelf = $('#edit-shelf').val();
+            // เพิ่ม hidden input สำหรับตำแหน่งรวม
+            if($('#edit-form input[name="location_desc"]').length === 0){
+                $('#edit-form').append('<input type="hidden" name="location_desc" id="edit-location-desc">');
             }
-        }, 'json');
+            let locDesc = rowCode && bin && shelf ? `${rowCode}-${bin}-${shelf}` : '';
+            $('#edit-location-desc').val(locDesc);
+            let formData = $('#edit-form').serialize();
+            $.post('receive_edit.php', formData, function(resp){
+                if(resp.success){
+                    Swal.fire('สำเร็จ', 'บันทึกการแก้ไขเรียบร้อย', 'success').then(()=>location.reload());
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+                    modal.hide();
+                }else{
+                    Swal.fire('ผิดพลาด', resp.message || 'ไม่สามารถบันทึกได้', 'error');
+                }
+            }, 'json');
+        });
     });
-});
-</script>
-</script>
+    </script>
+
 <!-- Modal แก้ไข -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog">
