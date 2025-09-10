@@ -21,105 +21,6 @@ $rows = $stmt->fetchAll();
 
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Material+Icons&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/style.css">
-    <style>
-        body { font-family: 'Prompt', sans-serif; background: #fff; margin: 0; padding: 0;}
-        .header { display: flex; align-items: center; padding: 24px; border-bottom: 1px solid #e6e8ed;}
-        .header .material-icons { margin-right: 10px; color: #555;}
-        .header-title { font-weight: bold; font-size: 20px;}
-        .main { max-width: 1200px; margin: 32px auto; padding: 0 16px; }
-        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;}
-        .main-title { font-size: 28px; font-weight: bold; color: #222;}
-        .sub-title { margin-top: 4px; color: #888;}
-        .btn-create {
-            background: #1578ff;
-            color: #fff;
-            font-weight: bold;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background 0.2s;
-            display: flex; align-items: center;
-        }
-        .btn-create:hover { background: #105ccc; }
-        .btn-create .material-icons { margin-right: 5px; }
-        .box {
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 2px 8px #eef2fa;
-            padding: 26px 24px;
-            margin-top: 20px;
-        }
-        .box-title {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 18px;
-            display: flex; align-items: center;
-        }
-        .box-title .material-icons { margin-right: 10px; }
-        .search-bar { width: 100%; margin-bottom: 22px;}
-        .search-bar input {
-            width: 100%; padding: 12px 15px; border: 1px solid #e1e4ec;
-            border-radius: 8px; font-size: 16px; background: #f8fafc;
-            outline: none; margin-top:5px;
-        }
-        table { width: 100%; border-collapse: collapse;}
-        th, td { padding: 14px 8px; text-align: left; font-size: 16px;}
-        th { color: #9096ac; background: #f3f6fb; font-weight: 600;}
-        tr:not(:last-of-type) td { border-bottom: 1px solid #eef0f5;}
-        .status-chip { display: inline-block; padding: 4px 14px; border-radius: 12px; font-size: 15px; font-weight: bold;}
-        .status-pending { background: #e7ecf4; color: #c58410;}
-        .status-approved { background: #e4fad9; color: #327b33;}
-        .status-received {background: #e3edff; color: #0660d2;}
-        .status-cancel {background: #ffdada; color: #d52721;}
-        /* ปุ่มตาราง */
-        .action-btns { display: flex; gap: 8px;}
-        .icon-btn { border: none; background: #f8fafc; color: #222; padding: 6px 13px;
-                    border-radius: 8px; cursor: pointer; font-size: 16px;
-                    display: inline-flex; align-items: center; transition: background 0.15s; }
-        .icon-btn:hover { background: #e5edfa;}
-        .icon-btn.edit { color: #007bff;}
-        .icon-btn.delete { color: #fc4445;}
-
-        /* Autocomplete Styles */
-        .autocomplete-results {
-            position: absolute;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            width: 300px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .result-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
-        .result-item:hover {
-            background-color: #f5f5f5;
-        }
-        .result-item:last-child {
-            border-bottom: none;
-        }
-        .product-search-container {
-            position: relative;
-            width: 100%;
-        }
-
-        @media (max-width: 900px) {
-            .main { max-width: 100%; }
-            .box { padding: 12px 2px; }
-            th,td { font-size: 14px;}
-            .autocomplete-results {
-                width: 200px;
-            }
-        }
- 
-    </style>
 </head>
 <body>
 <div class="mainwrap">
@@ -141,7 +42,7 @@ $rows = $stmt->fetchAll();
             <div class="search-bar">
                 <input type="text" placeholder="ค้นหาเลขใบสั่งซื้อ, ผู้จำหน่าย, หรือรายการสินค้า...">
             </div>
-            <table>
+            <table id="po-table" class="display" style="width:100%">
                 <thead>
                     <tr>
                         <th>เลขที่ใบสั่งซื้อ</th>
@@ -158,7 +59,7 @@ $rows = $stmt->fetchAll();
                             <td><?=htmlspecialchars($r['po_number'])?></td>
                             <td><?=htmlspecialchars($r['name'])?></td>
                             <td><?=date('d/m/Y', strtotime($r['order_date']))?></td>
-                            <td>฿<?=number_format($r['total_amount'],2)?></td>
+                            <td><?=number_format($r['total_amount'],2)?></td>
                             <td>
                                 <?php
                                 switch($r['status']) {
@@ -190,6 +91,21 @@ $rows = $stmt->fetchAll();
                     <?php endforeach;?>
                 </tbody>
             </table>
+</body>
+</html>
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+$(function(){
+    $('#po-table').DataTable({
+        "order": [[0, "asc"]],
+        "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json" },
+        "pageLength": 25
+    });
+});
+</script>
          <!-- Popup view -->
             <!-- View Popup -->
             <div id="poViewPopup">

@@ -115,44 +115,94 @@ body {
     margin-left: auto; 
 }
 
-/* ================= Responsive (มือถือ) ================= */
-@media(max-width: 900px) {
+
+/* ================= Responsive (มือถือ/แท็บเล็ต) ================= */
+@media (max-width: 1200px) {
+    .mainwrap { margin-left: 0 !important; }
+}
+@media (max-width: 900px) {
     .sidebar {
         width: 65px;
+        min-width: 65px;
+        max-width: 65px;
     }
-
+    .mainwrap { margin-left: 65px !important; }
     /* ซ่อนข้อความและ label */
     .sidebar .label,
     .sidebar .menu-text,
     .sidebar-footer .username,
     .sidebar-header .brand-text {
-        display: none;
+        display: none !important;
     }
-
     /* จัดแนว header icon */
     .sidebar-header {
         justify-content: center;
         padding: 20px 0;
     }
-
     /* จัดแนว menu icon */
     .menu-item {
         justify-content: center;
         padding: 12px 0;
         border-radius: 0;
+        font-size: 20px;
     }
-
+    .menu-item .material-icons, .menu-item .fa-solid, .menu-item .fas {
+        font-size: 24px !important;
+        margin-right: 0 !important;
+    }
     /* footer icon อยู่ตรงกลาง */
     .sidebar-footer {
         justify-content: center;
         gap: 0;
         padding: 12px 0;
     }
+    .sidebar-footer .avatar { width: 32px; height: 32px; font-size: 18px; }
+    /* Responsive table */
+    .table-responsive, .dataTables_wrapper { width: 100%; overflow-x: auto; }
+    table, .table { font-size: 12px; }
+    th, td { white-space: nowrap; }
+    /* Card padding */
+    .card { padding: 10px 4px; }
+    .card-title { font-size: 15px; }
+    .usercard .avatar { width: 32px; height: 32px; font-size: 16px; }
+    .usercard .name { font-size: 13px; }
+    .usercard .meta { font-size: 11px; }
+    .status-badge { font-size: 10px; padding: 2px 6px; }
+    .topbar { font-size: 15px; padding: 0 10px; height: 45px; }
+    .tabs { margin: 8px 0 16px 0; }
+    .tabbtn { padding: 8px 10px; font-size: 12px; }
+    .action-btn, .icon-btn { font-size: 12px; padding: 4px 8px; }
+    .refresh-btn { right: 10px; top: 10px; font-size: 11px; padding: 2px 8px; }
+    .login-container { max-width: 98vw; padding: 16px 4px; }
+    .login-title { font-size: 20px; }
+    .login-desc { font-size: 12px; }
+}
+@media (max-width: 600px) {
+    .mainwrap { margin-left: 0 !important; }
+    .sidebar { width: 54px; min-width: 54px; max-width: 54px; }
+    .sidebar-header { padding: 12px 0 8px 0; }
+    .card { padding: 6px 2px; border-radius: 10px; }
+    .card-title { font-size: 13px; }
+    .usercard { gap: 8px; padding: 8px 2px; }
+    .usercard .avatar { width: 24px; height: 24px; font-size: 12px; }
+    .usercard .name { font-size: 11px; }
+    .usercard .meta { font-size: 9px; }
+    .status-badge { font-size: 8px; padding: 1px 4px; }
+    .topbar { font-size: 12px; height: 36px; padding: 0 2px; }
+    .tabs { margin: 4px 0 8px 0; }
+    .tabbtn { padding: 5px 4px; font-size: 10px; }
+    .action-btn, .icon-btn { font-size: 10px; padding: 2px 4px; }
+    .refresh-btn { right: 2px; top: 2px; font-size: 9px; padding: 1px 4px; }
+    .login-container { max-width: 100vw; padding: 8px 1px; }
+    .login-title { font-size: 15px; }
+    .login-desc { font-size: 10px; }
+    .form-group label, label { font-size: 11px; }
+    input[type="email"], input[type="password"], input[type="text"], select { font-size: 11px; padding: 6px 6px; }
 }
 
 
 /* ======================== Page layout ======================== */
-.mainwrap { margin-left: 220px; min-height: 100vh; }
+.mainwrap { margin-left: 220px !important; min-height: 100vh; }
 @media(max-width:900px) { .mainwrap { margin-left: 65px; } }
 .topbar {
     background: var(--card); border-bottom: 1px solid var(--border); height: 55px;

@@ -34,7 +34,7 @@ body { margin:0; }
     z-index: 1000;
     display: flex;
     flex-direction: column;
-    transition: transform 0.2s;
+    transition: transform 0.2s, width 0.2s;
 }
 .sidebar.collapsed { transform: translateX(-100%); }
 .sidebar-header {
@@ -78,18 +78,62 @@ body { margin:0; }
     display: none; position: fixed; top: 16px; left: 16px; z-index: 1100;
     background: #0856cd; color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; align-items: center; justify-content: center; font-size: 24px;
 }
+/* Overlay for mobile */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.18);
+    z-index: 999;
+}
 @media (max-width: 900px) {
-    .sidebar { transform: translateX(-100%); }
-    .sidebar.open { transform: translateX(0); }
+    .sidebar {
+        width: 70px;
+        min-width: 70px;
+        max-width: 70px;
+        transform: translateX(-100%);
+        box-shadow: 2px 0 8px #0001;
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    .sidebar-header .brand-text,
+    .menu-text,
+    .label,
+    .sidebar-footer .username {
+        display: none !important;
+    }
+    .sidebar-header {
+        justify-content: center;
+        padding: 18px 0 10px 0;
+    }
+    .menu-item {
+        justify-content: center;
+        padding: 12px 0;
+        border-left: none;
+        border-radius: 0;
+        font-size: 20px;
+    }
+    .menu-item .material-icons, .menu-item .fa-solid, .menu-item .fas {
+        font-size: 24px !important;
+        margin-right: 0 !important;
+    }
+    .sidebar-footer {
+        justify-content: center;
+        gap: 0;
+        padding: 12px 0;
+    }
+    .avatar { width: 32px; height: 32px; font-size: 18px; }
     .sidebar-toggle { display: flex; }
+    .sidebar-overlay { display: block; }
     .mainwrap { margin-left: 0 !important; }
 }
 @media (min-width: 901px) {
-    .sidebar { transform: translateX(0); }
+    .sidebar { transform: translateX(0); width: 230px; min-width: 230px; max-width: 230px; }
     .mainwrap { margin-left: 230px; transition: margin-left 0.2s; }
+    .sidebar-overlay { display: none !important; }
 }
 </style>
-<button class="sidebar-toggle" id="sidebarToggle"><span class="material-icons">menu</span></button>
 <div class="sidebar" id="sidebarNav">
     <div class="sidebar-header">
         <span class="material-icons">apps</span>
@@ -156,19 +200,4 @@ body { margin:0; }
         <a class="logout-link" href="logout.php"><span class="material-icons">logout</span></a>
     </div>
 </div>
-<script>
-// Responsive sidebar toggle
-const sidebar = document.getElementById('sidebarNav');
-const toggleBtn = document.getElementById('sidebarToggle');
-if(toggleBtn && sidebar) {
-    toggleBtn.addEventListener('click', function(){
-        sidebar.classList.toggle('open');
-    });
-    // ปิด sidebar เมื่อคลิกนอก sidebar (จอเล็ก)
-    document.addEventListener('click', function(e){
-        if(window.innerWidth <= 900 && !sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
-            sidebar.classList.remove('open');
-        }
-    });
-}
-</script>
+<!-- No responsive sidebar script -->
