@@ -50,6 +50,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 /* ปรับขนาดตารางและฟอนต์ให้เล็กลง */
 .mainwrap .card-body, .mainwrap .container-fluid { font-size: 13px; }
 #receive-table th, #receive-table td { padding: 4px 6px !important; font-size: 13px; vertical-align: middle; }
+#receive-table td.sku-col { max-width: 240px; white-space: normal; overflow-wrap: break-word; word-break: break-all; }
 #receive-table th { white-space: nowrap; font-weight: 600; background: #f8fafc; }
 #receive-table td img.table-img { max-width: 48px; max-height: 48px; width: 36px; height: 36px; object-fit: contain; border-radius: 6px; background: #f3f3f3; }
 #receive-table .btn.edit-btn { padding: 2px 10px; font-size: 12px; }
@@ -114,14 +115,25 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <tr>
                 <td><input type="checkbox" class="row-checkbox" value="<?= $row['receive_id'] ?>"></td>
                 <td><img src="<?= htmlspecialchars($row['image']) ?>" class="table-img" alt="img" onerror="this.src='images/noimg.png'" /></td>
-                <td><?= htmlspecialchars($row['sku']) ?></td>
+                <td class="sku-col" title="<?= htmlspecialchars($row['sku']) ?>"><?= htmlspecialchars($row['sku']) ?></td>
                 <td><?= htmlspecialchars($row['barcode']) ?></td>
                 <td><?= htmlspecialchars($row['created_by']) ?></td>
                 <td><?= htmlspecialchars($row['created_at']) ?></td>
-                <td><?= getPrevQty($row['sku'], $row['created_at'], $pdo) ?></td>
+                <td><?= getPrevQty($row['sku'], $row['barcode'], $row['created_at'], $pdo) ?></td>
                 <td><?= qtyChange($row['receive_qty']) ?></td>
-                <td><?= getCurrentQty($row['sku'], $row['created_at'], $pdo) ?></td>
-                <td><?= htmlspecialchars($row['location_desc']) ?></td>
+                <td><?= getCurrentQty($row['sku'], $row['barcode'], $row['created_at'], $pdo) ?></td>
+                <td>
+                <?php
+                $rowcode = trim($row['row_code'] ?? '');
+                $bin = trim($row['bin'] ?? '');
+                $shelf = trim($row['shelf'] ?? '');
+                if ($rowcode !== '' && $bin !== '' && $shelf !== '') {
+                    echo htmlspecialchars("$rowcode-$bin-$shelf");
+                } else {
+                    echo htmlspecialchars($row['location_desc']);
+                }
+                ?>
+                </td>
                 <td class="price-cost"><?= number_format($row['price_per_unit'],2) ?></td>
                 <td class="price-sale"><?= number_format($row['sale_price'],2) ?></td>
                 <td><?= getTypeLabel($row['po_remark']) ?></td>
@@ -157,7 +169,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 confirmButtonText: 'ลบ',
                 cancelButtonText: 'ยกเลิก'
             }).then((result)=>{
-                if(result.isConfirmed){
+               if(result.isConfirmed){
                     $.ajax({
                         url: 'receive_delete.php',
                         method: 'POST',
@@ -170,7 +182,15 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     table.row($(this).closest('tr')).remove();
                                 });
                                 table.draw();
-                                Swal.fire('ลบสำเร็จ!',`รายการ ${ids.length} รายการถูกลบเรียบร้อยแล้ว`,'success');
+
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'ลบสำเร็จ!',
+                                    text: `รายการ ${ids.length} รายการถูกลบเรียบร้อยแล้ว`,
+                                    showConfirmButton: false,
+                                    timer: 2000   // 2 วิ
+                                });
+
                                 $('#select-all').prop('checked', false);
                             } else {
                                 Swal.fire('ผิดพลาด!', (resp && resp.msg) ? resp.msg : 'ไม่สามารถลบได้', 'error');
@@ -181,6 +201,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         }
                     });
                 }
+
             });
         });
 
@@ -275,10 +296,19 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             });
             $.post('receive_edit.php', formData, function(resp){
                 $btn.prop('disabled', false);
-                if(resp.success){
-                    Swal.fire({icon:'success',title:'บันทึกสำเร็จ',text:'บันทึกการแก้ไขเรียบร้อย'}).then(()=>location.reload());
-                    var modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
-                    modal.hide();
+                 if(resp.success){
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'บันทึกสำเร็จ',
+                            text: 'บันทึกการแก้ไขเรียบร้อย',
+                            showConfirmButton: false,
+                            timer: 2000   // 2 วิ
+                        }).then(() => {
+                            location.reload();
+                        });
+
+                        var modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+                        modal.hide();
                 }else{
                     Swal.fire('ผิดพลาด', resp.message || 'ไม่สามารถบันทึกได้', 'error');
                 }
@@ -370,14 +400,14 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </script>
 <?php
 // Helper ฟังก์ชัน (ควรย้ายไปไฟล์แยกถ้า production)
-function getPrevQty($sku, $created_at, $pdo) {
-    $stmt = $pdo->prepare("SELECT SUM(receive_qty) FROM receive_items r LEFT JOIN purchase_order_items poi ON r.item_id=poi.item_id LEFT JOIN products p ON poi.product_id=p.product_id WHERE p.sku=? AND r.created_at < ?");
-    $stmt->execute([$sku, $created_at]);
+function getPrevQty($sku, $barcode, $created_at, $pdo) {
+    $stmt = $pdo->prepare("SELECT SUM(receive_qty) FROM receive_items r LEFT JOIN purchase_order_items poi ON r.item_id=poi.item_id LEFT JOIN products p ON poi.product_id=p.product_id WHERE p.sku=? AND p.barcode=? AND r.created_at < ?");
+    $stmt->execute([$sku, $barcode, $created_at]);
     return (int)$stmt->fetchColumn();
 }
-function getCurrentQty($sku, $created_at, $pdo) {
-    $stmt = $pdo->prepare("SELECT SUM(receive_qty) FROM receive_items r LEFT JOIN purchase_order_items poi ON r.item_id=poi.item_id LEFT JOIN products p ON poi.product_id=p.product_id WHERE p.sku=? AND r.created_at <= ?");
-    $stmt->execute([$sku, $created_at]);
+function getCurrentQty($sku, $barcode, $created_at, $pdo) {
+    $stmt = $pdo->prepare("SELECT SUM(receive_qty) FROM receive_items r LEFT JOIN purchase_order_items poi ON r.item_id=poi.item_id LEFT JOIN products p ON poi.product_id=p.product_id WHERE p.sku=? AND p.barcode=? AND r.created_at <= ?");
+    $stmt->execute([$sku, $barcode, $created_at]);
     return (int)$stmt->fetchColumn();
 }
 function qtyChange($qty) {

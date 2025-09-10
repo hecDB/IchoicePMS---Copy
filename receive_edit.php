@@ -15,6 +15,9 @@ $price_per_unit = isset($_POST['price_per_unit']) ? floatval($_POST['price_per_u
 $sale_price = isset($_POST['sale_price']) ? floatval($_POST['sale_price']) : 0;
 $receive_qty = isset($_POST['receive_qty']) ? intval($_POST['receive_qty']) : 0;
 $expiry_date = isset($_POST['expiry_date']) ? $_POST['expiry_date'] : null;
+$row_code = isset($_POST['row_code']) ? trim($_POST['row_code']) : '';
+$bin = isset($_POST['bin']) ? trim($_POST['bin']) : '';
+$shelf = isset($_POST['shelf']) ? trim($_POST['shelf']) : '';
 
 if ($receive_id <= 0) {
     echo json_encode(['success' => false, 'message' => 'ไม่พบ ID รายการ']);
@@ -27,8 +30,8 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$remark, $receive_qty, $expiry_date, $receive_id]);
 
-    // อัปเดตตำแหน่ง (location_desc) ในตาราง locations ถ้ามีข้อมูล
-    if ($location_desc !== '') {
+    // อัปเดตตำแหน่ง (location_desc, row_code, bin, shelf) ในตาราง locations ถ้ามีข้อมูล
+    if ($location_desc !== '' || $row_code !== '' || $bin !== '' || $shelf !== '') {
         // หา location_id จาก receive_items
         $sqlLoc = "SELECT l.location_id FROM receive_items r
             LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
@@ -40,8 +43,14 @@ try {
         $stmtLoc->execute([$receive_id]);
         $location_id = $stmtLoc->fetchColumn();
         if ($location_id) {
-            $pdo->prepare("UPDATE locations SET description=? WHERE location_id=?")
-                ->execute([$location_desc, $location_id]);
+            $updateLoc = "UPDATE locations SET description=?, row_code=?, bin=?, shelf=? WHERE location_id=?";
+            $pdo->prepare($updateLoc)->execute([
+                $location_desc,
+                $row_code,
+                $bin,
+                $shelf,
+                $location_id
+            ]);
         }
     }
 

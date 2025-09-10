@@ -47,12 +47,13 @@ if(isset($_POST['submit'])) {
 
                 $sanitize = fn($str) => trim(preg_replace('/\s+/', ' ', str_replace("\xC2\xA0", ' ', $str ?? '')));
 
-                $sku = substr(strtolower(trim($sanitize($row[0] ?? ''))), 0, 50); // varchar(50)
+                $sku = substr(strtolower(trim($sanitize($row[0] ?? ''))), 0, 255); // varchar(50)
                 $barcode = substr(strtolower(trim($sanitize($row[1] ?? ''))), 0, 50); // varchar(50)
                 $name         = $sanitize($row[2]);
                 $image        = $sanitize($row[3]);
                 $unit         = $sanitize($row[4]);
                 $row_code     = $sanitize($row[5]);
+                
                 $bin          = $sanitize($row[6]);
                 $shelf        = $sanitize($row[7]);
                 $qty          = floatval($row[8] ?? 0);
@@ -312,7 +313,7 @@ if(isset($_POST['submit'])) {
                     showConfirmButton: false
                 }).then(() => {
                     <?php if(strpos($message, "สำเร็จ") !== false): ?>
-                        window.location.href = "product_activity.php";
+                        window.location.href = "receive_items_view.php";
                     <?php else: ?>
                         window.location.href = "import_excel.php";
                     <?php endif; ?>

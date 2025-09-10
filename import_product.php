@@ -53,23 +53,23 @@ if(isset($_POST['submit']) && !empty($_POST['items'])) {
             $stmt = $pdo->prepare("SELECT product_id FROM products WHERE sku=? OR barcode=?");
             $stmt->execute([$sku,$barcode]);
             $product_id = $stmt->fetchColumn();
-            if(!$product_id){
-                $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, created_at) VALUES (?,?,?,?,?,NOW())");
-                $stmt->execute([$name,$sku,$barcode,$unit,'images/'.$imageFile]);
-                $product_id = $pdo->lastInsertId();
-            }
+      if(!$product_id){
+        $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, created_by, created_at) VALUES (?,?,?,?,?,?,NOW())");
+        $stmt->execute([$name,$sku,$barcode,$unit,'images/'.$imageFile,$user_id]);
+        $product_id = $pdo->lastInsertId();
+      }
 
             // ตรวจสอบ/เพิ่ม location
             $stmt = $pdo->prepare("SELECT location_id FROM locations WHERE row_code=? AND bin=? AND shelf=?");
             $stmt->execute([$row_code,$bin,$shelf]);
             $loc = $stmt->fetch();
             $location_id = $loc ? $loc['location_id'] : null;
-            if(!$location_id){
-                $desc = "แถว $row_code ล็อค $bin ชั้น $shelf";
-                $stmt = $pdo->prepare("INSERT INTO locations (row_code, bin, shelf, description) VALUES (?,?,?,?)");
-                $stmt->execute([$row_code,$bin,$shelf,$desc]);
-                $location_id = $pdo->lastInsertId();
-            }
+      if(!$location_id){
+        $desc = "$row_code-$bin-$shelf";
+        $stmt = $pdo->prepare("INSERT INTO locations (row_code, bin, shelf, description) VALUES (?,?,?,?)");
+        $stmt->execute([$row_code,$bin,$shelf,$desc]);
+        $location_id = $pdo->lastInsertId();
+      }
 
             // product_location
             $stmt = $pdo->prepare("SELECT 1 FROM product_location WHERE product_id=? AND location_id=?");
@@ -85,7 +85,7 @@ if(isset($_POST['submit']) && !empty($_POST['items'])) {
             $item_id = $pdo->lastInsertId();
 
             // insert receive
-            $stmt = $pdo->prepare("INSERT INTO receive_items (receive_date, po_id, item_id, receive_qty, received_by, remark) VALUES (NOW(),?,?,?,?,?)");
+            $stmt = $pdo->prepare("INSERT INTO receive_items (created_at, po_id, item_id, receive_qty, created_by, remark) VALUES (NOW(),?,?,?,?,?)");
             $stmt->execute([$po_id,$item_id,$qty,$user_id,'imported']);
         }
 
@@ -188,7 +188,7 @@ if(isset($_POST['submit']) && !empty($_POST['items'])) {
         <td><input class="form-control" type="text" name="items[0][sku]"></td>
         <td>
           <div class="d-flex gap-1">
-            <input class="form-control" type="text" name="items[0][barcode]" readonly>
+            <input class="form-control" type="text" name="items[0][barcode]" >
             <button type="button" class="btn btn-sm btn-primary scan-btn">สแกน</button>
           </div>
         </td>
