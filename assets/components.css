@@ -150,6 +150,24 @@
     font-weight: 600;
 }
 
+/* ================= Product / low-stock table helpers ================= */
+.table-po td { text-align: left; vertical-align: middle; }
+.table-po td.center { text-align: center; }
+.table-po td img, .table-img {
+    width: 36px; height: 36px;
+    max-width: 48px; max-height: 48px;
+    object-fit: contain; border-radius: 6px; background: #f3f3f3; display:block; margin:0 auto;
+}
+@media (max-width: 768px) { .table-img { width: 28px; height: 28px; } }
+@media (max-width: 480px) { .table-img { width: 20px; height: 20px; } }
+
+.qty-badge { display: inline-block; min-width: 36px; padding: 4px 8px; border-radius: 999px; font-weight: 700; color: #fff; text-align: center; }
+.qty-zero { background: #e74c3c; }
+.qty-low { background: #f39c12; }
+
+.product-name { max-width: 360px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+@media (max-width: 700px) { .product-name { max-width: 180px; } }
+
 /* สถานะ */
 .status-chip {
     display: inline-block;
@@ -219,5 +237,4 @@
   .btn-create { font-size:13px; padding:8px 12px; }
   .table-po th, .table-po td { padding: 5px 3px; }
 }
-
-
+ 

@@ -25,7 +25,11 @@ if($user_role === 'admin' ||$user_role === 'staff'  ) {
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <!-- sidebar styling is centralized in assets/sidebar.css to avoid per-page conflicts -->
-<div class="sidebar" id="sidebarNav">
+<!-- mobile nav toggle (visible on small screens) -->
+<button class="mobile-nav-toggle show" id="mobileNavToggle" aria-label="เปิดเมนู" style="position:fixed;left:16px;top:12px;z-index:2100;background:#fff;border:0;border-radius:8px;padding:6px 8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);display:none;">
+    <i class="fa fa-bars" style="font-size:18px;color:#0856cd"></i>
+</button>
+<div class="sidebar" id="sidebarNav" role="navigation" aria-label="เมนูหลัก">
     <div class="sidebar-header">
         <span class="material-icons">apps</span>
         <span class="brand-text">IchoicePMS</span>
@@ -91,3 +95,18 @@ if($user_role === 'admin' ||$user_role === 'staff'  ) {
         <a class="logout-link" href="logout.php"><span class="material-icons">logout</span></a>
     </div>
 </div>
+<div class="sidebar-backdrop" id="sidebarBackdrop" tabindex="-1"></div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var toggle = document.getElementById('mobileNavToggle');
+    var sidebar = document.getElementById('sidebarNav');
+    var backdrop = document.getElementById('sidebarBackdrop');
+    // show toggle on small screens
+    function updateToggle(){ if(window.innerWidth <= 1024){ toggle.style.display='inline-flex'; } else { toggle.style.display='none'; sidebar.classList.remove('visible'); } }
+    updateToggle(); window.addEventListener('resize', updateToggle);
+    toggle.addEventListener('click', function(){ sidebar.classList.add('visible'); document.body.style.overflow='hidden'; });
+    backdrop.addEventListener('click', function(){ sidebar.classList.remove('visible'); document.body.style.overflow=''; });
+    // close on Escape
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ sidebar.classList.remove('visible'); document.body.style.overflow=''; } });
+});
+</script>

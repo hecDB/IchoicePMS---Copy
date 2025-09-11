@@ -253,11 +253,7 @@ function formatDate($dt) { return date('d/m/Y H:i', strtotime($dt)); }
                 }
                                 
                         
-    </style>
-    <style>
-    /* Small-screen adjustments to match receive_items_view.php layout */
-    
-    </style>
+</style>
 </head>
 <body>
 

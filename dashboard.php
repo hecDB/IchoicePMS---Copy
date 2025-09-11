@@ -148,11 +148,9 @@ $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
     }
     .card-title { font-size: 22px; font-weight: 600; margin-bottom: 10px; }
     @media (max-width: 900px) {
-      .mainwrap { margin-left: 0 !important; padding: 18px 4vw 12vw 4vw; }
+      /* small-screen: adjust padding only, layout (margin-left) is handled by central stylesheet */
+      .mainwrap { padding: 18px 4vw 12vw 4vw; }
       .card-sec { padding: 0; }
-    }
-    @media (min-width: 901px) {
-      .mainwrap { margin-left: 230px; transition: margin-left 0.2s; }
     }
   </style>
 </head>
