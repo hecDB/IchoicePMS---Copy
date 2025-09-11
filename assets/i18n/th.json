@@ -1,0 +1,23 @@
+{
+    "sEmptyTable": "ไม่มีข้อมูลในตาราง",
+    "sInfo": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+    "sInfoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
+    "sInfoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
+    "sInfoPostFix": "",
+    "sInfoThousands": ",",
+    "sLengthMenu": "แสดง _MENU_ รายการ",
+    "sLoadingRecords": "กำลังโหลด...",
+    "sProcessing": "กำลังประมวลผล...",
+    "sSearch": "ค้นหา:",
+    "sZeroRecords": "ไม่พบข้อมูลที่ค้นหา",
+    "oPaginate": {
+        "sFirst": "หน้าแรก",
+        "sLast": "หน้าสุดท้าย",
+        "sNext": "ต่อไป",
+        "sPrevious": "ก่อนหน้า"
+    },
+    "oAria": {
+        "sSortAscending": ": เปิดการเรียงจากน้อยไปมาก",
+        "sSortDescending": ": เปิดการเรียงจากมากไปน้อย"
+    }
+}
