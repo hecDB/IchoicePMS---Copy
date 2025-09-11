@@ -1,0 +1,223 @@
+/* ================= Topbar ================= */
+.topbar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    height: 55px;
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--brand);
+    position: sticky;
+    top: 0;
+    z-index: 6;
+}
+
+/* ================= Tabs ================= */
+.tabs { margin: 14px 2px 24px 0; display: flex; }
+.tabbtn {
+    padding: 11px 28px;
+    background: #f5f6fc;
+    border: none;
+    color: var(--muted);
+    font-size: 14px;
+    border-radius: 10px 10px 0 0;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .14s, color .14s;
+}
+.tabbtn.active { background: var(--card); color: var(--brand); }
+
+/* ================= Buttons ================= */
+.action-btns { display: flex; gap: 5px; }
+.icon-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid #ccc;
+    transition: all .2s ease;
+}
+.icon-btn .material-icons { font-size: 16px; }
+.icon-btn.view { background: #f8f9fa; color: #0d6efd; border-color: #dee2e6; }
+.icon-btn.view:hover { background: #e7f1ff; }
+.icon-btn.edit { background: #fff; color: #212529; border-color: #adb5bd; }
+.icon-btn.edit:hover { background: #e9ecef; }
+.icon-btn.delete { background: #fff; color: #dc3545; border-color: #f5c6cb; }
+.icon-btn.delete:hover { background: #f8d7da; }
+.action-btn {
+    background: var(--brand);
+    color: #fff;
+    padding: 5px 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-left: 6px;
+    font-weight: 500;
+    box-shadow: 0 2px 6px #375dfa26;
+    transition: background .13s;
+}
+.action-btn.reject { background: var(--danger); margin-left: 0; }
+.action-btn:active { transform: scale(0.97); }
+
+/* ================= Cards ================= */
+.card-sec { max-width: 900px; margin: auto; }
+.card {
+    background: var(--card);
+    border-radius: 20px;
+    box-shadow: 0 6px 24px #7090c61a;
+    margin-bottom: 28px;
+    padding: 28px 30px;
+    border: 1px solid var(--border);
+    position: relative;
+}
+.card-title {
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 14px;
+    color: #212b6c;
+}
+
+/* ================= Usercard ================= */
+.usercard {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 14px 12px;
+    border-bottom: 1px solid #f1f1f5;
+    background: #f8fbfd;
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+.usercard .avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: #e7eeff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: var(--brand);
+}
+.usercard .name { font-size: 15px; font-weight: 600; color: var(--text); }
+.usercard .meta { font-size: 13px; color: var(--muted); }
+
+/* ================= Login Page ================= */
+.login-container {
+    background: var(--card);
+    max-width: 380px;
+    margin: 60px auto;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px #cadbf573;
+    padding: 32px 28px;
+}
+.login-form { margin-top: 24px; display: flex; flex-direction: column; gap: 18px; }
+.input-field {
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text);
+}
+.login-title { font-size: 28px; font-weight: bold; color: #193568; text-align: center; }
+.login-desc { color: #929fae; text-align: center; font-size: 15px; }
+
+
+.table-card {
+    background:#fff; border-radius:12px; box-shadow:0 2px 18px #0001; padding:24px; max-width:1200px; margin:auto;
+}
+.table-po th, .table-po td {
+    text-align:center;
+    vertical-align:middle;
+    padding:9px 12px;
+    font-size: 15px;
+    white-space: nowrap;
+}
+
+.table-po thead th {
+    background:#f6f8fb;
+    color:#2261ad;
+    border-bottom:1.5px solid #d1d7e0;
+    font-weight: 600;
+}
+
+/* สถานะ */
+.status-chip {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 0.98em;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: #fff;
+}
+.status-pending   { background: #ffc107; color:#333;}
+.status-approved  { background: #38b6ff;}
+.status-received  { background: #42e695;}
+.status-cancel    { background: #fc4c4e;}
+
+/* ปุ่ม action */
+.action-btns {
+    display: flex;
+    gap: 8px;
+    justify-content:center;
+}
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f5f7fa;
+    color: #285599;
+    border: none; outline:none;
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 5px 9px 5px 7px;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.14s, color 0.14s;
+}
+.icon-btn.view   { background: #fffbe7; color: #eab308; }
+.icon-btn.edit   { background: #fff; color: #3266e3; }
+.icon-btn.delete { background: #f9eaea; color: #c62828; }
+.icon-btn:hover, .icon-btn:focus { background: #e3eafc; color: #0856cd; text-decoration: none; }
+
+.btn-create {
+    background: linear-gradient(45deg,#42e695,#3bb2b8);
+    color: #fff; border: none!important;
+    padding: 12px 22px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    box-shadow: 0 3px 10px #084bb21a;
+    transition: all 0.19s;
+    display:inline-flex; align-items:center; gap:8px;
+    margin-bottom:6px;
+}
+.btn-create:hover { opacity:.93; transform:translateY(-1.5px); }
+
+.main-title  { font-size:1.5em; font-weight:700; color:#2261ad; }
+.sub-title   { font-size:.98em; color:#618fc5; margin-top:-4px; margin-bottom:8px;}
+
+@media (max-width: 992px) {
+  .table-card { padding:12px; }
+  .table-po th, .table-po td { font-size:13px; padding: 7px 5px; }
+}
+@media (max-width: 600px) {
+  .table-card { padding:7px; }
+  .table-po, .table-responsive { font-size:12px; }
+  .main-title { font-size:1.15em; }
+  .btn-create { font-size:13px; padding:8px 12px; }
+  .table-po th, .table-po td { padding: 5px 3px; }
+}
+
+

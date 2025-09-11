@@ -36,7 +36,11 @@ function formatDate($dt) { return date('d/m/Y H:i', strtotime($dt)); }
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Material+Icons&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css">
+
+<link rel="stylesheet" href="assets/base.css">
+<link rel="stylesheet" href="assets/sidebar.css">
+<link rel="stylesheet" href="assets/components.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 
@@ -48,16 +52,7 @@ function formatDate($dt) { return date('d/m/Y H:i', strtotime($dt)); }
                     margin-bottom: 20px;
                 }
 
-                .tabbtn {
-                    padding: 10px 20px;
-                    background: #f6f7fb;           /* ปรับให้พื้นหลังดูสะอาด */
-                    color: #3b3b3bff;               
-                    border: 1px solid #dcdcdc;    
-                    border-radius: 10px;           /* ขอบโค้งมากขึ้น */
-                    cursor: pointer;
-                    transition: all 0.25s ease;
-                    font-weight: 500;
-                }
+             
                 .tabbtn:hover {
                     background: #e9ebf5;          
                 }
@@ -259,6 +254,10 @@ function formatDate($dt) { return date('d/m/Y H:i', strtotime($dt)); }
                                 
                         
     </style>
+    <style>
+    /* Small-screen adjustments to match receive_items_view.php layout */
+    
+    </style>
 </head>
 <body>
 
@@ -267,6 +266,8 @@ function formatDate($dt) { return date('d/m/Y H:i', strtotime($dt)); }
 Swal.fire({icon:'success',title:'อนุมัติสำเร็จ!',text:'ผู้ใช้งานได้รับการอนุมัติเรียบร้อยแล้ว',timer:2000,showConfirmButton:false});
 </script>
 <?php unset($_SESSION['approve_success']); endif; ?>
+
+
 <?php  include 'sidebar.php'; ?>
 <div class="mainwrap">
     <div class="topbar">จัดการผู้ใช้</div>

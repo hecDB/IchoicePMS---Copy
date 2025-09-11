@@ -275,3 +275,48 @@ input[type="email"], input[type="password"], input[type="text"], select { width:
 .note-box { background: #f2f7ff; border-radius: 8px; padding: 10px 14px; font-size: 14px; color: #1966b5; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 6px; }
 .error-msg { color: #d20000; background: #ffeaea; border-radius: 8px; padding: 10px; margin-bottom: 14px; text-align: center; }
 .success-msg { color: #0b9637; background: #e6ffe6; border-radius: 8px; padding: 10px; margin-bottom: 14px; text-align: center;}
+
+/* ======================== Force desktop sidebar layout (override page overrides) ======================== */
+/* ======================== Force desktop sidebar layout ======================== */
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 230px;
+  z-index: 999;
+  background: #fff;
+  transition: transform 0.3s ease;
+}
+
+/* Content area (desktop) */
+.mainwrap {
+  margin-left: 230px;
+}
+
+/* Menu item styles */
+.menu-item {
+  text-align: left;
+}
+.menu-item .menu-text {
+  margin-left: 8px;
+}
+.menu-item.active {
+  background: #eaf2ff;
+  color: var(--brand);
+  border-left: 4px solid var(--brand);
+}
+
+/* ======================== Responsive ======================== */
+/* Tablet & Mobile */
+@media (max-width: 1024px) {
+  .sidebar {
+    transform: translateX(-100%); /* ซ่อน sidebar */
+  }
+  .sidebar.active {
+    transform: translateX(0); /* แสดง sidebar เมื่อกดปุ่ม */
+  }
+  .mainwrap {
+    margin-left: 0; /* เนื้อหาขยายเต็มจอ */
+  }
+}

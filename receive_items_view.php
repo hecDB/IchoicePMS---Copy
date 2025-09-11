@@ -42,39 +42,29 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <!-- SweetAlert2 (สำหรับ Swal.fire) -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<link rel="stylesheet" href="assets/style.css">
+
+<link rel="stylesheet" href="assets/base.css">
+<link rel="stylesheet" href="assets/sidebar.css">
+<link rel="stylesheet" href="assets/components.css">
 <!-- Google Fonts: Prompt -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap">
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 <style>
-/* ปรับขนาดตารางและฟอนต์ให้เล็กลง */
-.mainwrap .card-body, .mainwrap .container-fluid { font-size: 13px; }
-#receive-table th, #receive-table td { padding: 4px 6px !important; font-size: 13px; vertical-align: middle; }
-#receive-table td.sku-col { max-width: 240px; white-space: normal; overflow-wrap: break-word; word-break: break-all; }
-#receive-table th { white-space: nowrap; font-weight: 600; background: #f8fafc; }
-#receive-table td img.table-img { max-width: 48px; max-height: 48px; width: 36px; height: 36px; object-fit: contain; border-radius: 6px; background: #f3f3f3; }
-#receive-table .btn.edit-btn { padding: 2px 10px; font-size: 12px; }
-.page-title { font-size: 1.3rem !important; }
-.mainwrap .card { border-radius: 12px; }
-.mainwrap .card-body { padding: 16px 10px 10px 10px; }
-.mainwrap .container-fluid { padding-left: 8px; padding-right: 8px; }
-/* ปรับเมนู sidebar ให้รองรับไอคอน */
-.sidebar .menu-item .fa-solid, .sidebar .menu-item .material-icons { font-size: 1.2em; margin-right: 10px; vertical-align: middle; color: #222; }
-.sidebar .menu-item.active, .sidebar .menu-item:hover { background: #eaf2ff; color: #0856cd; }
-.sidebar .menu-item.active .fa-solid, .sidebar .menu-item.active .material-icons,
-.sidebar .menu-item:hover .fa-solid, .sidebar .menu-item:hover .material-icons { color: #0856cd; }
-.sidebar .menu-item { font-size: 15px; padding: 10px 18px; border-radius: 8px; transition: background 0.15s, color 0.15s; }
-.sidebar .menu-item .menu-text { margin-left: 2px; }
-.sidebar .pending-badge { font-size: 12px; min-width: 18px; padding: 2px 5px; }
-.sidebar .notification i.fa-bell { color: orange; font-size: 15px; }
-.sidebar .menu-item .fa-bell { margin-left: 4px; }
-.sidebar .menu-item .fa-solid.fa-check-square { color: #0856cd; }
-@media (max-width: 900px) {
-    #receive-table th, #receive-table td { font-size: 12px; }
-    .mainwrap .container-fluid { padding: 2px; }
-}
+    .table-img {
+        width: 36px; height: 36px;
+        max-width: 48px; max-height: 48px;
+        object-fit: contain;
+        border-radius: 6px;
+        background: #f3f3f3;
+        }
+        @media (max-width: 768px) {
+        .table-img { width: 28px; height: 28px; }
+        }
+        @media (max-width: 480px) {
+        .table-img { width: 20px; height: 20px; }
+        }
 </style>
 
 <?php include 'sidebar.php'; ?>
@@ -92,59 +82,60 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <button id="delete-selected" class="btn btn-danger btn-sm me-2" type="button"><i class="fa fa-trash"></i> ลบรายการที่เลือก</button>
                 </div>
                 <div class="table-responsive">
-                    <table id="receive-table" class="display table table-bordered align-middle" style="width:100%">
-        <thead>
-        <tr>
-            <th>#<input type="checkbox" id="select-all"></th>
-            <th>ภาพ</th>
-            <th>SKU</th>
-            <th>Barcode</th>
-            <th>ผู้เพิ่มรายการ</th>
-            <th>วันที่เพิ่ม</th>
-            <th>จำนวนก่อน</th>
-            <th>เพิ่ม/ลด</th>
-            <th>จำนวนล่าสุด</th>
-            <th>ตำแหน่ง</th>
-            <th>ราคาต้นทุน</th>
-            <th>ราคาขายออก</th>
-            <th>ประเภทสินค้า</th>
-            <th>หมายเหตุ</th>
-            <th>แก้ไข</th>
-        </tr>
-        </thead>
-        <tbody>
-        <?php foreach($rows as $row): ?>
-            <tr>
-                <td><input type="checkbox" class="row-checkbox" value="<?= $row['receive_id'] ?>"></td>
-                <td><img src="<?= htmlspecialchars($row['image']) ?>" class="table-img" alt="img" onerror="this.src='images/noimg.png'" /></td>
-                <td class="sku-col" title="<?= htmlspecialchars($row['sku']) ?>"><?= htmlspecialchars($row['sku']) ?></td>
-                <td><?= htmlspecialchars($row['barcode']) ?></td>
-                <td><?= htmlspecialchars($row['created_by']) ?></td>
-                <td><?= htmlspecialchars($row['created_at']) ?></td>
-                <td><?= getPrevQty($row['sku'], $row['barcode'], $row['created_at'], $pdo) ?></td>
-                <td><?= qtyChange($row['receive_qty']) ?></td>
-                <td><?= getCurrentQty($row['sku'], $row['barcode'], $row['created_at'], $pdo) ?></td>
-                <td>
-                <?php
-                $rowcode = trim($row['row_code'] ?? '');
-                $bin = trim($row['bin'] ?? '');
-                $shelf = trim($row['shelf'] ?? '');
-                if ($rowcode !== '' && $bin !== '' && $shelf !== '') {
-                    echo htmlspecialchars("$rowcode-$bin-$shelf");
-                } else {
-                    echo htmlspecialchars($row['location_desc']);
-                }
-                ?>
-                </td>
-                <td class="price-cost"><?= number_format($row['price_per_unit'],2) ?></td>
-                <td class="price-sale"><?= number_format($row['sale_price'],2) ?></td>
-                <td><?= getTypeLabel($row['po_remark']) ?></td>
-                <td data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>"><?= htmlspecialchars($row['remark']) ?></td>
-                <td><button class="btn btn-sm btn-warning edit-btn" data-id="<?= $row['receive_id'] ?>">แก้ไข</button></td>
-            </tr>
-        <?php endforeach; ?>
-            </tbody>
+                    <table id="receive-table">
+                    <thead>
+                    <tr>
+                        <th>#<input type="checkbox" id="select-all"></th>
+                        <th>ภาพ</th>
+                        <th>SKU</th>
+                        <th>Barcode</th>
+                        <th>ผู้เพิ่มรายการ</th>
+                        <th>วันที่เพิ่ม</th>
+                        <th>จำนวนก่อน</th>
+                        <th>เพิ่ม/ลด</th>
+                        <th>จำนวนล่าสุด</th>
+                        <th>ตำแหน่ง</th>
+                        <th>ราคาต้นทุน</th>
+                        <th>ราคาขายออก</th>
+                        <th>ประเภทสินค้า</th>
+                        <th>หมายเหตุ</th>
+                        <th>แก้ไข</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach($rows as $row): ?>
+                        <tr>
+                            <td><input type="checkbox" class="row-checkbox" value="<?= $row['receive_id'] ?>"></td>
+                            <td><img   class="table-img" src="<?= htmlspecialchars($row['image']) ?>" alt="img" onerror="this.src='images/noimg.png'" /></td>
+                            <td class="sku-col" title="<?= htmlspecialchars($row['sku']) ?>"><?= htmlspecialchars($row['sku']) ?></td>
+                            <td><?= htmlspecialchars($row['barcode']) ?></td>
+                            <td><?= htmlspecialchars($row['created_by']) ?></td>
+                            <td><?= htmlspecialchars($row['created_at']) ?></td>
+                            <td><?= getPrevQty($row['sku'], $row['barcode'], $row['created_at'], $pdo) ?></td>
+                            <td><?= qtyChange($row['receive_qty']) ?></td>
+                            <td><?= getCurrentQty($row['sku'], $row['barcode'], $row['created_at'], $pdo) ?></td>
+                            <td>
+                            <?php
+                            $rowcode = trim($row['row_code'] ?? '');
+                            $bin = trim($row['bin'] ?? '');
+                            $shelf = trim($row['shelf'] ?? '');
+                            if ($rowcode !== '' && $bin !== '' && $shelf !== '') {
+                                echo htmlspecialchars("$rowcode-$bin-$shelf");
+                            } else {
+                                echo htmlspecialchars($row['location_desc']);
+                            }
+                            ?>
+                            </td>
+                            <td class="price-cost"><?= number_format($row['price_per_unit'],2) ?></td>
+                            <td class="price-sale"><?= number_format($row['sale_price'],2) ?></td>
+                            <td><?= getTypeLabel($row['po_remark']) ?></td>
+                            <td data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>"><?= htmlspecialchars($row['remark']) ?></td>
+                            <td><button class="btn btn-sm btn-warning edit-btn" data-id="<?= $row['receive_id'] ?>">แก้ไข</button></td>
+                        </tr>
+                    <?php endforeach; ?>
+                        </tbody>
             </table>
+            </div>
     <script>
     $(function(){
         let table = $('#receive-table').DataTable({

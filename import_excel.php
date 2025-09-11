@@ -38,7 +38,7 @@ if(isset($_POST['submit'])) {
             $stmt = $pdo->prepare("INSERT INTO purchase_orders 
                 (po_number, supplier_id, order_date, total_amount, ordered_by, status, remark, created_at) 
                 VALUES (?,?,?,?,?,?,?,NOW())");
-            $stmt->execute([$po_number, 1, date('Y-m-d H:i:s'), $total_amount, $user_id, 'pending', 'imported from excel']);
+            $stmt->execute([$po_number, 1, date('Y-m-d H:i:s'), $total_amount, $user_id, 'completed', 'imported from excel']);
             $po_id = $pdo->lastInsertId();
 
             // ====== Loop เพิ่มสินค้า / PO Items / Receive Items ======
@@ -213,14 +213,12 @@ if(isset($_POST['submit'])) {
 <head>
 <meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Material+Icons&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css">
+
+<link rel="stylesheet" href="assets/base.css">
+<link rel="stylesheet" href="assets/sidebar.css">
+<link rel="stylesheet" href="assets/components.css">
     <style>
-        body {
-            margin:0;
-            padding:0;
-            background:#f4f6f9;
-            font-family:'Prompt', sans-serif;
-        }
+      
         .content-card {
             max-width:700px;
             margin:40px auto;
@@ -322,35 +320,6 @@ if(isset($_POST['submit'])) {
 
         <?php endif; ?>
 
-        <form method="post" enctype="multipart/form-data">
-            <div class="file-upload">
-                <input type="file" id="excel_file" name="excel_file" accept=".xlsx" required hidden>
-                <label for="excel_file" class="file-label">
-                    <span class="material-icons" style="vertical-align:middle;color:#0072ff;">attach_file</span>
-                    เลือกไฟล์ Excel (.xlsx)
-                </label>
-                <p class="note">รองรับไฟล์ Excel เท่านั้น (.xlsx)</p>
-                <p id="file-name" class="file-name"></p>
-            </div>
-
-            <script>
-            document.getElementById('excel_file').addEventListener('change', function() {
-                const fileName = this.files.length > 0 ? this.files[0].name : "ยังไม่ได้เลือกไฟล์";
-                document.getElementById('file-name').textContent = "ไฟล์ที่เลือก: " + fileName;
-            });
-            </script>
-
-            <button type="submit" name="submit" class="btn btn-submit">
-                <span class="material-icons">cloud_upload</span> Import
-            </button>
-        </form>
-    </div>
-</div>
-</body>
-</html>
-</div>
-</body>
-</html>
         <form method="post" enctype="multipart/form-data">
             <div class="file-upload">
                 <input type="file" id="excel_file" name="excel_file" accept=".xlsx" required hidden>

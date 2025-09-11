@@ -122,6 +122,7 @@ $low_stock_count = count($low_stock_products);
 $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
 
 ?>
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -129,7 +130,9 @@ $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
   <title>IchoicePMS</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Material+Icons&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="assets/base.css">
+  <link rel="stylesheet" href="assets/sidebar.css">
+  <link rel="stylesheet" href="assets/components.css">
   <style>
     body { margin:0; background:#f4f6f9; }
     .mainwrap { min-height:100vh; padding:32px 18px 18px 18px; }

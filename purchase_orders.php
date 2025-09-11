@@ -20,77 +20,77 @@ $rows = $stmt->fetchAll();
     <meta charset="UTF-8">
 
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&family=Material+Icons&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/style.css">
+    
+<link rel="stylesheet" href="assets/base.css">
+<link rel="stylesheet" href="assets/sidebar.css">
+<link rel="stylesheet" href="assets/components.css">
+
 </head>
 <body>
 <div class="mainwrap">
     <div class="topbar">
         ใบสั่งซื้อ (Purchase Orders)
     </div>
-    <div class="main">
-        <div class="top-bar">
-            <div>
-                <div class="main-title">ใบสั่งซื้อ</div>
-                <div class="sub-title">จัดการใบสั่งซื้อทั้งหมด</div>
-            </div>
-          <button class="btn-create" onclick="window.location.href='purchase_order_create.php'">
-            <span class="material-icons">add</span> สร้างใบสั่งซื้อใหม่
-            </button>
-        </div>
-        <div class="box">
-            <div class="box-title"><span class="material-icons">description</span> รายการใบสั่งซื้อ</div>
-            <div class="search-bar">
-                <input type="text" placeholder="ค้นหาเลขใบสั่งซื้อ, ผู้จำหน่าย, หรือรายการสินค้า...">
-            </div>
-            <table id="po-table" class="display" style="width:100%">
-                <thead>
-                    <tr>
-                        <th>เลขที่ใบสั่งซื้อ</th>
-                        <th>ผู้จำหน่าย</th>
-                        <th>วันที่สั่งซื้อ</th>
-                        <th>จำนวนเงิน</th>
-                        <th>สถานะ</th>
-                        <th>การดำเนินการ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($rows as $r): ?>
-                        <tr>
-                            <td><?=htmlspecialchars($r['po_number'])?></td>
-                            <td><?=htmlspecialchars($r['name'])?></td>
-                            <td><?=date('d/m/Y', strtotime($r['order_date']))?></td>
-                            <td><?=number_format($r['total_amount'],2)?></td>
-                            <td>
-                                <?php
-                                switch($r['status']) {
-                                    case 'pending': echo '<span class="status-chip status-pending">รอดำเนินการ</span>'; break;
-                                    case 'partial': echo '<span class="status-chip status-approved">รับของบางส่วน</span>'; break;
-                                    case 'completed': echo '<span class="status-chip status-received">เสร็จสิ้น</span>'; break;
-                                    case 'cancel': echo '<span class="status-chip status-cancel">ยกเลิก</span>'; break;
-                                }
-                                ?>
-                            </td>
-                            <td>
-                              <div class="action-btns">
-                                    <a class="icon-btn view" href="#" data-po="<?=$r['po_id']?>" onclick="openPoView(event, this)">
-                                                <span class="material-icons">visibility</span> ดู
-                                            </a>
-                                     
-                                          <a class="icon-btn edit" href="#" data-po="<?=$r['po_id']?>" onclick="openPoEdit(event, this)">
-                                                <span class="material-icons">edit</span> แก้ไข
-                                            </a>
+   <div class="main">
+  <div class="top-bar d-flex justify-content-between align-items-center flex-wrap">
+
+    <button class="btn-create" onclick="window.location.href='purchase_order_create.php'">
+      <span class="material-icons">add</span> สร้างใบสั่งซื้อใหม่
+    </button>
+  </div>
+
+  <div class="card table-card mt-3">
+    <div class="table-responsive">
+      <table id="po-table" class="table-po table table-bordered table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>เลขที่ใบสั่งซื้อ</th>
+            <th>ผู้จำหน่าย</th>
+            <th>วันที่สั่งซื้อ</th>
+            <th>จำนวนเงิน</th>
+            <th>สถานะ</th>
+            <th>การดำเนินการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach($rows as $r): ?>
+          <tr>
+            <td><?=htmlspecialchars($r['po_number'])?></td>
+            <td><?=htmlspecialchars($r['name'])?></td>
+            <td><?=date('d/m/Y', strtotime($r['order_date']))?></td>
+            <td><?=number_format($r['total_amount'],2)?></td>
+            <td>
+              <?php
+                switch($r['status']) {
+                  case 'pending':   echo '<span class="status-chip status-pending">รอดำเนินการ</span>'; break;
+                  case 'partial':   echo '<span class="status-chip status-approved">รับของบางส่วน</span>'; break;
+                  case 'completed': echo '<span class="status-chip status-received">เสร็จสิ้น</span>'; break;
+                  case 'cancel':    echo '<span class="status-chip status-cancel">ยกเลิก</span>'; break;
+                }
+              ?>
+            </td>
+            <td>
+              <div class="action-btns">
+                <a class="icon-btn view" href="#" data-po="<?=$r['po_id']?>" onclick="openPoView(event, this)">
+                  <span class="material-icons">visibility</span> ดู
+                </a>
+                <a class="icon-btn edit" href="#" data-po="<?=$r['po_id']?>" onclick="openPoEdit(event, this)">
+                  <span class="material-icons">edit</span> แก้ไข
+                </a>
+                <a class="icon-btn delete" href="purchase_order_delete.php?id=<?=$r['po_id']?>" onclick="return confirm('ยืนยันลบ?');">
+                  <span class="material-icons">delete</span> ลบ
+                </a>
+              </div>
+            </td>
+          </tr>
+          <?php endforeach;?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 
-                                    <a class="icon-btn delete" href="purchase_order_delete.php?id=<?=$r['po_id']?>" 
-                                    onclick="return confirm('ยืนยันลบ?');">
-                                        <span class="material-icons">delete</span> ลบ
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach;?>
-                </tbody>
-            </table>
 </body>
 </html>
 <!-- DataTables -->

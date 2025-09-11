@@ -22,118 +22,9 @@ if($user_role === 'admin' ||$user_role === 'staff'  ) {
 }
 
 ?>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<style>
-body { margin:0; }
-.sidebar {
-    position: fixed;
-    top: 0; left: 0; bottom: 0;
-    width: 230px;
-    background: #fff;
-    border-right: 1px solid #e5e5e5;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    transition: transform 0.2s, width 0.2s;
-}
-.sidebar.collapsed { transform: translateX(-100%); }
-.sidebar-header {
-    display: flex; align-items: center; gap: 10px;
-    padding: 18px 18px 10px 18px;
-    font-size: 22px; font-weight: 600;
-    color: #0856cd;
-}
-.brand-text { font-size: 20px; font-weight: 700; }
-.label { padding: 0 18px; margin-top: 10px; color: #888; font-size: 13px; }
-.menu-list { flex: 1; display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
-.menu-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 12px 18px;
-    color: #222; text-decoration: none;
-    border-left: 4px solid transparent;
-    transition: background 0.15s, border-color 0.15s;
-    font-size: 15px;
-    position: relative;
-}
-.menu-item.active, .menu-item:hover {
-    background: #f0f4ff;
-    border-left: 4px solid #0856cd;
-    color: #0856cd;
-}
-.menu-text { flex: 1; }
-.notification i { font-size: 15px; color: orange; }
-.pending-badge {
-    position: absolute; top: 8px; right: 18px;
-    background: red; color: white; font-size: 12px; font-weight: bold;
-    border-radius: 50%; padding: 3px 6px; min-width: 18px; text-align: center; line-height: 1;
-}
-.sidebar-footer {
-    padding: 16px 18px; border-top: 1px solid #eee; display: flex; align-items: center; gap: 10px;
-    background: #fafbfc;
-}
-.avatar { background: #e5e9f2; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-.username { font-size: 15px; }
-.logout-link { margin-left: auto; color: #888; text-decoration: none; font-size: 20px; }
-.sidebar-toggle {
-    display: none; position: fixed; top: 16px; left: 16px; z-index: 1100;
-    background: #0856cd; color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; align-items: center; justify-content: center; font-size: 24px;
-}
-/* Overlay for mobile */
-.sidebar-overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.18);
-    z-index: 999;
-}
-@media (max-width: 900px) {
-    .sidebar {
-        width: 70px;
-        min-width: 70px;
-        max-width: 70px;
-        transform: translateX(-100%);
-        box-shadow: 2px 0 8px #0001;
-    }
-    .sidebar.open {
-        transform: translateX(0);
-    }
-    .sidebar-header .brand-text,
-    .menu-text,
-    .label,
-    .sidebar-footer .username {
-        display: none !important;
-    }
-    .sidebar-header {
-        justify-content: center;
-        padding: 18px 0 10px 0;
-    }
-    .menu-item {
-        justify-content: center;
-        padding: 12px 0;
-        border-left: none;
-        border-radius: 0;
-        font-size: 20px;
-    }
-    .menu-item .material-icons, .menu-item .fa-solid, .menu-item .fas {
-        font-size: 24px !important;
-        margin-right: 0 !important;
-    }
-    .sidebar-footer {
-        justify-content: center;
-        gap: 0;
-        padding: 12px 0;
-    }
-    .avatar { width: 32px; height: 32px; font-size: 18px; }
-    .sidebar-toggle { display: flex; }
-    .sidebar-overlay { display: block; }
-    .mainwrap { margin-left: 0 !important; }
-}
-@media (min-width: 901px) {
-    .sidebar { transform: translateX(0); width: 230px; min-width: 230px; max-width: 230px; }
-    .mainwrap { margin-left: 230px; transition: margin-left 0.2s; }
-    .sidebar-overlay { display: none !important; }
-}
-</style>
+<!-- sidebar styling is centralized in assets/sidebar.css to avoid per-page conflicts -->
 <div class="sidebar" id="sidebarNav">
     <div class="sidebar-header">
         <span class="material-icons">apps</span>
@@ -200,4 +91,3 @@ body { margin:0; }
         <a class="logout-link" href="logout.php"><span class="material-icons">logout</span></a>
     </div>
 </div>
-<!-- No responsive sidebar script -->

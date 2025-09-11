@@ -1,0 +1,24 @@
+/* ================= Root ================= */
+:root {
+    --brand: #1634ab;
+    --bg: #f6f7fb;
+    --card: #fff;
+    --border: #efefef;
+    --accent: #eeffed;
+    --danger: #f56565;
+    --success: #32c671;
+    --pending: #ffd45e;
+    --text: #21252e;
+    --muted: #7d869c;
+    --font-base: 14px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    font-family: 'Prompt', sans-serif;
+    color: var(--text);
+    font-size: var(--font-base);
+}
