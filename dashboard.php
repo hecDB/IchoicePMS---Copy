@@ -121,6 +121,26 @@ $low_stock_products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $low_stock_count = count($low_stock_products);
 $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
 
+// ====== สินค้าใกล้หมดอายุ (ใน 90 วัน) ======
+$ninety_days_later = date('Y-m-d', strtotime('+90 days'));
+$today = date('Y-m-d');
+
+$sql_expiring_soon = "
+    SELECT 
+        p.product_id
+    FROM products p
+    LEFT JOIN purchase_order_items poi ON poi.product_id = p.product_id
+    LEFT JOIN receive_items ri ON ri.item_id = poi.item_id
+    WHERE ri.expiry_date IS NOT NULL 
+      AND ri.expiry_date BETWEEN ? AND ?
+    GROUP BY p.product_id
+    HAVING SUM(ri.receive_qty) > 0
+";
+$stmt_expiring = $pdo->prepare($sql_expiring_soon);
+$stmt_expiring->execute([$today, $ninety_days_later]);
+$expiring_soon_products = $stmt_expiring->fetchAll(PDO::FETCH_ASSOC);
+$expiring_soon_count = count($expiring_soon_products);
+
 ?>
 
 <!DOCTYPE html>
@@ -201,25 +221,38 @@ $low_stock_qty = array_sum(array_column($low_stock_products, 'total_qty'));
           </div>
         </div>
         <?php } ?>
+
         <div class="card" style="display:flex;gap:32px;flex-wrap:wrap;justify-content:space-between;margin-top:20px;">
-          <div style="flex:1 1 170px;min-width:155px;max-width:280px;">
-            <div style="display:flex;align-items:center;gap:17px;">
-              <span class="material-icons" style="font-size:41px;color:#ff6b6b;background:#ffe5e5;border-radius:13px;padding:7px;">inventory_2</span>
+          <a href="expiring_soon.php" 
+             style="flex:1 1 170px;min-width:155px;max-width:280px;
+                    display:flex;align-items:center;gap:17px;
+                    text-decoration:none;background:#fff8e1;
+                    border-radius:13px;padding:12px;
+                    transition:0.2s;cursor:pointer;"
+             onmouseover="this.style.background='#ffecb3';"
+             onmouseout="this.style.background='#fff8e1';">
+              <span class="material-icons" style="font-size:41px;color:#f57f17;background:#fff176;border-radius:13px;padding:7px;">event_busy</span>
               <div>
-                <div style="font-size:15px;color:#6c7fb0;">รายการสินค้าทั้งหมด</div>
-                <div style="font-size:26px;font-weight:bold;"><?=$total_products?></div>
+                <div style="font-size:15px;color:#6c7fb0;">สินค้าใกล้หมดอายุ</div>
+                <div style="font-size:26px;font-weight:bold;"><?=$expiring_soon_count?></div>
               </div>
-            </div>
-          </div>
-          <div style="flex:1 1 170px;min-width:155px;max-width:280px;">
-            <div style="display:flex;align-items:center;gap:17px;">
+          </a>
+
+          <!-- สินค้าคงคลังทั้งหมด -->
+          <a href="all_stock.php" 
+             style="flex:1 1 170px;min-width:155px;max-width:280px;
+                    display:flex;align-items:center;gap:17px;
+                    text-decoration:none;background:#f0f8ff;
+                    border-radius:13px;padding:12px;
+                    transition:0.2s;cursor:pointer;"
+             onmouseover="this.style.background='#d4f8f4';"
+             onmouseout="this.style.background='#f0f8ff';">
               <span class="material-icons" style="font-size:41px;color:#1abc9c;background:#d4f8f4;border-radius:13px;padding:7px;">inventory</span>
               <div>
-                <div style="font-size:15px;color:#6c7fb0;">จำนวนสินค้าทั้งหมด</div>
-                <div style="font-size:26px;font-weight:bold;"><?=$total_stock_qty?></div>
+                <div style="font-size:15px;color:#6c7fb0;">รายการสินค้าทั้วหมด</div>
+                <div style="font-size:26px;font-weight:bold;"><?=$total_products?></div>
               </div>
-            </div>
-          </div>
+          </a>
           <!-- สินค้าใกล้หมด -->
           <a href="low_stock.php" 
               style="flex:1 1 170px;min-width:155px;max-width:280px;
