@@ -77,7 +77,7 @@ $rows = $stmt->fetchAll();
                 <!-- <a class="icon-btn edit" href="#" data-po="<?=$r['po_id']?>" onclick="openPoEdit(event, this)">
                   <span class="material-icons">edit</span> แก้ไข
                 </a> -->
-                <a class="icon-btn delete" href="purchase_order_delete.php?id=<?=$r['po_id']?>" onclick="return confirm('ยืนยันลบ?');">
+                <a class="icon-btn delete" href="#" onclick="deletePo(event, <?= $r['po_id'] ?>)">
                   <span class="material-icons">delete</span> ลบ
                 </a>
               </div>
@@ -95,6 +95,7 @@ $rows = $stmt->fetchAll();
 </html>
 <!-- DataTables -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script>
@@ -105,6 +106,73 @@ $(function(){
         "pageLength": 25
     });
 });
+
+function deletePo(e, po_id) {
+    e.preventDefault();
+    Swal.fire({
+        title: 'ยืนยันการลบ?',
+        text: `คุณต้องการลบใบสั่งซื้อ ID: ${po_id} ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'ใช่, ลบเลย!',
+        cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading spinner
+            Swal.fire({
+                title: 'กำลังลบ...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                }
+            });
+
+            fetch('purchase_order_delete.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ po_id: po_id })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire(
+                        'ลบแล้ว!',
+                        'ใบสั่งซื้อถูกลบเรียบร้อย',
+                        'success'
+                    ).then(() => {
+                        // Find the table row and remove it for a smoother experience
+                        const row = document.querySelector(`a[data-po="${po_id}"]`).closest('tr');
+                        if(row) {
+                            // Use DataTables API to remove the row
+                            $('#po-table').DataTable().row(row).remove().draw();
+                        } else {
+                            location.reload(); // Fallback to reloading the page
+                        }
+                    });
+                } else {
+                    Swal.fire(
+                        'เกิดข้อผิดพลาด!',
+                        'ไม่สามารถลบใบสั่งซื้อได้: ' + (data.message || 'ข้อผิดพลาดที่ไม่รู้จัก'),
+                        'error'
+                    );
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                Swal.fire(
+                    'เกิดข้อผิดพลาด!',
+                    'เกิดข้อผิดพลาดในการสื่อสารกับเซิร์ฟเวอร์',
+                    'error'
+                );
+            });
+        }
+    });
+}
 </script>
          <!-- Popup view -->
             <!-- View Popup -->
@@ -905,7 +973,7 @@ function submitPoEdit() {
         body: formData
     })
         .then(res => res.json())
-        .then(data => {
+        .then data => {
             if (data.success) {
                 alert('บันทึกเรียบร้อย');
                 closePoEdit();
