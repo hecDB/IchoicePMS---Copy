@@ -74,9 +74,9 @@ $rows = $stmt->fetchAll();
                 <a class="icon-btn view" href="#" data-po="<?=$r['po_id']?>" onclick="openPoView(event, this)">
                   <span class="material-icons">visibility</span> ดู
                 </a>
-                <a class="icon-btn edit" href="#" data-po="<?=$r['po_id']?>" onclick="openPoEdit(event, this)">
+                <!-- <a class="icon-btn edit" href="#" data-po="<?=$r['po_id']?>" onclick="openPoEdit(event, this)">
                   <span class="material-icons">edit</span> แก้ไข
-                </a>
+                </a> -->
                 <a class="icon-btn delete" href="purchase_order_delete.php?id=<?=$r['po_id']?>" onclick="return confirm('ยืนยันลบ?');">
                   <span class="material-icons">delete</span> ลบ
                 </a>
