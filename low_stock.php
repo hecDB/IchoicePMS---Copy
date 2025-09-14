@@ -67,7 +67,7 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 				<span class="page-title">สินค้าคงเหลือต่ำ (Low stock)</span>
 			</div>
 			<!-- back to dashboard button -->
-			<a href="dashboard.php" class="btn btn-outline-secondary btn-sm ms-3" title="กลับไปหน้าแดชบอร์ด"><i class="fa fa-arrow-left me-1"></i>กลับไปหน้าแดชบอร์ด</a>
+			<!-- <a href="dashboard.php" class="btn btn-outline-secondary btn-sm ms-3" title="กลับไปหน้าแดชบอร์ด"><i class="fa fa-arrow-left me-1"></i>กลับไปหน้าแดชบอร์ด</a> -->
 		</div>
 		<!-- header kept in page-bar; table moved out of card to sit directly on the page -->
         <div class="card shadow-sm">
