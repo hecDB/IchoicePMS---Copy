@@ -11,7 +11,8 @@ SELECT r.receive_id, p.image, p.sku, p.barcode, u.name AS created_by, r.created_
        r.po_id, r.item_id,
        p.name AS product_name,
        r.created_by AS created_by_id,
-       po.remark AS po_remark
+       po.remark AS po_remark,
+       po.po_number AS po_number
 FROM receive_items r
 LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
 LEFT JOIN products p ON poi.product_id = p.product_id
@@ -97,6 +98,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <th>ตำแหน่ง</th>
                         <th>ราคาต้นทุน</th>
                         <th>ราคาขายออก</th>
+                        <th>หมายเลข PO</th>
                         <th>ประเภทสินค้า</th>
                         <th>หมายเหตุ</th>
                         <th>แก้ไข</th>
@@ -128,6 +130,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </td>
                             <td class="price-cost"><?= number_format($row['price_per_unit'],2) ?></td>
                             <td class="price-sale"><?= number_format($row['sale_price'],2) ?></td>
+                            <td><?= htmlspecialchars($row['po_number']) ?></td>
                             <td><?= getTypeLabel($row['po_remark']) ?></td>
                             <td data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>"><?= htmlspecialchars($row['remark']) ?></td>
                             <td><button class="btn btn-sm btn-warning edit-btn" data-id="<?= $row['receive_id'] ?>">แก้ไข</button></td>
