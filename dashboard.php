@@ -1,9 +1,9 @@
 <?php
 session_start();
-include 'db_connect.php';
+include 'config/db_connect.php';
 $user_id = $_SESSION['user_id'] ?? null;
 if (!$user_id) {
-    header('Location: combined_login_register.php');
+    header('Location: auth/combined_login_register.php');
     exit;
 }
 
@@ -53,7 +53,7 @@ if ($user && $user['require_password_change'] == 1) {
         <div class="modal-content">
             <h2>แจ้งเตือน</h2>
             <p>คุณต้องตั้งรหัสผ่านใหม่ก่อนเข้าระบบ</p>
-            <button onclick="window.location.href='force_change_password.php'">ตั้งรหัสผ่านใหม่</button>
+            <button onclick="window.location.href='auth/force_change_password.php'">ตั้งรหัสผ่านใหม่</button>
         </div>
     </div>
 
@@ -175,7 +175,7 @@ $expiring_soon_count = count($expiring_soon_products);
   </style>
 </head>
 <body>
-<?php  include 'sidebar.php';?>
+<?php  include 'templates/sidebar.php';?>
 <div class="mainwrap">
     <div class="topbar">
         แดชบอร์ด (Dashboard)
@@ -223,7 +223,7 @@ $expiring_soon_count = count($expiring_soon_products);
         <?php } ?>
 
         <div class="card" style="display:flex;gap:32px;flex-wrap:wrap;justify-content:space-between;margin-top:20px;">
-          <a href="expiring_soon.php" 
+          <a href="stock/expiring_soon.php" 
              style="flex:1 1 170px;min-width:155px;max-width:280px;
                     display:flex;align-items:center;gap:17px;
                     text-decoration:none;background:#fff8e1;
@@ -239,7 +239,7 @@ $expiring_soon_count = count($expiring_soon_products);
           </a>
 
           <!-- สินค้าคงคลังทั้งหมด -->
-          <a href="all_stock.php" 
+          <a href="stock/all_stock.php" 
              style="flex:1 1 170px;min-width:155px;max-width:280px;
                     display:flex;align-items:center;gap:17px;
                     text-decoration:none;background:#f0f8ff;
@@ -254,7 +254,7 @@ $expiring_soon_count = count($expiring_soon_products);
               </div>
           </a>
           <!-- สินค้าใกล้หมด -->
-          <a href="low_stock.php" 
+          <a href="stock/low_stock.php" 
               style="flex:1 1 170px;min-width:155px;max-width:280px;
                       display:flex;align-items:center;gap:17px;
                       text-decoration:none;background:#f0f8ff;

@@ -97,7 +97,7 @@
         </div>
     </div>
 
-    <form action="combined_login_register.php" method="get">
+    <form action="auth/combined_login_register.php" method="get">
         <button type="submit" class="btn-login">เข้าสู่ระบบ</button>
     </form>
 
