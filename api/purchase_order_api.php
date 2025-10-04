@@ -26,13 +26,15 @@ try {
 
     // 3. ดึงข้อมูลผู้สั่งซื้อ (user)
     $stmt = $pdo->prepare("SELECT user_id, name, department FROM users WHERE user_id = ?");
-    $stmt->execute([$order['user_id']]);
+    $stmt->execute([$order['ordered_by'] ?? $order['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if(!$user) $user = ['name' => 'ไม่ระบุ', 'department' => ''];
 
     // 4. ดึงข้อมูลผู้จำหน่าย (supplier)
     $stmt = $pdo->prepare("SELECT supplier_id, name, phone, email, address FROM suppliers WHERE supplier_id = ?");
     $stmt->execute([$order['supplier_id']]);
     $supplier = $stmt->fetch(PDO::FETCH_ASSOC);
+    if(!$supplier) $supplier = ['name' => 'ไม่ระบุ', 'phone' => '', 'email' => '', 'address' => ''];
 
     // 5. ส่ง JSON
     echo json_encode([

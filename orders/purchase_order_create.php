@@ -68,9 +68,6 @@ window.products = <?php echo json_encode($products, JSON_UNESCAPED_UNICODE); ?>;
 <form id="mainForm" autocomplete="off">
   <div class="container">
 
-    <a class="back-link" href="purchase_orders.php">
-      <span class="material-icons">arrow_back</span> กลับ
-    </a>
     <h2>สร้างใบสั่งซื้อใหม่</h2>
     <div class="desc">กรอกข้อมูลใบสั่งซื้อให้ครบถ้วน</div>
 
@@ -78,6 +75,11 @@ window.products = <?php echo json_encode($products, JSON_UNESCAPED_UNICODE); ?>;
     <div class="card">
       <div class="card-title">ข้อมูลทั่วไป</div>
       <div class="form-grid">
+        <div>
+          <label class="label">เลขที่ใบสั่งซื้อ (PO Number) *</label>
+          <input type="text" name="po_number" placeholder="เช่น PO202410001" required>
+          <!-- <div class="small-label" style="color:#666; margin-top:2px;">รูปแบบแนะนำ: POYYYYMMnnn (เช่น PO202410001)</div> -->
+        </div>
         <div>
           <label class="label">วันที่สั่งซื้อ *</label>
           <input type="date" name="order_date" value="<?=date('Y-m-d')?>" required>
@@ -349,10 +351,74 @@ function calcTotal(){
 // เพิ่มแถวแรกอัตโนมัติ
 addProductRow();
 
+/* ==================== ตรวจสอบเลข PO ซ้ำ ==================== */
+let poCheckTimeout;
+const poInput = document.querySelector('input[name="po_number"]');
+const poStatus = document.createElement('div');
+poStatus.style.cssText = 'font-size:12px; margin-top:2px; font-weight:bold;';
+poInput.parentNode.appendChild(poStatus);
+
+poInput.addEventListener('input', function(){
+    clearTimeout(poCheckTimeout);
+    const poNumber = this.value.trim();
+    
+    if(!poNumber) {
+        poStatus.textContent = '';
+        return;
+    }
+    
+    poStatus.textContent = 'กำลังตรวจสอบ...';
+    poStatus.style.color = '#666';
+    
+    poCheckTimeout = setTimeout(async () => {
+        try {
+            const formData = new FormData();
+            formData.append('check_po', poNumber);
+            
+            const response = await fetch('purchase_order_save.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if(result.exists) {
+                poStatus.textContent = '⚠️ เลข PO นี้มีอยู่แล้ว';
+                poStatus.style.color = '#f44336';
+            } else {
+                poStatus.textContent = '✓ เลข PO สามารถใช้ได้';
+                poStatus.style.color = '#4caf50';
+            }
+        } catch(err) {
+            poStatus.textContent = '';
+        }
+    }, 500);
+});
+
 /* ==================== บันทึกใบสั่งซื้อ (PO) ==================== */
 document.getElementById('mainForm').onsubmit = async function(e){
     e.preventDefault();
     const fd = new FormData(this);
+
+    // ตรวจสอบเลข PO
+    const poNumber = document.querySelector('input[name="po_number"]').value.trim();
+    if(!poNumber){
+        Swal.fire('เกิดข้อผิดพลาด','กรุณากรอกเลขที่ใบสั่งซื้อ','error');
+        return;
+    }
+    
+    // ตรวจสอบรูปแบบเลข PO (ไม่บังคับ แต่แนะนำ)
+    if(!/^[A-Za-z0-9\-_]+$/.test(poNumber)){
+        const confirm = await Swal.fire({
+            title: 'รูปแบบเลข PO',
+            text: 'เลข PO ควรประกอบด้วยตัวอักษรและตัวเลขเท่านั้น ต้องการดำเนินการต่อหรือไม่?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'ดำเนินการต่อ',
+            cancelButtonText: 'ยกเลิก'
+        });
+        if(!confirm.isConfirmed) return;
+    }
 
     // ตรวจสอบผู้ขาย
     const supplierId = document.querySelector('#supplierSelect').value;

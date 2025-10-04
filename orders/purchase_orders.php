@@ -117,11 +117,7 @@ $rows = $stmt->fetchAll();
             ใบสั่งซื้อ (Purchase Orders)
         </div>
         <div class="main">
-            <div class="top-bar d-flex justify-content-between align-items-center flex-wrap">
-                <button class="btn-create" onclick="window.location.href='purchase_order_create.php'">
-                    <span class="material-icons">add</span> สร้างใบสั่งซื้อใหม่
-                </button>
-            </div>
+
 
             <div class="card table-card mt-3">
                 <div class="table-responsive">
@@ -224,7 +220,7 @@ $rows = $stmt->fetchAll();
                     didOpen: () => Swal.showLoading()
                 });
 
-                fetch('purchase_order_delete.php', {
+                fetch('../orders/purchase_order_delete.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ po_id: po_id })
@@ -313,9 +309,17 @@ $rows = $stmt->fetchAll();
             }
         }, { once: true });
 
-        fetch('purchase_order_api.php?id=' + po_id)
-            .then(res => res.json())
+        fetch('../api/purchase_order_api.php?id=' + po_id)
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                return res.json();
+            })
             .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
                 renderPoView(data);
             })
             .catch(err => {
@@ -324,8 +328,11 @@ $rows = $stmt->fetchAll();
                     <div style="padding:30px;text-align:center;color:#dc3545;">
                         <span class="material-icons" style="font-size:48px;color:#dc3545;margin-bottom:15px;">error_outline</span>
                         <h3 style="margin-top:0;color:inherit;">เกิดข้อผิดพลาด</h3>
-                        <p>ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง</p>
-                        <button onclick="closePoView()" class="btn btn-secondary" style="margin-top:15px;">ปิด</button>
+                        <p>ไม่สามารถโหลดข้อมูลได้: ${err.message}</p>
+                        <div style="margin-top:20px;">
+                            <button onclick="openPoView(event, document.querySelector('[data-po=\\'${po_id}\\']'))" class="btn btn-primary" style="margin-right:10px;">ลองใหม่</button>
+                            <button onclick="closePoView()" class="btn btn-secondary">ปิด</button>
+                        </div>
                     </div>
                 `;
             });
@@ -354,19 +361,32 @@ $rows = $stmt->fetchAll();
             minimumFractionDigits: 2, maximumFractionDigits: 2
         });
 
-        let itemsHtml = data.items && data.items.length > 0 ? data.items.map((item, index) => `
+        let itemsHtml = data.items && data.items.length > 0 ? data.items.map((item, index) => {
+            const qty = parseFloat(item.qty || 0);
+            const price = parseFloat(item.price_per_unit || 0);
+            const total = parseFloat(item.total || (qty * price));
+            
+            return `
             <tr>
                 <td style="text-align:center;">${index + 1}</td>
-                <td>${item.product_name || '-'}</td>
+                <td>
+                    ${item.product_name || 'ไม่ระบุชื่อสินค้า'}
+                    ${item.image ? `<br><small style="color:#666;">รูปภาพ: ${item.image}</small>` : ''}
+                </td>
                 <td>${item.sku || '-'}</td>
-                <td style="text-align:right;">${parseFloat(item.qty || 0).toLocaleString()}</td>
+                <td style="text-align:right;">${qty.toLocaleString()}</td>
                 <td>${item.unit || 'ชิ้น'}</td>
-                <td style="text-align:right;">${formatCurrency(item.price_per_unit)}</td>
-                <td style="text-align:right;">${formatCurrency(item.total)}</td>
-            </tr>
-        `).join('') : `<tr><td colspan="7" style="text-align:center;padding:20px;color:#6c757d;">ไม่พบรายการสินค้า</td></tr>`;
+                <td style="text-align:right;">฿${formatCurrency(price)}</td>
+                <td style="text-align:right;">฿${formatCurrency(total)}</td>
+            </tr>`;
+        }).join('') : `<tr><td colspan="7" style="text-align:center;padding:20px;color:#6c757d;">ไม่พบรายการสินค้า</td></tr>`;
 
-        const subtotal = data.items ? data.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0) : 0;
+        const subtotal = data.items ? data.items.reduce((sum, item) => {
+            const qty = parseFloat(item.qty || 0);
+            const price = parseFloat(item.price_per_unit || 0);
+            const total = parseFloat(item.total || (qty * price));
+            return sum + total;
+        }, 0) : 0;
 
         content.innerHTML = `
             <div class="po-header">
@@ -386,10 +406,8 @@ $rows = $stmt->fetchAll();
                     <h4><i class="material-icons" style="font-size:18px;vertical-align:middle;margin-right:5px;">store</i> ข้อมูลผู้จำหน่าย</h4>
                     <div class="section-content">
                         <p><strong>${data.supplier.name || '-'}</strong></p>
-                        <p>${data.supplier.contact_person ? 'ติดต่อ: ' + data.supplier.contact_person : ''}</p>
-                        <p>${data.supplier.phone ? 'โทร: ' + data.supplier.phone : ''} ${data.supplier.email ? '| อีเมล: ' + data.supplier.email : ''}</p>
-                        <p>${data.supplier.address || ''}</p>
-                        <p>${data.supplier.tax_id ? 'เลขประจำตัวผู้เสียภาษี: ' + data.supplier.tax_id : ''}</p>
+                        ${data.supplier.phone || data.supplier.email ? `<p>${data.supplier.phone ? 'โทร: ' + data.supplier.phone : ''} ${data.supplier.phone && data.supplier.email ? ' | ' : ''}${data.supplier.email ? 'อีเมล: ' + data.supplier.email : ''}</p>` : ''}
+                        ${data.supplier.address ? `<p>ที่อยู่: ${data.supplier.address}</p>` : ''}
                     </div>
                 </div>
             </div>
@@ -424,12 +442,22 @@ $rows = $stmt->fetchAll();
             ${data.order.remark ? `<div class="po-section"><h4><i class="material-icons" style="font-size:18px;vertical-align:middle;margin-right:5px;">notes</i> หมายเหตุ</h4><div class="section-content" style="background:#f8f9fa;padding:15px;border-radius:6px;">${data.order.remark.replace(/\n/g, '<br>')}</div></div>` : ''}
             <div class="po-footer">
                 <div>
-                    <small class="text-muted">สร้างเมื่อ: ${new Date(data.order.created_at).toLocaleString('th-TH')}</small>
-                    ${data.order.updated_at && data.order.updated_at !== data.order.created_at ? `<br><small class="text-muted">แก้ไขล่าสุด: ${new Date(data.order.updated_at).toLocaleString('th-TH')}</small>` : ''}
+                    ${data.order.created_at ? `<small class="text-muted">สร้างเมื่อ: ${new Date(data.order.created_at).toLocaleString('th-TH', {
+                        year: 'numeric', month: 'long', day: 'numeric', 
+                        hour: '2-digit', minute: '2-digit'
+                    })}</small>` : ''}
+                    ${data.order.updated_at && data.order.updated_at !== data.order.created_at ? `<br><small class="text-muted">แก้ไขล่าสุด: ${new Date(data.order.updated_at).toLocaleString('th-TH', {
+                        year: 'numeric', month: 'long', day: 'numeric', 
+                        hour: '2-digit', minute: '2-digit'
+                    })}</small>` : ''}
                 </div>
                 <div>
-                    <button onclick="window.print()" class="btn btn-secondary"><i class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:3px;">print</i> พิมพ์</button>
-                    <button onclick="closePoView()" class="btn btn-secondary"><i class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:3px;">close</i> ปิด</button>
+                    <button onclick="window.print()" class="btn btn-secondary">
+                        <span class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:3px;">print</span> พิมพ์
+                    </button>
+                    <button onclick="closePoView()" class="btn btn-secondary">
+                        <span class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:3px;">close</span> ปิด
+                    </button>
                 </div>
             </div>
             <style>
@@ -451,6 +479,12 @@ $rows = $stmt->fetchAll();
                 .status-badge.cancel { background: #f8d7da; color: #721c24; }
                 .po-footer { margin-top:30px;padding-top:15px;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center; }
                 .btn-sm { padding: 6px 12px; font-size: 13px; }
+                .btn { display: inline-block; padding: 8px 16px; margin: 0 4px; border: none; border-radius: 4px; text-decoration: none; cursor: pointer; font-size: 14px; }
+                .btn-primary { background: #007bff; color: white; }
+                .btn-secondary { background: #6c757d; color: white; }
+                .btn:hover { opacity: 0.8; }
+                .text-muted { color: #6c757d; }
+                .table-responsive { overflow-x: auto; }
                 @media print {
                     body { padding: 20px; }
                     .mainwrap, .topbar, .sidebar, .action-btns, .po-footer, button { display: none !important; }
@@ -483,7 +517,7 @@ $rows = $stmt->fetchAll();
             }
         }, { once: true });
 
-        fetch('purchase_order_api.php?id=' + po_id)
+        fetch('../api/purchase_order_api.php?id=' + po_id)
             .then(res => res.json())
             .then(data => {
                 renderPoEdit(data);
@@ -587,7 +621,7 @@ $rows = $stmt->fetchAll();
                 resultsBox.innerHTML = '<div>กำลังค้นหา...</div>';
                 resultsBox.style.display = 'block';
 
-                fetch('product_search_api.php?q=' + encodeURIComponent(query))
+                fetch('../api/product_search_api.php?q=' + encodeURIComponent(query))
                     .then(res => res.json())
                     .then(data => {
                         resultsBox.innerHTML = data.length ? data.map(p => `
@@ -643,7 +677,7 @@ $rows = $stmt->fetchAll();
             }
         });
 
-        fetch('purchase_order_update.php', {
+        fetch('../orders/purchase_order_update.php', {
             method: 'POST',
             body: formData
         })

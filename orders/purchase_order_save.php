@@ -2,15 +2,34 @@
 session_start();
 include '../config/db_connect.php';
 
+// ตรวจสอบเลข PO ซ้ำ (สำหรับ AJAX)
+if(isset($_POST['check_po'])) {
+    $check_po = trim($_POST['check_po']);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM purchase_orders WHERE po_number = ?");
+    $stmt->execute([$check_po]);
+    $exists = $stmt->fetchColumn() > 0;
+    echo json_encode(['exists' => $exists]);
+    exit;
+}
+
 // รับค่าจากแบบฟอร์ม
+$po_number   = trim($_POST['po_number'] ?? '');
 $supplier_id = $_POST['supplier_id'] ?? null;
 $order_date  = $_POST['order_date'] ?? date('Y-m-d');
 $remark      = $_POST['remark'] ?? '';
 $ordered_by  = $_SESSION['user_id'] ?? 1;
 $orderItems  = isset($_POST['orderItems']) ? json_decode($_POST['orderItems'], true) : [];
 
-if(!$supplier_id || empty($orderItems)) {
-    echo json_encode(['success'=>false, 'error'=>'ข้อมูลไม่ครบ']);
+if(!$po_number || !$supplier_id || empty($orderItems)) {
+    echo json_encode(['success'=>false, 'error'=>'ข้อมูลไม่ครบ กรุณากรอกเลขที่ใบสั่งซื้อ']);
+    exit;
+}
+
+// ตรวจสอบเลข PO ซ้ำ
+$checkStmt = $pdo->prepare("SELECT COUNT(*) FROM purchase_orders WHERE po_number = ?");
+$checkStmt->execute([$po_number]);
+if($checkStmt->fetchColumn() > 0) {
+    echo json_encode(['success'=>false, 'error'=>'เลขที่ใบสั่งซื้อนี้มีอยู่แล้ว กรุณาใช้เลขอื่น']);
     exit;
 }
 
@@ -21,25 +40,10 @@ foreach($orderItems as $item){
     $total_amount += $sum;
 }
 
-// สร้างเลข PO
-function generateAutoPONumber($pdo){
-    $prefix = 'PO'.date('Ym');
-    $stmt = $pdo->prepare("SELECT po_number FROM purchase_orders WHERE po_number LIKE ? ORDER BY po_number DESC LIMIT 1");
-    $stmt->execute([$prefix.'%']);
-    $last = $stmt->fetchColumn();
-    if($last){
-        $num = intval(substr($last, strlen($prefix)));
-        return $prefix . str_pad($num+1, 3, '0', STR_PAD_LEFT);
-    } else {
-        return $prefix . '001';
-    }
-}
-
 // เพิ่มใบสั่งซื้อ
 try {
     $pdo->beginTransaction();
 
-    $po_number = generateAutoPONumber($pdo);
     $status = 'pending';
 
     $stmt = $pdo->prepare("INSERT INTO purchase_orders
