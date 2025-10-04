@@ -217,7 +217,7 @@ body {
             <div class="submenu" id="stock-submenu">
                 <a href="<?= getPath('receive/receive_items_view.php') ?>" class="submenu-item<?=isActive('receive_items_view.php')?>">
                     <span class="material-icons">assignment_turned_in</span>
-                    <span class="submenu-text">รับสินค้า</span>
+                    <span class="submenu-text">สินค้าคงคลัง</span>
                     <?php if($pending_product_count > 0): ?>
                         <span class="pending-badge"><?= $pending_product_count ?></span>
                     <?php endif; ?>

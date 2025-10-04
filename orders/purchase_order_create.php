@@ -21,12 +21,17 @@ foreach ($suppliers as $s) {
 }
 
 // ดึงสินค้า
-$stmt2 = $pdo->query("SELECT product_id, name, sku, unit FROM products");
+$stmt2 = $pdo->query("SELECT product_id, name, sku, unit, image FROM products");
 $products = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+// ดึงสกุลเงิน
+$stmt3 = $pdo->query("SELECT currency_id, code, name, symbol, exchange_rate FROM currencies WHERE is_active = 1 ORDER BY is_base DESC, code ASC");
+$currencies = $stmt3->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <script>
 window.allSuppliers = <?php echo json_encode($all_suppliers, JSON_UNESCAPED_UNICODE); ?>;
 window.products = <?php echo json_encode($products, JSON_UNESCAPED_UNICODE); ?>;
+window.currencies = <?php echo json_encode($currencies, JSON_UNESCAPED_UNICODE); ?>;
 </script>
 
 <!DOCTYPE html>
@@ -45,14 +50,20 @@ window.products = <?php echo json_encode($products, JSON_UNESCAPED_UNICODE); ?>;
   .submit-btn:hover {background:#1257a5;}
   .add-row-btn {background:#1976d2;color:#fff;border-radius:6px;border:none;padding:9px 18px;font-size:16px;font-weight:600;cursor:pointer;}
   .remove-row-btn {color:#f23d3d;border:none;background:none;cursor:pointer;font-size:19px;}
-  .grid-row {display:grid;grid-template-columns:2fr 90px 100px 130px 35px;gap:11px;}
+  .grid-row {display:grid;grid-template-columns:80px 2fr 90px 100px 130px 35px;gap:11px;}
   .small-label {font-size:15px;margin-bottom:2px;color:#9ca2b6;}
   input, select, textarea {font-size:16px;border-radius:6px;border:1px solid #d7d8e0;padding:8px 10px;width:100%;}
   input:focus, textarea:focus {border:1.2px solid #226ecd;}
   .product-item-card {background:#f9fafd;border:1px solid #e5e6ee;border-radius:11px;padding:18px;margin-bottom:18px;}
-  .autocomplete-list {border:1px solid #d0d4e1;background:#fff;max-height:160px;overflow-y:auto;position:absolute;z-index:10;width:100%;left:0;top:36px;box-shadow:0 2px 8px #9aa8d455;border-radius:5px;display:none;}
-  .autocomplete-list div {padding:7px 10px;cursor:pointer;}
-  .autocomplete-list div:hover {background:#1976d2;color:#fff;}
+  .autocomplete-list {border:1px solid #d0d4e1;background:#fff;max-height:200px;overflow-y:auto;position:absolute;z-index:10;width:100%;left:0;top:36px;box-shadow:0 2px 8px #9aa8d455;border-radius:5px;display:none;}
+  .autocomplete-list div {padding:7px 10px;cursor:pointer;border-bottom:1px solid #f0f0f0;}
+  .autocomplete-list div:hover {background:#f8f9ff;}
+  .autocomplete-list div:last-child {border-bottom:none;}
+  .product-image-container {transition:all 0.3s ease;}
+  .product-image {transition:opacity 0.3s ease;}
+  .product-image-container:hover {border-color:#1976d2;}
+  .autocomplete-list div {min-height:56px;align-items:center;}
+  .autocomplete-list img {flex-shrink:0;}
   .modal-backdrop {position:fixed;top:0;left:0;width:100%;height:100%;background:#00000077;z-index:99;}
   .modal-popup {position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:20px;z-index:100;width:400px;max-width:90%;}
   .modal-header {display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;}
@@ -83,6 +94,25 @@ window.products = <?php echo json_encode($products, JSON_UNESCAPED_UNICODE); ?>;
         <div>
           <label class="label">วันที่สั่งซื้อ *</label>
           <input type="date" name="order_date" value="<?=date('Y-m-d')?>" required>
+        </div>
+      </div>
+      
+      <!-- สกุลเงิน -->
+      <div class="form-grid" style="margin-top:15px;">
+        <div>
+          <label class="label">สกุลเงิน *</label>
+          <select name="currency_id" id="currencySelect" required>
+            <?php foreach($currencies as $curr): ?>
+              <option value="<?=$curr['currency_id']?>" data-rate="<?=$curr['exchange_rate']?>" data-symbol="<?=$curr['symbol']?>" <?=$curr['code']=='THB'?'selected':''?>>
+                <?=$curr['symbol']?> <?=$curr['name']?> (<?=$curr['code']?>)
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div>
+          <label class="label">อัตราแลกเปลี่ยน</label>
+          <input type="number" id="exchangeRate" step="0.000001" readonly style="background:#f5f5f5;">
+          <div class="small-label" style="color:#666; margin-top:2px;">1 หน่วยสกุลเงินที่เลือก = ? บาท</div>
         </div>
       </div>
     </div>
@@ -119,7 +149,8 @@ window.products = <?php echo json_encode($products, JSON_UNESCAPED_UNICODE); ?>;
       </div>
       <div id="productRows"></div>
       <div style="margin-top:16px;text-align:right;">
-        <span id="totalPrice" style="font-size:18px;font-weight:bold;">ราคาสุทธิ: ฿0.00</span>
+        <div id="totalPriceOriginal" style="font-size:18px;font-weight:bold;margin-bottom:5px;">ราคาสุทธิ: $0.00</div>
+        <div id="totalPriceBase" style="font-size:14px;color:#666;">เทียบเท่า: ฿0.00</div>
       </div>
     </div>
 
@@ -238,6 +269,28 @@ supplierSelect.addEventListener('change', function(){
     }
 });
 
+/* ==================== จัดการสกุลเงิน ==================== */
+const currencySelect = document.getElementById('currencySelect');
+const exchangeRateInput = document.getElementById('exchangeRate');
+
+currencySelect.addEventListener('change', function(){
+    const selectedOption = this.options[this.selectedIndex];
+    const rate = parseFloat(selectedOption.dataset.rate) || 1;
+    const symbol = selectedOption.dataset.symbol || '฿';
+    
+    exchangeRateInput.value = rate.toFixed(6);
+    
+    // อัปเดตสัญลักษณ์ในรายการสินค้า
+    document.querySelectorAll('.currency-symbol').forEach(span => {
+        span.textContent = symbol;
+    });
+    
+    calcTotal();
+});
+
+// ตั้งค่าเริ่มต้น
+currencySelect.dispatchEvent(new Event('change'));
+
 /* ==================== รายการสินค้า ==================== */
 let rowCount = 0;
 const productRows = document.getElementById('productRows');
@@ -255,6 +308,13 @@ function addProductRow(detail={}) {
         </div>
         <div class="grid-row improved-grid" style="align-items:flex-end;margin-bottom:0;">
             <div>
+                <div class="small-label">รูปภาพ</div>
+                <div class="product-image-container" style="width:70px;height:70px;border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;">
+                    <img class="product-image" src="../images/noimg.png" alt="สินค้า" style="width:100%;height:100%;object-fit:cover;display:none;" onerror="this.style.display='none'; this.parentElement.querySelector('.no-image-text').style.display='block';">
+                    <span class="no-image-text" style="font-size:10px;color:#666;text-align:center;">ไม่มี<br>รูป</span>
+                </div>
+            </div>
+            <div>
                 <div class="small-label">ชื่อสินค้า *</div>
                 <div style="position:relative;">
                     <input type="text" class="product-name-input" placeholder="ค้นหาสินค้าด้วยชื่อ, SKU หรือหน่วย" autocomplete="off" required value="${detail.name||''}" style="width:100%;">
@@ -271,7 +331,11 @@ function addProductRow(detail={}) {
             </div>
             <div>
                 <div class="small-label">ราคาต่อหน่วย *</div>
-                <input type="number" class="price-input" min="0" step="0.01" value="${detail.price||0}" required style="width:120px;">
+                <div style="display:flex;align-items:center;">
+                    <span class="currency-symbol" style="margin-right:5px;font-weight:bold;color:#1976d2;">$</span>
+                    <input type="number" class="price-input" min="0" step="0.01" value="${detail.price||0}" required style="width:95px;">
+                </div>
+                <div class="price-base-display" style="font-size:12px;color:#666;margin-top:2px;">≈ ฿0.00</div>
             </div>
         </div>
     `;
@@ -297,7 +361,10 @@ function addProductRow(detail={}) {
         );
         if(matches.length === 0) {autoList.style.display='none'; autoList.innerHTML=''; return;}
         autoList.innerHTML = matches.map(p =>
-            `<div data-id="${p.product_id}" data-name="${p.name}" data-unit="${p.unit}" data-price="${p.price||0}"><b>${p.name}</b> (${p.sku})</div>`
+            `<div data-id="${p.product_id}" data-name="${p.name}" data-unit="${p.unit}" data-price="0" data-image="${p.image||''}" style="display:flex;align-items:center;padding:8px;">
+                <img src="../${p.image ? p.image : 'images/noimg.png'}" alt="${p.name}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;margin-right:10px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">
+                <div><b>${p.name}</b><br><small style="color:#666;">${p.sku} | ${p.unit || 'ชิ้น'}</small></div>
+            </div>`
         ).join('');
         autoList.style.display = "block";
     };
@@ -308,10 +375,42 @@ function addProductRow(detail={}) {
         if(!t) return;
         input.value = t.dataset.name;
         row.querySelector('.unit-input').value = t.dataset.unit;
-        row.querySelector('.price-input').value = t.dataset.price;
-        row.dataset.productId = t.dataset.id; // เก็บ product_id
+        row.querySelector('.price-input').value = '0'; // ไม่มีราคาใน products table
+        row.dataset.productId = t.dataset.id; // เก็บ product_id (แก้ไขจาก id เป็น id)
+        
+        // อัปเดตรูปภาพ
+        const productImage = row.querySelector('.product-image');
+        const noImageText = row.querySelector('.no-image-text');
+        const imageData = t.dataset.image;
+        
+        console.log('Selected product:', {
+            id: t.dataset.id,
+            name: t.dataset.name,
+            image: t.dataset.image
+        });
+        
+        if (imageData && imageData !== '') {
+            const testImg = new Image();
+            testImg.onload = function() {
+                productImage.src = '../' + imageData;
+                productImage.style.display = 'block';
+                noImageText.style.display = 'none';
+            };
+            testImg.onerror = function() {
+                productImage.src = '../images/noimg.png';
+                productImage.style.display = 'block';
+                noImageText.style.display = 'none';
+            };
+            testImg.src = '../' + imageData;
+        } else {
+            productImage.src = '../images/noimg.png';
+            productImage.style.display = 'block';
+            noImageText.style.display = 'none';
+        }
+        
         autoList.innerHTML = "";
         autoList.style.display = "none";
+        updatePriceBaseDisplay(row.querySelector('.price-input'));
         calcTotal();
     }
 
@@ -322,10 +421,24 @@ function addProductRow(detail={}) {
             autoList.style.display = "none";
         }
     });
+    
+    // รีเซ็ตรูปภาพเมื่อล้างชื่อสินค้า
+    input.addEventListener('input', function() {
+        if (this.value.trim() === '') {
+            const productImage = row.querySelector('.product-image');
+            const noImageText = row.querySelector('.no-image-text');
+            productImage.style.display = 'none';
+            noImageText.style.display = 'block';
+            row.dataset.productId = '';
+        }
+    });
 
     // ปรับราคาสุทธิเมื่อเปลี่ยนจำนวนหรือราคา
     row.querySelector('.qty-input').onchange = calcTotal;
-    row.querySelector('.price-input').onchange = calcTotal;
+    row.querySelector('.price-input').onchange = function(){
+        updatePriceBaseDisplay(this);
+        calcTotal();
+    };
 
     // ลบแถว
     row.querySelector('.remove-row-btn').onclick = ()=>{ row.remove(); calcTotal(); };
@@ -337,15 +450,34 @@ function addProductRow(detail={}) {
 // ปุ่มเพิ่มแถวสินค้า
 document.getElementById('addProductRowBtn').onclick = ()=>addProductRow();
 
+// อัปเดตการแสดงราคาในสกุลเงินฐาน
+function updatePriceBaseDisplay(priceInput) {
+    const row = priceInput.closest('.product-item-card');
+    const priceBaseDisplay = row.querySelector('.price-base-display');
+    const price = parseFloat(priceInput.value) || 0;
+    const rate = parseFloat(exchangeRateInput.value) || 1;
+    const priceBase = price * rate;
+    priceBaseDisplay.textContent = `≈ ฿${priceBase.toFixed(2)}`;
+}
+
 // คำนวณราคาสุทธิ
 function calcTotal(){
-    let sum = 0;
+    let sumOriginal = 0;
+    const rate = parseFloat(exchangeRateInput.value) || 1;
+    const currencySelect = document.getElementById('currencySelect');
+    const selectedOption = currencySelect.options[currencySelect.selectedIndex];
+    const symbol = selectedOption.dataset.symbol || '฿';
+    
     document.querySelectorAll('#productRows .product-item-card').forEach(card=>{
         let qty = parseFloat(card.querySelector('.qty-input').value)||0;
         let price = parseFloat(card.querySelector('.price-input').value)||0;
-        sum += qty*price;
+        sumOriginal += qty*price;
     });
-    document.getElementById('totalPrice').textContent = `ราคาสุทธิ: ฿${sum.toFixed(2)}`;
+    
+    const sumBase = sumOriginal * rate;
+    
+    document.getElementById('totalPriceOriginal').textContent = `ราคาสุทธิ: ${symbol}${sumOriginal.toFixed(2)}`;
+    document.getElementById('totalPriceBase').textContent = `เทียบเท่า: ฿${sumBase.toFixed(2)}`;
 }
 
 // เพิ่มแถวแรกอัตโนมัติ
@@ -429,13 +561,25 @@ document.getElementById('mainForm').onsubmit = async function(e){
 
     // รวมรายการสินค้า
     let orderItems = [];
+    const currencyId = document.getElementById('currencySelect').value;
+    const exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 1;
+    
     document.querySelectorAll('#productRows .product-item-card').forEach(card=>{
         const product_id = card.dataset.productId;
         const qty = parseFloat(card.querySelector('.qty-input').value) || 0;
         const unit = card.querySelector('.unit-input').value.trim();
-        const price = parseFloat(card.querySelector('.price-input').value) || 0;
+        const priceOriginal = parseFloat(card.querySelector('.price-input').value) || 0;
+        const priceBase = priceOriginal * exchangeRate;
+        
         if(product_id && qty>0){
-            orderItems.push({ product_id, qty, unit, price });
+            orderItems.push({ 
+                product_id, 
+                qty, 
+                unit, 
+                price_original: priceOriginal,
+                price_base: priceBase,
+                currency_id: currencyId
+            });
         }
     });
 
@@ -445,6 +589,7 @@ document.getElementById('mainForm').onsubmit = async function(e){
     }
 
     fd.append('orderItems', JSON.stringify(orderItems));
+    fd.append('exchange_rate', exchangeRate);
 
     // ส่งไป PHP
     try {

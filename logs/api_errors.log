@@ -1,0 +1,188 @@
+[04-Oct-2025 18:14:43 Asia/Bangkok] product_search_api.php called with q=t
+[04-Oct-2025 18:14:43 Asia/Bangkok] Searching for: 't' with limit: 10
+[04-Oct-2025 18:14:44 Asia/Bangkok] product_search_api.php called with q=te
+[04-Oct-2025 18:14:44 Asia/Bangkok] Searching for: 'te' with limit: 10
+[04-Oct-2025 18:14:45 Asia/Bangkok] product_search_api.php called with q=tes
+[04-Oct-2025 18:14:45 Asia/Bangkok] Searching for: 'tes' with limit: 10
+[04-Oct-2025 18:15:03 Asia/Bangkok] update_po_section.php called with: {"po_id":"4","item_id":"15","update_type":"delete_item"}
+[04-Oct-2025 18:15:03 Asia/Bangkok] Processing update: po_id=4, type=delete_item
+[04-Oct-2025 18:15:08 Asia/Bangkok] product_search_api.php called with q=tes
+[04-Oct-2025 18:15:08 Asia/Bangkok] Searching for: 'tes' with limit: 10
+[04-Oct-2025 18:15:10 Asia/Bangkok] product_search_api.php called with q=te
+[04-Oct-2025 18:15:10 Asia/Bangkok] Searching for: 'te' with limit: 10
+[04-Oct-2025 18:15:11 Asia/Bangkok] product_search_api.php called with q=t
+[04-Oct-2025 18:15:11 Asia/Bangkok] Searching for: 't' with limit: 10
+[04-Oct-2025 18:15:15 Asia/Bangkok] product_search_api.php called with q=tes
+[04-Oct-2025 18:15:15 Asia/Bangkok] Searching for: 'tes' with limit: 10
+[04-Oct-2025 18:16:20 Asia/Bangkok] product_search_api.php called with q=test
+[04-Oct-2025 18:16:20 Asia/Bangkok] Searching for: 'test' with limit: 10
+[04-Oct-2025 18:16:21 Asia/Bangkok] product_search_api.php called with q=te
+[04-Oct-2025 18:16:21 Asia/Bangkok] Searching for: 'te' with limit: 10
+[04-Oct-2025 18:16:27 Asia/Bangkok] product_search_api.php called with q=tes
+[04-Oct-2025 18:16:27 Asia/Bangkok] Searching for: 'tes' with limit: 10
+[04-Oct-2025 18:18:37 Asia/Bangkok] product_search_api.php called with q=ะ
+[04-Oct-2025 18:18:37 Asia/Bangkok] Searching for: 'ะ' with limit: 10
+[04-Oct-2025 18:18:39 Asia/Bangkok] product_search_api.php called with q=ะำ
+[04-Oct-2025 18:18:39 Asia/Bangkok] Searching for: 'ะำ' with limit: 10
+[04-Oct-2025 18:18:40 Asia/Bangkok] product_search_api.php called with q=ะำห
+[04-Oct-2025 18:18:40 Asia/Bangkok] Searching for: 'ะำห' with limit: 10
+[04-Oct-2025 18:18:43 Asia/Bangkok] product_search_api.php called with q=test
+[04-Oct-2025 18:18:43 Asia/Bangkok] Searching for: 'test' with limit: 10
+[04-Oct-2025 18:18:57 Asia/Bangkok] product_search_api.php called with q=test
+[04-Oct-2025 18:18:57 Asia/Bangkok] Searching for: 'test' with limit: 10
+[04-Oct-2025 18:23:31 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:23:31 Asia/Bangkok] Request query: ะำหะ
+[04-Oct-2025 18:23:31 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:23:31 Asia/Bangkok] Request URI: /api/product_search_api.php?q=%E0%B8%B0%E0%B8%B3%E0%B8%AB%E0%B8%B0&limit=10
+[04-Oct-2025 18:23:31 Asia/Bangkok] Searching for: 'ะำหะ' with limit: 10
+[04-Oct-2025 18:23:31 Asia/Bangkok] About to encode 0 results
+[04-Oct-2025 18:23:31 Asia/Bangkok] Sent JSON response length: 2
+[04-Oct-2025 18:23:31 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:23:33 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:23:33 Asia/Bangkok] Request query: test
+[04-Oct-2025 18:23:33 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:23:33 Asia/Bangkok] Request URI: /api/product_search_api.php?q=test&limit=10
+[04-Oct-2025 18:23:33 Asia/Bangkok] Searching for: 'test' with limit: 10
+[04-Oct-2025 18:23:33 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 18:23:33 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 18:23:33 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:25:58 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:25:58 Asia/Bangkok] Request query: tes
+[04-Oct-2025 18:25:58 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:25:58 Asia/Bangkok] Request URI: /api/product_search_api.php?q=tes&limit=10
+[04-Oct-2025 18:25:58 Asia/Bangkok] Searching for: 'tes' with limit: 10
+[04-Oct-2025 18:25:58 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 18:25:58 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 18:25:58 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:26:06 Asia/Bangkok] update_po_section.php called with: {"po_id":"4","product_id":"6","product_name":"test6","qty":"1","price_per_unit":"5","unit":"\u0e41\u0e1e\u0e47\u0e04","update_type":"add_item"}
+[04-Oct-2025 18:26:06 Asia/Bangkok] Processing update: po_id=4, type=add_item
+[04-Oct-2025 18:26:27 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:26:27 Asia/Bangkok] Request query: tes
+[04-Oct-2025 18:26:27 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:26:27 Asia/Bangkok] Request URI: /api/product_search_api.php?q=tes&limit=10
+[04-Oct-2025 18:26:27 Asia/Bangkok] Searching for: 'tes' with limit: 10
+[04-Oct-2025 18:26:27 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 18:26:27 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 18:26:27 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:26:46 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:26:46 Asia/Bangkok] Request query: test
+[04-Oct-2025 18:26:46 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:26:46 Asia/Bangkok] Request URI: /api/product_search_api.php?q=test&limit=10
+[04-Oct-2025 18:26:46 Asia/Bangkok] Searching for: 'test' with limit: 10
+[04-Oct-2025 18:26:46 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 18:26:46 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 18:26:46 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:26:52 Asia/Bangkok] update_po_section.php called with: {"po_id":"4","item_id":"17","product_id":"5","product_name":"test5","qty":"1","price_per_unit":"50","update_type":"item"}
+[04-Oct-2025 18:26:52 Asia/Bangkok] Processing update: po_id=4, type=item
+[04-Oct-2025 18:27:38 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:27:38 Asia/Bangkok] Request query: test
+[04-Oct-2025 18:27:38 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:27:38 Asia/Bangkok] Request URI: /api/product_search_api.php?q=test&limit=10
+[04-Oct-2025 18:27:38 Asia/Bangkok] Searching for: 'test' with limit: 10
+[04-Oct-2025 18:27:38 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 18:27:38 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 18:27:38 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:27:57 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:27:57 Asia/Bangkok] Request query: te
+[04-Oct-2025 18:27:57 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:27:57 Asia/Bangkok] Request URI: /api/product_search_api.php?q=te&limit=10
+[04-Oct-2025 18:27:57 Asia/Bangkok] Searching for: 'te' with limit: 10
+[04-Oct-2025 18:27:57 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 18:27:57 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 18:27:57 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:27:58 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:27:58 Asia/Bangkok] Request query: tes
+[04-Oct-2025 18:27:58 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:27:58 Asia/Bangkok] Request URI: /api/product_search_api.php?q=tes&limit=10
+[04-Oct-2025 18:27:58 Asia/Bangkok] Searching for: 'tes' with limit: 10
+[04-Oct-2025 18:27:58 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 18:27:58 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 18:27:58 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:28:02 Asia/Bangkok] update_po_section.php called with: {"po_id":"4","product_id":"3","product_name":"test3","qty":"1","price_per_unit":"10","unit":"\u0e41\u0e1e\u0e47\u0e04","update_type":"add_item"}
+[04-Oct-2025 18:28:02 Asia/Bangkok] Processing update: po_id=4, type=add_item
+[04-Oct-2025 18:28:13 Asia/Bangkok] update_po_section.php called with: {"po_id":"4","item_id":"18","product_id":"3","product_name":"test3","qty":"1","price_per_unit":"10","update_type":"item"}
+[04-Oct-2025 18:28:13 Asia/Bangkok] Processing update: po_id=4, type=item
+[04-Oct-2025 18:28:19 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:28:19 Asia/Bangkok] Request query: test
+[04-Oct-2025 18:28:19 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:28:19 Asia/Bangkok] Request URI: /api/product_search_api.php?q=test&limit=10
+[04-Oct-2025 18:28:19 Asia/Bangkok] Searching for: 'test' with limit: 10
+[04-Oct-2025 18:28:19 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 18:28:19 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 18:28:19 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:32:45 Asia/Bangkok] update_po_section.php called with: {"po_id":"4","supplier_id":"9","update_type":"supplier"}
+[04-Oct-2025 18:32:45 Asia/Bangkok] Processing update: po_id=4, type=supplier
+[04-Oct-2025 18:36:06 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:36:06 Asia/Bangkok] Request query: ะ
+[04-Oct-2025 18:36:06 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:36:06 Asia/Bangkok] Request URI: /api/product_search_api.php?q=%E0%B8%B0&limit=10
+[04-Oct-2025 18:36:06 Asia/Bangkok] Searching for: 'ะ' with limit: 10
+[04-Oct-2025 18:36:06 Asia/Bangkok] About to encode 0 results
+[04-Oct-2025 18:36:06 Asia/Bangkok] Sent JSON response length: 2
+[04-Oct-2025 18:36:06 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:36:06 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:36:06 Asia/Bangkok] Request query: ะห
+[04-Oct-2025 18:36:06 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:36:06 Asia/Bangkok] Request URI: /api/product_search_api.php?q=%E0%B8%B0%E0%B8%AB&limit=10
+[04-Oct-2025 18:36:06 Asia/Bangkok] Searching for: 'ะห' with limit: 10
+[04-Oct-2025 18:36:06 Asia/Bangkok] About to encode 0 results
+[04-Oct-2025 18:36:06 Asia/Bangkok] Sent JSON response length: 2
+[04-Oct-2025 18:36:06 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:36:08 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:36:08 Asia/Bangkok] Request query: tes
+[04-Oct-2025 18:36:08 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:36:08 Asia/Bangkok] Request URI: /api/product_search_api.php?q=tes&limit=10
+[04-Oct-2025 18:36:08 Asia/Bangkok] Searching for: 'tes' with limit: 10
+[04-Oct-2025 18:36:08 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 18:36:08 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 18:36:08 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:36:21 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 18:36:21 Asia/Bangkok] Request query: test
+[04-Oct-2025 18:36:21 Asia/Bangkok] Request method: GET
+[04-Oct-2025 18:36:21 Asia/Bangkok] Request URI: /api/product_search_api.php?q=test&limit=10
+[04-Oct-2025 18:36:21 Asia/Bangkok] Searching for: 'test' with limit: 10
+[04-Oct-2025 18:36:21 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 18:36:21 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 18:36:21 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 18:36:34 Asia/Bangkok] update_po_section.php called with: {"po_id":"4","product_id":"4","product_name":"test4","qty":"1","price_per_unit":"20","unit":"\u0e41\u0e1e\u0e47\u0e04","update_type":"add_item"}
+[04-Oct-2025 18:36:34 Asia/Bangkok] Processing update: po_id=4, type=add_item
+[04-Oct-2025 18:36:43 Asia/Bangkok] update_po_section.php called with: {"po_id":"4","item_id":"18","update_type":"delete_item"}
+[04-Oct-2025 18:36:43 Asia/Bangkok] Processing update: po_id=4, type=delete_item
+[04-Oct-2025 19:42:15 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 19:42:15 Asia/Bangkok] Request query: te
+[04-Oct-2025 19:42:15 Asia/Bangkok] Request method: GET
+[04-Oct-2025 19:42:15 Asia/Bangkok] Request URI: /api/product_search_api.php?q=te&limit=10
+[04-Oct-2025 19:42:15 Asia/Bangkok] Searching for: 'te' with limit: 10
+[04-Oct-2025 19:42:15 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 19:42:15 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 19:42:15 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 19:42:32 Asia/Bangkok] update_po_section.php called with: {"po_id":"5","product_id":"6","product_name":"test6","qty":"10","price_per_unit":"20","unit":"\u0e41\u0e1e\u0e47\u0e04","currency_id":"2","price_original":"20","exchange_rate":"39","update_type":"add_item"}
+[04-Oct-2025 19:42:32 Asia/Bangkok] Processing update: po_id=5, type=add_item
+[04-Oct-2025 19:42:50 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 19:42:50 Asia/Bangkok] Request query: r
+[04-Oct-2025 19:42:50 Asia/Bangkok] Request method: GET
+[04-Oct-2025 19:42:50 Asia/Bangkok] Request URI: /api/product_search_api.php?q=r&limit=10
+[04-Oct-2025 19:42:50 Asia/Bangkok] Searching for: 'r' with limit: 10
+[04-Oct-2025 19:42:50 Asia/Bangkok] About to encode 0 results
+[04-Oct-2025 19:42:50 Asia/Bangkok] Sent JSON response length: 2
+[04-Oct-2025 19:42:50 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 19:42:51 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 19:42:51 Asia/Bangkok] Request query: tw
+[04-Oct-2025 19:42:51 Asia/Bangkok] Request method: GET
+[04-Oct-2025 19:42:51 Asia/Bangkok] Request URI: /api/product_search_api.php?q=tw&limit=10
+[04-Oct-2025 19:42:51 Asia/Bangkok] Searching for: 'tw' with limit: 10
+[04-Oct-2025 19:42:51 Asia/Bangkok] About to encode 0 results
+[04-Oct-2025 19:42:51 Asia/Bangkok] Sent JSON response length: 2
+[04-Oct-2025 19:42:51 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 19:42:53 Asia/Bangkok] === product_search_api.php START ===
+[04-Oct-2025 19:42:53 Asia/Bangkok] Request query: te
+[04-Oct-2025 19:42:53 Asia/Bangkok] Request method: GET
+[04-Oct-2025 19:42:53 Asia/Bangkok] Request URI: /api/product_search_api.php?q=te&limit=10
+[04-Oct-2025 19:42:53 Asia/Bangkok] Searching for: 'te' with limit: 10
+[04-Oct-2025 19:42:53 Asia/Bangkok] About to encode 6 results
+[04-Oct-2025 19:42:53 Asia/Bangkok] Sent JSON response length: 2209
+[04-Oct-2025 19:42:53 Asia/Bangkok] === product_search_api.php END ===
+[04-Oct-2025 19:43:00 Asia/Bangkok] update_po_section.php called with: {"po_id":"6","product_id":"3","product_name":"test3","qty":"1","price_per_unit":"0.05","unit":"\u0e41\u0e1e\u0e47\u0e04","currency_id":"2","price_original":"0.05","exchange_rate":"39","update_type":"add_item"}
+[04-Oct-2025 19:43:00 Asia/Bangkok] Processing update: po_id=6, type=add_item
+[04-Oct-2025 19:44:01 Asia/Bangkok] update_po_section.php called with: {"po_id":"6","item_id":"23","update_type":"delete_item"}
+[04-Oct-2025 19:44:01 Asia/Bangkok] Processing update: po_id=6, type=delete_item

@@ -14,6 +14,12 @@ if(isset($_POST['submit'])) {
 
         $pdo->beginTransaction();
         try {
+            // ตรวจสอบว่าตาราง purchase_order_items มีคอลัมน์ currency และ original_price หรือไม่
+            $check_columns = $pdo->query("SHOW COLUMNS FROM purchase_order_items LIKE 'currency'");
+            $has_currency_column = $check_columns->rowCount() > 0;
+            
+            $check_original_price = $pdo->query("SHOW COLUMNS FROM purchase_order_items LIKE 'original_price'");
+            $has_original_price_column = $check_original_price->rowCount() > 0;
             // ====== สร้างเลข PO ======
             $date = date('Ymd');
             $last_po = $pdo->query("SELECT po_number FROM purchase_orders WHERE po_number LIKE 'PO{$date}%' ORDER BY po_number DESC LIMIT 1")->fetchColumn();
@@ -59,10 +65,20 @@ if(isset($_POST['submit'])) {
                 $qty          = floatval($row[8] ?? 0);
                 $price        = floatval($row[9] ?? 0);
                 $sale_price   = floatval($row[10] ?? 0);
-                $expiry_date  = !empty($row[11]) ? date('Y-m-d', strtotime($row[11])) : null;
-                $remark_color = strtolower(trim($sanitize($row[12] ?? '')));
-                $remark_split = intval($row[13] ?? 0);
-                $remark       = $sanitize($row[14]);
+                $currency_raw = strtoupper(trim($sanitize($row[11] ?? 'THB')));
+                
+                // ตรวจสอบและทำความสะอาดสกุลเงิน
+                $allowed_currencies = ['THB', 'USD'];
+                $currency = in_array($currency_raw, $allowed_currencies) ? $currency_raw : 'THB';
+                
+                // บันทึก log หากมีการแก้ไขสกุลเงิน
+                if ($currency !== $currency_raw && !empty($currency_raw)) {
+                    error_log("Row " . ($i + 1) . ": Invalid currency '{$currency_raw}' changed to 'THB'");
+                }
+                $expiry_date  = !empty($row[12]) ? date('Y-m-d', strtotime($row[12])) : null;
+                $remark_color = strtolower(trim($sanitize($row[13] ?? '')));
+                $remark_split = intval($row[14] ?? 0);
+                $remark       = $sanitize($row[15]);
 
                 if($sku === '' && $barcode === '') continue;
 
@@ -166,11 +182,43 @@ if(isset($_POST['submit'])) {
                     $stmt->execute([$product_id, $location_id]);
                 }
 
+                // ====== แปลงราคาเป็น THB ก่อนบันทึก ======
+                $price_thb = $price;
+                $sale_price_thb = $sale_price;
+                
+                if($currency !== 'THB') {
+                    // ดึงอัตราแลกเปลี่ยน
+                    $rate_stmt = $pdo->prepare("SELECT exchange_rate_to_thb FROM currencies WHERE currency_code = ? AND is_active = 1");
+                    $rate_stmt->execute([$currency]);
+                    $rate = $rate_stmt->fetchColumn();
+                    
+                    if($rate) {
+                        $price_thb = $price * $rate;
+                        $sale_price_thb = $sale_price * $rate;
+                    }
+                }
+
                 // ====== เพิ่ม PO Item ======
-                $stmt = $pdo->prepare("INSERT INTO purchase_order_items 
-                    (po_id, product_id, qty, price_per_unit, sale_price, total) 
-                    VALUES (?,?,?,?,?,?)");
-                $stmt->execute([$po_id, $product_id, $qty, $price, $sale_price, $qty*$price]);
+                if ($has_currency_column && $has_original_price_column) {
+                    // ใหม่: มีคอลัมน์สกุลเงินแล้ว
+                    $stmt = $pdo->prepare("INSERT INTO purchase_order_items 
+                        (po_id, product_id, qty, price_per_unit, sale_price, total, currency, original_price) 
+                        VALUES (?,?,?,?,?,?,?,?)");
+                    $stmt->execute([$po_id, $product_id, $qty, $price_thb, $sale_price_thb, $qty*$price_thb, $currency, $price]);
+                } else {
+                    // เก่า: ไม่มีคอลัมน์สกุลเงิน - ใช้รูปแบบเดิม
+                    $stmt = $pdo->prepare("INSERT INTO purchase_order_items 
+                        (po_id, product_id, qty, price_per_unit, sale_price, total) 
+                        VALUES (?,?,?,?,?,?)");
+                    $stmt->execute([$po_id, $product_id, $qty, $price_thb, $sale_price_thb, $qty*$price_thb]);
+                    
+                    // บันทึกข้อมูลสกุลเงินไว้ใน remark ของ PO ชั่วคราว
+                    if ($currency !== 'THB') {
+                        $currency_info = " (Original: {$price} {$currency})";
+                        $stmt_update_po = $pdo->prepare("UPDATE purchase_orders SET remark = CONCAT(COALESCE(remark, ''), ?) WHERE po_id = ?");
+                        $stmt_update_po->execute([$currency_info, $po_id]);
+                    }
+                }
                 $item_id = $pdo->lastInsertId();
 
                 // ====== เพิ่ม Receive Item ======
@@ -181,7 +229,13 @@ if(isset($_POST['submit'])) {
             }
 
             $pdo->commit();
-            $message = "Import สำเร็จ! PO = $po_number";
+            
+            $currency_support_msg = "";
+            if (!$has_currency_column || !$has_original_price_column) {
+                $currency_support_msg = "<br><small style='color: #ff6b35; font-weight: 500;'>⚠️ ตารางยังไม่รองรับสกุลเงินเต็มรูปแบบ - กรุณารัน migration script</small>";
+            }
+            
+            $message = "Import สำเร็จ! PO = $po_number" . $currency_support_msg . "<br><small style='color: #666;'>หากมีสกุลเงินไม่ถูกต้อง ระบบจะปรับเป็น THB อัตโนมัติ</small>";
 
         } catch (Exception $e) {
             $pdo->rollBack();
@@ -193,6 +247,15 @@ if(isset($_POST['submit'])) {
             if (isset($debug_web) && !empty($debug_web)) {
                 $debug .= '<br><b>DEBUG:</b> <pre>' . htmlspecialchars(json_encode($debug_web, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) . '</pre>';
             }
+            
+            // เพิ่มข้อมูลเกี่ยวกับโครงสร้างตาราง
+            $debug .= '<br><b>DATABASE SCHEMA:</b> <pre>';
+            $debug .= 'Currency column exists: ' . ($has_currency_column ? 'YES' : 'NO') . "\n";
+            $debug .= 'Original price column exists: ' . ($has_original_price_column ? 'YES' : 'NO') . "\n";
+            if (isset($currency)) {
+                $debug .= 'Attempted currency: ' . $currency . "\n";
+            }
+            $debug .= '</pre>';
             if (isset($debug)) {
                 $debug .= '<br><b>EXCEPTION:</b> <pre>' . htmlspecialchars(json_encode($e, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) . '</pre>';
             }
@@ -298,7 +361,7 @@ if(isset($_POST['submit'])) {
     <div class="topbar">นำเข้าข้อมูลจาก Excel</div>
     <div class="content-card">
         <div class="card-header">
-            <a href="download_template.php" class="btn btn-download">
+            <a href="../templates/download_template.php" class="btn btn-download">
                 <span class="material-icons">download</span> ดาวน์โหลดฟอร์ม Excel
             </a>
         </div>
@@ -322,6 +385,22 @@ if(isset($_POST['submit'])) {
             </script>
 
         <?php endif; ?>
+
+        <div class="migration-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 20px 0; color: #856404;">
+            <h4 style="margin: 0 0 10px 0; color: #d68910;">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 8px;">info</span>
+                คำแนะนำสำหรับการรองรับสกุลเงิน
+            </h4>
+            <p style="margin: 0 0 10px 0; font-size: 14px;">
+                เพื่อให้ระบบรองรับสกุลเงินได้เต็มรูปแบบ กรุณารัน SQL script ต่อไปนี้ก่อน:
+            </p>
+            <code style="background: #f8f9fa; padding: 8px 12px; border-radius: 4px; font-size: 12px; display: block; overflow-x: auto;">
+                SOURCE db/add_currency_to_purchase_order_items.sql;
+            </code>
+            <p style="margin: 10px 0 0 0; font-size: 13px; color: #856404;">
+                <strong>หมายเหตุ:</strong> หากยังไม่ได้รัน migration ระบบจะยังใช้งานได้แต่จะบันทึกข้อมูลสกุลเงินไว้ใน remark ของ PO
+            </p>
+        </div>
 
         <form method="post" enctype="multipart/form-data">
             <div class="file-upload">

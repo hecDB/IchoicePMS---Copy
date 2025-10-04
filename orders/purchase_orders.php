@@ -109,6 +109,129 @@ $rows = $stmt->fetchAll();
         #poEditPopup.active .popup-content {
             transform: translateY(0);
         }
+        
+        /* Global SweetAlert2 z-index override */
+        .swal2-container {
+            z-index: 99999 !important;
+        }
+        .swal2-backdrop-show {
+            z-index: 99998 !important;
+        }
+        
+        /* Ensure SweetAlert2 is always on top of our popups */
+        .swal2-shown > .swal2-container {
+            z-index: 100000 !important;
+        }
+        
+        /* Autocomplete Styles */
+        .autocomplete-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .autocomplete-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: #fff;
+        }
+        
+        .autocomplete-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ced4da;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10001;
+            display: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .autocomplete-dropdown.show {
+            display: block;
+        }
+        
+        .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f1f1;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background-color: #f8f9fa;
+        }
+        
+        .autocomplete-item-name {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .autocomplete-item-details {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .autocomplete-loading {
+            padding: 10px 12px;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .autocomplete-no-results {
+            padding: 10px 12px;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+        }
+        
+        /* Inline edit mode autocomplete adjustments */
+        .item-edit-mode .autocomplete-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .item-edit-mode .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 10005; /* Higher than table z-index */
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        /* Make sure table cells don't clip the dropdown */
+        .item-edit-mode .po-items-table td {
+            position: relative;
+            overflow: visible;
+        }
     </style>
 </head>
 <body>
@@ -117,7 +240,13 @@ $rows = $stmt->fetchAll();
             ใบสั่งซื้อ (Purchase Orders)
         </div>
         <div class="main">
-
+            <div class="action-bar" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0; color: #333;">รายการใบสั่งซื้อทั้งหมด</h2>
+                <a href="../orders/purchase_order_create.php" class="btn btn-primary" style="text-decoration: none;">
+                    <span class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:5px;">add</span>
+                    สร้างใบสั่งซื้อใหม่
+                </a>
+            </div>
 
             <div class="card table-card mt-3">
                 <div class="table-responsive">
@@ -353,38 +482,73 @@ $rows = $stmt->fetchAll();
             return;
         }
 
+        // Store current data globally for editing functions
+        currentPoData = data;
+
         const formattedDate = new Date(data.order.order_date).toLocaleDateString('th-TH', {
             year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
         });
 
-        const formatCurrency = (amount) => parseFloat(amount || 0).toLocaleString('th-TH', {
-            minimumFractionDigits: 2, maximumFractionDigits: 2
-        });
+        // Currency formatting based on order currency
+        const currencySymbol = data.order.currency_symbol || '฿';
+        const exchangeRate = parseFloat(data.order.exchange_rate || 1);
+        
+        const formatCurrency = (amount, isOriginal = false) => {
+            const value = parseFloat(amount || 0);
+            if (isOriginal && data.order.currency_code !== 'THB') {
+                return value.toLocaleString('th-TH', {
+                    minimumFractionDigits: 2, maximumFractionDigits: 2
+                });
+            }
+            return value.toLocaleString('th-TH', {
+                minimumFractionDigits: 2, maximumFractionDigits: 2
+            });
+        };
 
         let itemsHtml = data.items && data.items.length > 0 ? data.items.map((item, index) => {
             const qty = parseFloat(item.qty || 0);
-            const price = parseFloat(item.price_per_unit || 0);
-            const total = parseFloat(item.total || (qty * price));
+            const priceOriginal = parseFloat(item.price_original || item.price_per_unit || 0);
+            const priceBase = parseFloat(item.price_base || item.price_per_unit || 0);
+            const total = parseFloat(item.total || (qty * priceBase));
+            const itemCurrencySymbol = item.item_currency_symbol || currencySymbol;
             
             return `
             <tr>
                 <td style="text-align:center;">${index + 1}</td>
+                <td style="text-align:center;">
+                    ${item.image ? `<img src="../${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">` : `<div style="width:50px;height:50px;background:#f8f9fa;border:1px solid #ddd;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:10px;">ไม่มี<br>รูป</div>`}
+                </td>
                 <td>
                     ${item.product_name || 'ไม่ระบุชื่อสินค้า'}
-                    ${item.image ? `<br><small style="color:#666;">รูปภาพ: ${item.image}</small>` : ''}
                 </td>
                 <td>${item.sku || '-'}</td>
                 <td style="text-align:right;">${qty.toLocaleString()}</td>
                 <td>${item.unit || 'ชิ้น'}</td>
-                <td style="text-align:right;">฿${formatCurrency(price)}</td>
-                <td style="text-align:right;">฿${formatCurrency(total)}</td>
+                <td style="text-align:right;">
+                    ${data.order.currency_code !== 'THB' ? 
+                        `<div>${itemCurrencySymbol}${formatCurrency(priceOriginal, true)}</div><div style="font-size:11px;color:#666;">≈ ฿${formatCurrency(priceBase)}</div>` : 
+                        `฿${formatCurrency(priceBase)}`
+                    }
+                </td>
+                <td style="text-align:right;">
+                    ${data.order.currency_code !== 'THB' ? 
+                        `<div>${itemCurrencySymbol}${formatCurrency(qty * priceOriginal, true)}</div><div style="font-size:11px;color:#666;">≈ ฿${formatCurrency(total)}</div>` : 
+                        `฿${formatCurrency(total)}`
+                    }
+                </td>
             </tr>`;
-        }).join('') : `<tr><td colspan="7" style="text-align:center;padding:20px;color:#6c757d;">ไม่พบรายการสินค้า</td></tr>`;
+        }).join('') : `<tr><td colspan="8" style="text-align:center;padding:20px;color:#6c757d;">ไม่พบรายการสินค้า</td></tr>`;
 
-        const subtotal = data.items ? data.items.reduce((sum, item) => {
+        const subtotalOriginal = data.items ? data.items.reduce((sum, item) => {
             const qty = parseFloat(item.qty || 0);
-            const price = parseFloat(item.price_per_unit || 0);
-            const total = parseFloat(item.total || (qty * price));
+            const priceOriginal = parseFloat(item.price_original || item.price_per_unit || 0);
+            return sum + (qty * priceOriginal);
+        }, 0) : 0;
+        
+        const subtotalBase = data.items ? data.items.reduce((sum, item) => {
+            const qty = parseFloat(item.qty || 0);
+            const priceBase = parseFloat(item.price_base || item.price_per_unit || 0);
+            const total = parseFloat(item.total || (qty * priceBase));
             return sum + total;
         }, 0) : 0;
 
@@ -395,16 +559,31 @@ $rows = $stmt->fetchAll();
                     <div class="po-meta-item"><span class="meta-label">เลขที่ใบสั่งซื้อ</span><span class="meta-value">${data.order.po_number || '-'}</span></div>
                     <div class="po-meta-item"><span class="meta-label">วันที่สั่งซื้อ</span><span class="meta-value">${formattedDate}</span></div>
                     <div class="po-meta-item"><span class="meta-label">สถานะ</span><span class="status-badge ${data.order.status || 'pending'}">${getStatusText(data.order.status || 'pending')}</span></div>
+                    <div class="po-meta-item"><span class="meta-label">สกุลเงิน</span><span class="meta-value">${currencySymbol} ${data.order.currency_name || 'Thai Baht'}</span></div>
+                    ${exchangeRate !== 1 ? `<div class="po-meta-item"><span class="meta-label">อัตราแลกเปลี่ยน</span><span class="meta-value">1 ${data.order.currency_code} = ${exchangeRate.toFixed(6)} ฿</span></div>` : ''}
                 </div>
             </div>
             <div class="po-sections">
                 <div class="po-section">
-                    <h4><i class="material-icons" style="font-size:18px;vertical-align:middle;margin-right:5px;">person</i> ข้อมูลผู้สั่งซื้อ</h4>
-                    <div class="section-content"><p><strong>${data.user.name || '-'}</strong></p></div>
+                    <div class="section-header">
+                        <h4><i class="material-icons" style="font-size:18px;vertical-align:middle;margin-right:5px;">person</i> ข้อมูลผู้สั่งซื้อ</h4>
+                        <button class="btn-edit-section btn-sm" onclick="editUserSection(${data.order.po_id})" title="แก้ไขข้อมูลผู้สั่งซื้อ">
+                            <i class="material-icons" style="font-size:14px;">edit</i>
+                        </button>
+                    </div>
+                    <div class="section-content" id="user-section">
+                        <p><strong>${data.user.name || '-'}</strong></p>
+                        ${data.user.department ? `<p>แผนก: ${data.user.department}</p>` : ''}
+                    </div>
                 </div>
                 <div class="po-section">
-                    <h4><i class="material-icons" style="font-size:18px;vertical-align:middle;margin-right:5px;">store</i> ข้อมูลผู้จำหน่าย</h4>
-                    <div class="section-content">
+                    <div class="section-header">
+                        <h4><i class="material-icons" style="font-size:18px;vertical-align:middle;margin-right:5px;">store</i> ข้อมูลผู้จำหน่าย</h4>
+                        <button class="btn-edit-section btn-sm" onclick="editSupplierSection(${data.order.po_id})" title="แก้ไขข้อมูลผู้จำหน่าย">
+                            <i class="material-icons" style="font-size:14px;">edit</i>
+                        </button>
+                    </div>
+                    <div class="section-content" id="supplier-section">
                         <p><strong>${data.supplier.name || '-'}</strong></p>
                         ${data.supplier.phone || data.supplier.email ? `<p>${data.supplier.phone ? 'โทร: ' + data.supplier.phone : ''} ${data.supplier.phone && data.supplier.email ? ' | ' : ''}${data.supplier.email ? 'อีเมล: ' + data.supplier.email : ''}</p>` : ''}
                         ${data.supplier.address ? `<p>ที่อยู่: ${data.supplier.address}</p>` : ''}
@@ -412,17 +591,25 @@ $rows = $stmt->fetchAll();
                 </div>
             </div>
             <div class="po-section">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <div class="section-header">
                     <h4 style="margin:0;"><i class="material-icons" style="font-size:18px;vertical-align:middle;margin-right:5px;">shopping_cart</i> รายการสินค้า</h4>
-                    <div><button onclick="openPoEdit(event, this)" data-po="${data.order.po_id}" class="btn btn-primary btn-sm"><i class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:3px;">edit</i> แก้ไข</button></div>
+                    <div class="section-actions">
+                        <button onclick="editItemsInline(${data.order.po_id})" class="btn-edit-section btn-sm" title="แก้ไขรายการสินค้า">
+                            <i class="material-icons" style="font-size:14px;">edit</i> แก้ไขรายการ
+                        </button>
+                        <button onclick="addNewItem(${data.order.po_id})" class="btn-add-item btn-sm" title="เพิ่มสินค้าใหม่">
+                            <i class="material-icons" style="font-size:14px;">add</i> เพิ่มสินค้า
+                        </button>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table class="po-items-table">
                         <thead>
                             <tr>
                                 <th width="50px" style="text-align:center;">ลำดับ</th>
+                                <th width="80px" style="text-align:center;">รูปภาพ</th>
                                 <th>ชื่อสินค้า</th>
-                                <th>SKU</th>
+                                <th width="100px">SKU</th>
                                 <th width="100px" style="text-align:right;">จำนวน</th>
                                 <th width="80px">หน่วย</th>
                                 <th width="120px" style="text-align:right;">ราคา/หน่วย</th>
@@ -432,8 +619,13 @@ $rows = $stmt->fetchAll();
                         <tbody>${itemsHtml}</tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="6" style="text-align:right;font-weight:bold;border-top:1px solid #dee2e6;">รวมทั้งสิ้น</td>
-                                <td style="text-align:right;font-weight:bold;border-top:1px solid #dee2e6;">${formatCurrency(subtotal)} บาท</td>
+                                <td colspan="7" style="text-align:right;font-weight:bold;border-top:1px solid #dee2e6;">รวมทั้งสิ้น</td>
+                                <td style="text-align:right;font-weight:bold;border-top:1px solid #dee2e6;">
+                                    ${data.order.currency_code !== 'THB' ? 
+                                        `<div>${currencySymbol}${formatCurrency(subtotalOriginal, true)}</div><div style="font-size:12px;color:#666;font-weight:normal;">≈ ฿${formatCurrency(subtotalBase)} บาท</div>` : 
+                                        `฿${formatCurrency(subtotalBase)} บาท`
+                                    }
+                                </td>
                             </tr>
                         </tfoot>
                     </table>
@@ -452,6 +644,9 @@ $rows = $stmt->fetchAll();
                     })}</small>` : ''}
                 </div>
                 <div>
+                    <button onclick="window.open('../orders/purchase_order_create.php', '_blank')" class="btn btn-primary">
+                        <span class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:3px;">add</span> สร้างใบสั่งซื้อใหม่
+                    </button>
                     <button onclick="window.print()" class="btn btn-secondary">
                         <span class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:3px;">print</span> พิมพ์
                     </button>
@@ -468,10 +663,30 @@ $rows = $stmt->fetchAll();
                 .meta-value { font-weight: 500; }
                 .po-sections { display: flex; flex-wrap: wrap; gap: 20px; }
                 .section-content { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 10px; }
+                .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+                .section-actions { display: flex; gap: 8px; }
+                .btn-edit-section { background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+                .btn-add-item { background: #17a2b8; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+                .btn-edit-section:hover, .btn-add-item:hover { opacity: 0.8; }
+                .edit-form { background: #fff; border: 1px solid #dee2e6; border-radius: 6px; padding: 15px; margin: 10px 0; }
+                .form-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+                .form-group { flex: 1; min-width: 200px; }
+                .form-label { display: block; margin-bottom: 5px; font-weight: 500; color: #495057; }
+                .form-input { width: 100%; padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; }
+                .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px; }
+                .btn-save { background: #28a745; color: white; }
+                .btn-cancel { background: #6c757d; color: white; }
                 .po-items-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
                 .po-items-table th { background: #f1f3f5; padding: 10px; text-align: left; font-weight: 500; }
                 .po-items-table td { padding: 12px 10px; border-bottom: 1px solid #e9ecef; }
                 .po-items-table tbody tr:hover { background-color: #f8f9fa; }
+                .item-edit-mode .po-items-table td { padding: 8px; }
+                .item-edit-input { width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 13px; }
+                .item-actions { white-space: nowrap; }
+                .btn-item-action { padding: 4px 8px; margin: 0 2px; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; }
+                .btn-save-item { background: #28a745; color: white; }
+                .btn-cancel-item { background: #6c757d; color: white; }
+                .btn-delete-item { background: #dc3545; color: white; }
                 .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 500; text-transform: capitalize; }
                 .status-badge.pending { background: #fff3cd; color: #856404; }
                 .status-badge.partial { background: #d4edda; color: #155724; }
@@ -485,6 +700,23 @@ $rows = $stmt->fetchAll();
                 .btn:hover { opacity: 0.8; }
                 .text-muted { color: #6c757d; }
                 .table-responsive { overflow-x: auto; }
+                
+                /* SweetAlert2 z-index override for popup dialogs */
+                .swal2-top-z-index {
+                    z-index: 99999 !important;
+                }
+                .swal2-top-z-index .swal2-container {
+                    z-index: 99999 !important;
+                }
+                
+                /* Global SweetAlert2 z-index fix for all instances */
+                .swal2-container {
+                    z-index: 99999 !important;
+                }
+                .swal2-backdrop-show {
+                    z-index: 99998 !important;
+                }
+                
                 @media print {
                     body { padding: 20px; }
                     .mainwrap, .topbar, .sidebar, .action-btns, .po-footer, button { display: none !important; }
@@ -605,51 +837,7 @@ $rows = $stmt->fetchAll();
         btn.closest('tr').remove();
     }
 
-    function initProductSearch(element) {
-        const inputs = element ? [element] : document.querySelectorAll('.product-search:not(.initialized)');
-        
-        inputs.forEach(input => {
-            input.classList.add('initialized');
-            const resultsBox = input.parentElement.querySelector('.autocomplete-results');
-
-            input.oninput = function() {
-                let query = this.value.trim();
-                if (query.length < 1) {
-                    resultsBox.style.display = 'none';
-                    return;
-                }
-                resultsBox.innerHTML = '<div>กำลังค้นหา...</div>';
-                resultsBox.style.display = 'block';
-
-                fetch('../api/product_search_api.php?q=' + encodeURIComponent(query))
-                    .then(res => res.json())
-                    .then(data => {
-                        resultsBox.innerHTML = data.length ? data.map(p => `
-                            <div class="result-item" data-id="${p.product_id}" data-price="${p.price_per_unit}" data-name="${p.name}">
-                                ${p.name} (SKU: ${p.sku || 'N/A'})
-                            </div>`).join('') : '<div>ไม่พบสินค้า</div>';
-                    });
-            };
-
-            resultsBox.onclick = function(e) {
-                if (e.target.classList.contains('result-item')) {
-                    const row = this.closest('tr');
-                    row.querySelector('.product-search').value = e.target.dataset.name;
-                    row.querySelector('input[name="product_id[]"]').value = e.target.dataset.id;
-                    row.querySelector('input[name="price_per_unit[]"]').value = e.target.dataset.price;
-                    this.style.display = 'none';
-                }
-            };
-        });
-
-        document.addEventListener('click', function(e) {
-            document.querySelectorAll('.autocomplete-results').forEach(box => {
-                if (!box.parentElement.contains(e.target)) {
-                    box.style.display = 'none';
-                }
-            });
-        });
-    }
+    // Legacy product search function replaced by ProductAutocomplete class
 
     function getStatusText(status) {
         const statusMap = {
@@ -718,6 +906,1055 @@ $rows = $stmt->fetchAll();
                 }
             });
         });
+    }
+
+    // ===================== Section-wise Editing Functions =====================
+    
+    // Global variable to store current PO data
+    let currentPoData = null;
+
+    // ===================== Enhanced Product Autocomplete System =====================
+    
+    class ProductAutocomplete {
+        constructor(inputElement, options = {}) {
+            this.input = inputElement;
+            this.container = inputElement.parentElement;
+            this.options = {
+                minLength: 1,
+                delay: 300,
+                maxResults: 10,
+                onSelect: options.onSelect || (() => {}),
+                ...options
+            };
+            
+            this.dropdown = null;
+            this.searchTimeout = null;
+            this.selectedIndex = -1;
+            this.results = [];
+            this.isLoading = false;
+            
+            this.init();
+        }
+        
+        init() {
+            // Make sure container has relative positioning
+            if (getComputedStyle(this.container).position === 'static') {
+                this.container.style.position = 'relative';
+            }
+            
+            // Create dropdown element
+            this.createDropdown();
+            
+            // Bind events
+            this.bindEvents();
+        }
+        
+        createDropdown() {
+            this.dropdown = document.createElement('div');
+            this.dropdown.className = 'autocomplete-dropdown';
+            this.container.appendChild(this.dropdown);
+        }
+        
+        bindEvents() {
+            // Input events
+            this.input.addEventListener('input', (e) => this.handleInput(e));
+            this.input.addEventListener('keydown', (e) => this.handleKeydown(e));
+            this.input.addEventListener('focus', (e) => this.handleFocus(e));
+            this.input.addEventListener('blur', (e) => this.handleBlur(e));
+            
+            // Dropdown events
+            this.dropdown.addEventListener('mousedown', (e) => this.handleDropdownClick(e));
+        }
+        
+        handleInput(e) {
+            const query = e.target.value.trim();
+            
+            // Clear previous timeout
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout);
+            }
+            
+            if (query.length < this.options.minLength) {
+                this.hideDropdown();
+                return;
+            }
+            
+            // Debounce search
+            this.searchTimeout = setTimeout(() => {
+                this.search(query);
+            }, this.options.delay);
+        }
+        
+        handleKeydown(e) {
+            if (!this.dropdown.classList.contains('show')) return;
+            
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    this.selectNext();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    this.selectPrevious();
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (this.selectedIndex >= 0) {
+                        this.selectItem(this.results[this.selectedIndex]);
+                    }
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    this.hideDropdown();
+                    break;
+            }
+        }
+        
+        handleFocus(e) {
+            const query = e.target.value.trim();
+            if (query.length >= this.options.minLength && this.results.length > 0) {
+                this.showDropdown();
+            }
+        }
+        
+        handleBlur(e) {
+            // Delay hiding to allow dropdown clicks
+            setTimeout(() => {
+                this.hideDropdown();
+            }, 150);
+        }
+        
+        handleDropdownClick(e) {
+            const item = e.target.closest('.autocomplete-item');
+            if (item) {
+                const index = parseInt(item.dataset.index);
+                if (this.results[index]) {
+                    this.selectItem(this.results[index]);
+                }
+            }
+        }
+        
+        async search(query) {
+            this.isLoading = true;
+            this.showLoading();
+            
+            try {
+                console.log('Searching for:', query); // Debug log
+                const response = await fetch(`../api/product_search_api.php?q=${encodeURIComponent(query)}&limit=${this.options.maxResults}`);
+                
+                console.log('Search response status:', response.status, response.statusText); // Debug log
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Get response text first to debug
+                const responseText = await response.text();
+                console.log('Raw response:', responseText); // Debug log
+                
+                if (!responseText.trim()) {
+                    throw new Error('Empty response from server');
+                }
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (jsonError) {
+                    console.error('JSON parse error:', jsonError);
+                    console.error('Response text was:', responseText);
+                    throw new Error(`Invalid JSON response: ${jsonError.message}`);
+                }
+                
+                console.log('Parsed search results:', data); // Debug log
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                this.results = data || [];
+                this.renderResults();
+                
+                if (this.results.length > 0) {
+                    this.showDropdown();
+                } else {
+                    this.showNoResults();
+                }
+                
+            } catch (error) {
+                console.error('Autocomplete search error:', error);
+                this.dropdown.innerHTML = `<div class="autocomplete-no-results">เกิดข้อผิดพลาด: ${error.message}</div>`;
+                this.showDropdown();
+            } finally {
+                this.isLoading = false;
+            }
+        }
+        
+        showLoading() {
+            this.dropdown.innerHTML = '<div class="autocomplete-loading">กำลังค้นหา...</div>';
+            this.showDropdown();
+        }
+        
+        showNoResults() {
+            this.dropdown.innerHTML = '<div class="autocomplete-no-results">ไม่พบสินค้าที่ค้นหา</div>';
+            this.showDropdown();
+        }
+        
+        showError() {
+            this.dropdown.innerHTML = '<div class="autocomplete-no-results">เกิดข้อผิดพลาดในการค้นหา</div>';
+            this.showDropdown();
+        }
+        
+        renderResults() {
+            if (this.results.length === 0) {
+                this.showNoResults();
+                return;
+            }
+            
+            this.dropdown.innerHTML = this.results.map((item, index) => `
+                <div class="autocomplete-item" data-index="${index}" style="display: flex; align-items: center; padding: 8px 12px;">
+                    <div style="margin-right: 10px; flex-shrink: 0;">
+                        ${item.image ? `<img src="../${item.image}" alt="${this.escapeHtml(item.name || 'Product')}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">` : `<div style="width:40px;height:40px;background:#f8f9fa;border:1px solid #ddd;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:8px;">ไม่มี<br>รูป</div>`}
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="autocomplete-item-name">${this.escapeHtml(item.name || 'ไม่ระบุชื่อ')}</div>
+                        <div class="autocomplete-item-details">
+                            SKU: ${this.escapeHtml(item.sku || 'N/A')} | 
+                            ราคา: ฿${parseFloat(item.price_per_unit || 0).toLocaleString('th-TH', {minimumFractionDigits: 2})} | 
+                            คงเหลือ: ${parseInt(item.stock_qty || 0).toLocaleString()} ${item.unit || 'ชิ้น'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            this.selectedIndex = -1;
+            this.updateSelection();
+        }
+        
+        selectNext() {
+            if (this.selectedIndex < this.results.length - 1) {
+                this.selectedIndex++;
+                this.updateSelection();
+            }
+        }
+        
+        selectPrevious() {
+            if (this.selectedIndex > 0) {
+                this.selectedIndex--;
+                this.updateSelection();
+            }
+        }
+        
+        updateSelection() {
+            const items = this.dropdown.querySelectorAll('.autocomplete-item');
+            items.forEach((item, index) => {
+                item.classList.toggle('selected', index === this.selectedIndex);
+            });
+        }
+        
+        selectItem(item) {
+            this.input.value = item.name || '';
+            this.hideDropdown();
+            
+            // Call the onSelect callback
+            this.options.onSelect(item, this.input);
+        }
+        
+        showDropdown() {
+            this.dropdown.classList.add('show');
+        }
+        
+        hideDropdown() {
+            this.dropdown.classList.remove('show');
+            this.selectedIndex = -1;
+        }
+        
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        destroy() {
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout);
+            }
+            
+            if (this.dropdown) {
+                this.dropdown.remove();
+            }
+        }
+    }
+    
+    // Initialize autocomplete for product inputs
+    function initProductAutocomplete(input, options = {}) {
+        // Prevent double initialization
+        if (input._autocomplete) {
+            input._autocomplete.destroy();
+        }
+        
+        input._autocomplete = new ProductAutocomplete(input, {
+            onSelect: (product, inputElement) => {
+                // Find the row this input belongs to
+                const row = inputElement.closest('tr') || inputElement.closest('.form-group').parentElement;
+                
+                if (row) {
+                    // Update hidden product_id field if exists
+                    const productIdInput = row.querySelector('input[name="product_id[]"], input[name="product_id"], input[type="hidden"][data-field="product_id"]');
+                    if (productIdInput) {
+                        productIdInput.value = product.product_id || '';
+                    }
+                    
+                    // Update price field if exists
+                    const priceInput = row.querySelector('input[name="price_per_unit[]"], input[name="price_per_unit"], input[data-field="price_per_unit"]');
+                    if (priceInput) {
+                        priceInput.value = product.price_per_unit || '0';
+                    }
+                    
+                    // Update SKU field if exists
+                    const skuInput = row.querySelector('input[name="sku"], input[data-field="sku"]');
+                    if (skuInput) {
+                        skuInput.value = product.sku || '';
+                    }
+                    
+                    // Update unit field if exists
+                    const unitInput = row.querySelector('input[name="unit"], input[data-field="unit"]');
+                    if (unitInput) {
+                        unitInput.value = product.unit || 'ชิ้น';
+                    }
+                }
+                
+                // Call custom onSelect if provided
+                if (options.onSelect) {
+                    options.onSelect(product, inputElement);
+                }
+            },
+            ...options
+        });
+        
+        return input._autocomplete;
+    }
+
+    // Helper function for SweetAlert2 with proper z-index
+    function showSwal(options) {
+        return Swal.fire({
+            ...options,
+            customClass: {
+                container: 'swal2-top-z-index',
+                ...(options.customClass || {})
+            }
+        });
+    }
+
+    // Edit User Section
+    function editUserSection(poId) {
+        const section = document.getElementById('user-section');
+        const user = currentPoData.user;
+        
+        section.innerHTML = `
+            <div class="edit-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ผู้สั่งซื้อ:</label>
+                        <select class="form-input" id="edit-user-id">
+                            <option value="${user.user_id || ''}">${user.name || 'เลือกผู้ใช้'}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-save btn-sm" onclick="saveUserSection(${poId})">บันทึก</button>
+                    <button class="btn btn-cancel btn-sm" onclick="cancelUserEdit()">ยกเลิก</button>
+                </div>
+            </div>
+        `;
+        
+        // Load users for dropdown
+        loadUsersDropdown();
+    }
+
+    function loadUsersDropdown() {
+        fetch('../api/users_api.php')
+            .then(res => res.json())
+            .then(users => {
+                const select = document.getElementById('edit-user-id');
+                const currentUserId = currentPoData.user.user_id;
+                
+                select.innerHTML = users.map(u => 
+                    `<option value="${u.user_id}" ${u.user_id == currentUserId ? 'selected' : ''}>${u.name} - ${u.department || 'ไม่ระบุแผนก'}</option>`
+                ).join('');
+            })
+            .catch(() => {
+                // Fallback if API fails
+                const select = document.getElementById('edit-user-id');
+                select.innerHTML = `<option value="${currentPoData.user.user_id || ''}">${currentPoData.user.name || 'ไม่ระบุ'}</option>`;
+            });
+    }
+
+    function saveUserSection(poId) {
+        const userId = document.getElementById('edit-user-id').value;
+        
+        const formData = new FormData();
+        formData.append('po_id', poId);
+        formData.append('ordered_by', userId);
+        formData.append('update_type', 'user');
+
+        fetch('../api/update_po_section.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Refresh the current view
+                fetch('../api/purchase_order_api.php?id=' + poId)
+                    .then(res => res.json())
+                    .then(updatedData => {
+                        currentPoData = updatedData;
+                        renderUserSection();
+                        Swal.fire({
+                            title: 'บันทึกแล้ว!', 
+                            text: 'ข้อมูลผู้สั่งซื้อถูกอัปเดตแล้ว', 
+                            icon: 'success',
+                            customClass: { container: 'swal2-top-z-index' }
+                        });
+                    });
+            } else {
+                Swal.fire('เกิดข้อผิดพลาด!', data.message || 'ไม่สามารถบันทึกได้', 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            Swal.fire('เกิดข้อผิดพลาด!', 'การสื่อสารกับเซิร์ฟเวอร์ล้มเหลว', 'error');
+        });
+    }
+
+    function cancelUserEdit() {
+        renderUserSection();
+    }
+
+    function renderUserSection() {
+        const section = document.getElementById('user-section');
+        const user = currentPoData.user;
+        section.innerHTML = `
+            <p><strong>${user.name || '-'}</strong></p>
+            ${user.department ? `<p>แผนก: ${user.department}</p>` : ''}
+        `;
+    }
+
+    // Edit Supplier Section
+    function editSupplierSection(poId) {
+        const section = document.getElementById('supplier-section');
+        const supplier = currentPoData.supplier;
+        
+        section.innerHTML = `
+            <div class="edit-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ผู้จำหน่าย:</label>
+                        <select class="form-input" id="edit-supplier-id">
+                            <option value="${supplier.supplier_id || ''}">${supplier.name || 'เลือกผู้จำหน่าย'}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-save btn-sm" onclick="saveSupplierSection(${poId})">บันทึก</button>
+                    <button class="btn btn-cancel btn-sm" onclick="cancelSupplierEdit()">ยกเลิก</button>
+                </div>
+            </div>
+        `;
+        
+        // Load suppliers for dropdown
+        loadSuppliersDropdown();
+    }
+
+    function loadSuppliersDropdown() {
+        fetch('../api/suppliers_api.php')
+            .then(res => res.json())
+            .then(suppliers => {
+                const select = document.getElementById('edit-supplier-id');
+                const currentSupplierId = currentPoData.supplier.supplier_id;
+                
+                select.innerHTML = suppliers.map(s => 
+                    `<option value="${s.supplier_id}" ${s.supplier_id == currentSupplierId ? 'selected' : ''}>${s.name}</option>`
+                ).join('');
+            })
+            .catch(() => {
+                // Fallback if API fails
+                const select = document.getElementById('edit-supplier-id');
+                select.innerHTML = `<option value="${currentPoData.supplier.supplier_id || ''}">${currentPoData.supplier.name || 'ไม่ระบุ'}</option>`;
+            });
+    }
+
+    function saveSupplierSection(poId) {
+        const supplierId = document.getElementById('edit-supplier-id').value;
+        
+        const formData = new FormData();
+        formData.append('po_id', poId);
+        formData.append('supplier_id', supplierId);
+        formData.append('update_type', 'supplier');
+
+        fetch('../api/update_po_section.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Refresh the current view
+                fetch('../api/purchase_order_api.php?id=' + poId)
+                    .then(res => res.json())
+                    .then(updatedData => {
+                        currentPoData = updatedData;
+                        renderSupplierSection();
+                        Swal.fire({
+                            title: 'บันทึกแล้ว!', 
+                            text: 'ข้อมูลผู้จำหน่ายถูกอัปเดตแล้ว', 
+                            icon: 'success',
+                            customClass: { container: 'swal2-top-z-index' }
+                        });
+                    });
+            } else {
+                Swal.fire('เกิดข้อผิดพลาด!', data.message || 'ไม่สามารถบันทึกได้', 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            Swal.fire('เกิดข้อผิดพลาด!', 'การสื่อสารกับเซิร์ฟเวอร์ล้มเหลว', 'error');
+        });
+    }
+
+    function cancelSupplierEdit() {
+        renderSupplierSection();
+    }
+
+    function renderSupplierSection() {
+        const section = document.getElementById('supplier-section');
+        const supplier = currentPoData.supplier;
+        section.innerHTML = `
+            <p><strong>${supplier.name || '-'}</strong></p>
+            ${supplier.phone || supplier.email ? `<p>${supplier.phone ? 'โทร: ' + supplier.phone : ''} ${supplier.phone && supplier.email ? ' | ' : ''}${supplier.email ? 'อีเมล: ' + supplier.email : ''}</p>` : ''}
+            ${supplier.address ? `<p>ที่อยู่: ${supplier.address}</p>` : ''}
+        `;
+    }
+
+    // Edit Items Inline
+    let isEditingItems = false;
+
+    function editItemsInline(poId) {
+        if (isEditingItems) return;
+        
+        isEditingItems = true;
+        const tableBody = document.querySelector('.po-items-table tbody');
+        const rows = tableBody.querySelectorAll('tr');
+        
+        // Add edit mode class
+        document.querySelector('.po-items-table').classList.add('item-edit-mode');
+        
+        rows.forEach((row, index) => {
+            const item = currentPoData.items[index];
+            if (!item) return;
+            
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 8) {
+                // Keep image cell as is (index 1)
+                
+                // Product name (make it editable with autocomplete) - now index 2
+                cells[2].innerHTML = `
+                    <div class="autocomplete-container" style="position: relative;">
+                        <input type="text" class="item-edit-input autocomplete-input" value="${item.product_name || ''}" data-field="product_name" placeholder="พิมพ์ชื่อสินค้าเพื่อค้นหา">
+                        <input type="hidden" data-field="product_id" value="${item.product_id || ''}">
+                        <input type="hidden" data-field="image" value="${item.image || ''}">
+                    </div>
+                `;
+                
+                // Quantity - now index 4
+                cells[4].innerHTML = `<input type="number" class="item-edit-input" value="${item.qty || 0}" data-field="qty" min="1" step="1">`;
+                
+                // Price per unit - now index 6
+                cells[6].innerHTML = `<input type="number" class="item-edit-input" value="${item.price_per_unit || 0}" data-field="price_per_unit" min="0" step="0.01">`;
+                
+                // Add action buttons - now index 7
+                cells[7].innerHTML = `
+                    <div class="item-actions">
+                        <button class="btn-item-action btn-save-item" onclick="saveItemRow(${poId}, ${item.item_id || 0}, ${index})">บันทึก</button>
+                        <button class="btn-item-action btn-delete-item" onclick="deleteItemRow(${poId}, ${item.item_id || 0}, ${index})">ลบ</button>
+                    </div>
+                `;
+            }
+        });
+        
+        // Initialize autocomplete for all product name inputs
+        setTimeout(() => {
+            const productInputs = document.querySelectorAll('.item-edit-input.autocomplete-input');
+            console.log('Found', productInputs.length, 'product inputs to initialize'); // Debug log
+            
+            productInputs.forEach((input, index) => {
+                console.log('Initializing autocomplete for input', index); // Debug log
+                
+                // Ensure the parent container has autocomplete-container class
+                if (!input.parentElement.classList.contains('autocomplete-container')) {
+                    const container = document.createElement('div');
+                    container.className = 'autocomplete-container';
+                    container.style.position = 'relative';
+                    input.parentElement.insertBefore(container, input);
+                    container.appendChild(input);
+                }
+                
+                initProductAutocomplete(input, {
+                    onSelect: (product, inputElement) => {
+                        console.log('Product selected:', product); // Debug log
+                        const row = inputElement.closest('tr');
+                        if (row) {
+                            // Update hidden product_id
+                            const productIdInput = row.querySelector('input[data-field="product_id"]');
+                            if (productIdInput) {
+                                productIdInput.value = product.product_id || '';
+                                console.log('Updated product_id to:', product.product_id);
+                            }
+                            
+                            // Update price
+                            const priceInput = row.querySelector('input[data-field="price_per_unit"]');
+                            if (priceInput) {
+                                priceInput.value = product.price_per_unit || '0';
+                                console.log('Updated price to:', product.price_per_unit);
+                            }
+                            
+                            // Update image
+                            const imageInput = row.querySelector('input[data-field="image"]');
+                            if (imageInput) {
+                                imageInput.value = product.image || '';
+                                console.log('Updated image to:', product.image);
+                                
+                                // Update the image display in the table
+                                const imageCell = row.cells[1]; // Image column
+                                if (imageCell && product.image) {
+                                    imageCell.innerHTML = `<img src="../${product.image}" alt="${product.name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">`;
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        }, 200);
+        
+        // Add exit edit mode button
+        const sectionActions = document.querySelector('.section-actions');
+        sectionActions.innerHTML = `
+            <button onclick="exitItemEditMode()" class="btn-cancel btn-sm">
+                <i class="material-icons" style="font-size:14px;">close</i> เสร็จสิ้น
+            </button>
+        `;
+    }
+
+    function exitItemEditMode() {
+        isEditingItems = false;
+        document.querySelector('.po-items-table').classList.remove('item-edit-mode');
+        
+        // Re-render the items table
+        renderItemsTable();
+        
+        // Restore section actions
+        const sectionActions = document.querySelector('.section-actions');
+        sectionActions.innerHTML = `
+            <button onclick="editItemsInline(${currentPoData.order.po_id})" class="btn-edit-section btn-sm" title="แก้ไขรายการสินค้า">
+                <i class="material-icons" style="font-size:14px;">edit</i> แก้ไขรายการ
+            </button>
+            <button onclick="addNewItem(${currentPoData.order.po_id})" class="btn-add-item btn-sm" title="เพิ่มสินค้าใหม่">
+                <i class="material-icons" style="font-size:14px;">add</i> เพิ่มสินค้า
+            </button>
+        `;
+    }
+
+    function saveItemRow(poId, itemId, index) {
+        const row = document.querySelectorAll('.po-items-table tbody tr')[index];
+        const inputs = row.querySelectorAll('.item-edit-input, input[type="hidden"][data-field]');
+        
+        const updateData = {};
+        inputs.forEach(input => {
+            if (input.dataset.field) {
+                updateData[input.dataset.field] = input.value;
+            }
+        });
+        
+        // Get currency information from current order
+        const currencyId = currentPoData.order.currency_id || 1;
+        const exchangeRate = parseFloat(currentPoData.order.exchange_rate || 1);
+        const priceOriginal = parseFloat(updateData.price_per_unit || 0);
+        
+        const formData = new FormData();
+        formData.append('po_id', poId);
+        formData.append('item_id', itemId);
+        formData.append('product_id', updateData.product_id || '');
+        formData.append('product_name', updateData.product_name || '');
+        formData.append('qty', updateData.qty || 1);
+        formData.append('price_per_unit', updateData.price_per_unit || 0);
+        formData.append('currency_id', currencyId);
+        formData.append('price_original', priceOriginal);
+        formData.append('exchange_rate', exchangeRate);
+        formData.append('update_type', 'item');
+
+        console.log('Saving item row:', { poId, itemId, index, updateData }); // Debug log
+        
+        fetch('../api/update_po_section.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log('Save response status:', response.status); // Debug log
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            console.log('Save response data:', data); // Debug log
+            
+            if (data.success) {
+                // Update the current data
+                currentPoData.items[index] = { 
+                    ...currentPoData.items[index], 
+                    product_id: updateData.product_id || currentPoData.items[index].product_id,
+                    product_name: updateData.product_name || currentPoData.items[index].product_name,
+                    qty: parseFloat(updateData.qty || 0),
+                    price_per_unit: parseFloat(updateData.price_per_unit || 0),
+                    total: parseFloat(updateData.qty || 0) * parseFloat(updateData.price_per_unit || 0)
+                };
+                
+                // Show success message
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'บันทึกแล้ว',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+                
+                // Update the total
+                updateItemsTotal();
+            } else {
+                Swal.fire({
+                    title: 'เกิดข้อผิดพลาด!', 
+                    text: data.message || 'ไม่สามารถบันทึกได้', 
+                    icon: 'error',
+                    customClass: { container: 'swal2-top-z-index' }
+                });
+            }
+        })
+        .catch(err => {
+            console.error('Save error:', err);
+            Swal.fire({
+                title: 'เกิดข้อผิดพลาด!', 
+                text: `การสื่อสารกับเซิร์ฟเวอร์ล้มเหลว: ${err.message}`, 
+                icon: 'error',
+                customClass: { container: 'swal2-top-z-index' }
+            });
+        });
+    }
+
+    function deleteItemRow(poId, itemId, index) {
+        Swal.fire({
+            title: 'ยืนยันการลบ?',
+            text: 'คุณต้องการลบรายการสินค้านี้ใช่หรือไม่?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'ใช่, ลบเลย!',
+            cancelButtonText: 'ยกเลิก',
+            customClass: {
+                container: 'swal2-top-z-index'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const formData = new FormData();
+                formData.append('po_id', poId);
+                formData.append('item_id', itemId);
+                formData.append('update_type', 'delete_item');
+
+                console.log('Deleting item:', { poId, itemId, index }); // Debug log
+                
+                fetch('../api/update_po_section.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    console.log('Delete response status:', response.status); // Debug log
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Delete response data:', data); // Debug log
+                    
+                    if (data.success) {
+                        // Remove from current data
+                        currentPoData.items.splice(index, 1);
+                        
+                        // Re-render items table
+                        exitItemEditMode();
+                        
+                        Swal.fire({
+                            title: 'ลบแล้ว!', 
+                            text: 'รายการสินค้าถูกลบเรียบร้อย', 
+                            icon: 'success',
+                            customClass: { container: 'swal2-top-z-index' }
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'เกิดข้อผิดพลาด!', 
+                            text: data.message || 'ไม่สามารถลบได้', 
+                            icon: 'error',
+                            customClass: { container: 'swal2-top-z-index' }
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.error('Delete error:', err);
+                    Swal.fire({
+                        title: 'เกิดข้อผิดพลาด!', 
+                        text: `การสื่อสารกับเซิร์ฟเวอร์ล้มเหลว: ${err.message}`, 
+                        icon: 'error',
+                        customClass: { container: 'swal2-top-z-index' }
+                    });
+                });
+            }
+        });
+    }
+
+    function addNewItem(poId) {
+        // Get current order currency info
+        const orderCurrency = currentPoData.order.currency_code || 'THB';
+        const currencySymbol = currentPoData.order.currency_symbol || '฿';
+        const exchangeRate = parseFloat(currentPoData.order.exchange_rate || 1);
+        
+        // Show a form to add new item with autocomplete
+        Swal.fire({
+            title: 'เพิ่มสินค้าใหม่',
+            html: `
+                <div style="text-align: left;">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px;">ชื่อสินค้า:</label>
+                        <div class="autocomplete-container" style="position: relative;">
+                            <input type="text" id="new-product-name" class="autocomplete-input" placeholder="พิมพ์ชื่อสินค้าเพื่อค้นหา" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
+                            <input type="hidden" id="new-product-id" value="">
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px;">จำนวน:</label>
+                        <input type="number" id="new-qty" class="swal2-input" value="1" min="1">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px;">สกุลเงิน:</label>
+                        <select id="new-currency" class="swal2-input" onchange="updateNewItemCurrency()">
+                            ${currentPoData.currencies ? currentPoData.currencies.map(c => 
+                                `<option value="${c.currency_id}" data-rate="${c.exchange_rate}" data-symbol="${c.symbol}" ${c.code === orderCurrency ? 'selected' : ''}>${c.symbol} ${c.name} (${c.code})</option>`
+                            ).join('') : `<option value="1" data-rate="1" data-symbol="฿">฿ Thai Baht (THB)</option>`}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px;">ราคาต่อหน่วย:</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span id="new-currency-symbol" style="font-weight: bold; color: #1976d2; min-width: 20px;">${currencySymbol}</span>
+                            <input type="number" id="new-price" class="swal2-input" value="0" min="0" step="0.01" onchange="updateNewItemBasePrice()">
+                        </div>
+                        <div id="new-price-base" style="font-size: 12px; color: #666; margin-top: 5px;">≈ ฿0.00</div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px;">หน่วย:</label>
+                        <input type="text" id="new-unit" class="swal2-input" value="ชิ้น" placeholder="หน่วยสินค้า">
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'เพิ่ม',
+            cancelButtonText: 'ยกเลิก',
+            customClass: {
+                container: 'swal2-top-z-index'
+            },
+            didOpen: () => {
+                // Initialize autocomplete for the product input
+                const productInput = document.getElementById('new-product-name');
+                if (productInput) {
+                    initProductAutocomplete(productInput, {
+                        onSelect: (product, inputElement) => {
+                            // Update hidden fields
+                            document.getElementById('new-product-id').value = product.product_id || '';
+                            document.getElementById('new-price').value = product.price_per_unit || '0';
+                            document.getElementById('new-unit').value = product.unit || 'ชิ้น';
+                            updateNewItemBasePrice(); // Update base price when product is selected
+                        }
+                    });
+                }
+                
+                // Initialize base price display
+                updateNewItemBasePrice();
+            },
+            preConfirm: () => {
+                const productName = document.getElementById('new-product-name').value;
+                const productId = document.getElementById('new-product-id').value;
+                const qty = document.getElementById('new-qty').value;
+                const price = document.getElementById('new-price').value;
+                const unit = document.getElementById('new-unit').value;
+                const currencySelect = document.getElementById('new-currency');
+                const currencyId = currencySelect.value;
+                const exchangeRate = parseFloat(currencySelect.options[currencySelect.selectedIndex].dataset.rate);
+                
+                if (!productName.trim()) {
+                    Swal.showValidationMessage('กรุณาระบุชื่อสินค้า');
+                    return false;
+                }
+                
+                return { productName, productId, qty, price, unit, currencyId, exchangeRate };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const { productName, productId, qty, price, unit, currencyId, exchangeRate } = result.value;
+                
+                const formData = new FormData();
+                formData.append('po_id', poId);
+                formData.append('product_id', productId || '');
+                formData.append('product_name', productName);
+                formData.append('qty', qty);
+                formData.append('price_per_unit', price);
+                formData.append('unit', unit || 'ชิ้น');
+                formData.append('currency_id', currencyId);
+                formData.append('price_original', price);
+                formData.append('exchange_rate', exchangeRate);
+                formData.append('update_type', 'add_item');
+
+                fetch('../api/update_po_section.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Add to current data
+                        const newItem = {
+                            item_id: data.item_id,
+                            product_id: productId || null,
+                            product_name: productName,
+                            qty: parseInt(qty),
+                            price_per_unit: parseFloat(price),
+                            total: parseInt(qty) * parseFloat(price),
+                            sku: data.sku || '-',
+                            image: data.image || '',
+                            unit: unit || 'ชิ้น'
+                        };
+                        
+                        currentPoData.items.push(newItem);
+                        
+                        // Re-render items table
+                        renderItemsTable();
+                        
+                        Swal.fire({
+                            title: 'เพิ่มแล้ว!', 
+                            text: 'รายการสินค้าใหม่ถูกเพิ่มเรียบร้อย', 
+                            icon: 'success',
+                            customClass: { container: 'swal2-top-z-index' }
+                        });
+                    } else {
+                        Swal.fire('เกิดข้อผิดพลาด!', data.message || 'ไม่สามารถเพิ่มได้', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    Swal.fire('เกิดข้อผิดพลาด!', 'การสื่อสารกับเซิร์ฟเวอร์ล้มเหลว', 'error');
+                });
+            }
+        });
+    }
+
+    function renderItemsTable() {
+        const formatCurrency = (amount) => parseFloat(amount || 0).toLocaleString('th-TH', {
+            minimumFractionDigits: 2, maximumFractionDigits: 2
+        });
+
+        let itemsHtml = currentPoData.items && currentPoData.items.length > 0 ? currentPoData.items.map((item, index) => {
+            const qty = parseFloat(item.qty || 0);
+            const price = parseFloat(item.price_per_unit || 0);
+            const total = parseFloat(item.total || (qty * price));
+            
+            return `
+            <tr>
+                <td style="text-align:center;">${index + 1}</td>
+                <td style="text-align:center;">
+                    ${item.image ? `<img src="../${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">` : `<div style="width:50px;height:50px;background:#f8f9fa;border:1px solid #ddd;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:10px;">ไม่มี<br>รูป</div>`}
+                </td>
+                <td>
+                    ${item.product_name || 'ไม่ระบุชื่อสินค้า'}
+                </td>
+                <td>${item.sku || '-'}</td>
+                <td style="text-align:right;">${qty.toLocaleString()}</td>
+                <td>${item.unit || 'ชิ้น'}</td>
+                <td style="text-align:right;">฿${formatCurrency(price)}</td>
+                <td style="text-align:right;">฿${formatCurrency(total)}</td>
+            </tr>`;
+        }).join('') : `<tr><td colspan="8" style="text-align:center;padding:20px;color:#6c757d;">ไม่พบรายการสินค้า</td></tr>`;
+
+        document.querySelector('.po-items-table tbody').innerHTML = itemsHtml;
+        updateItemsTotal();
+    }
+
+    function updateItemsTotal() {
+        const subtotalOriginal = currentPoData.items ? currentPoData.items.reduce((sum, item) => {
+            const qty = parseFloat(item.qty || 0);
+            const priceOriginal = parseFloat(item.price_original || item.price_per_unit || 0);
+            return sum + (qty * priceOriginal);
+        }, 0) : 0;
+        
+        const subtotalBase = currentPoData.items ? currentPoData.items.reduce((sum, item) => {
+            const qty = parseFloat(item.qty || 0);
+            const priceBase = parseFloat(item.price_base || item.price_per_unit || 0);
+            const total = parseFloat(item.total || (qty * priceBase));
+            return sum + total;
+        }, 0) : 0;
+
+        const formatCurrency = (amount) => parseFloat(amount || 0).toLocaleString('th-TH', {
+            minimumFractionDigits: 2, maximumFractionDigits: 2
+        });
+
+        const currencySymbol = currentPoData.order.currency_symbol || '฿';
+        const currencyCode = currentPoData.order.currency_code || 'THB';
+        
+        const totalHtml = currencyCode !== 'THB' ? 
+            `<div>${currencySymbol}${formatCurrency(subtotalOriginal)}</div><div style="font-size:12px;color:#666;font-weight:normal;">≈ ฿${formatCurrency(subtotalBase)} บาท</div>` : 
+            `฿${formatCurrency(subtotalBase)} บาท`;
+            
+        document.querySelector('.po-items-table tfoot td:last-child').innerHTML = totalHtml;
+    }
+    
+    // Helper functions for currency handling in forms
+    function updateNewItemCurrency() {
+        const currencySelect = document.getElementById('new-currency');
+        const symbolSpan = document.getElementById('new-currency-symbol');
+        const selectedOption = currencySelect.options[currencySelect.selectedIndex];
+        
+        if (symbolSpan && selectedOption) {
+            symbolSpan.textContent = selectedOption.dataset.symbol;
+        }
+        
+        updateNewItemBasePrice();
+    }
+    
+    function updateNewItemBasePrice() {
+        const priceInput = document.getElementById('new-price');
+        const currencySelect = document.getElementById('new-currency');
+        const basePriceDiv = document.getElementById('new-price-base');
+        
+        if (!priceInput || !currencySelect || !basePriceDiv) return;
+        
+        const price = parseFloat(priceInput.value || 0);
+        const selectedOption = currencySelect.options[currencySelect.selectedIndex];
+        const rate = parseFloat(selectedOption.dataset.rate || 1);
+        const basePrice = price * rate;
+        
+        basePriceDiv.textContent = `≈ ฿${basePrice.toFixed(2)}`;
     }
     </script>
 </body>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test Page</h1>
+    <button onclick="testAPI()">Test Product Search API</button>
+    <div id="result"></div>
+
+    <script>
+    async function testAPI() {
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = 'Testing API...';
+        
+        try {
+            console.log('Making API request...');
+            const response = await fetch('./api/product_search_api.php?q=test');
+            
+            console.log('Response status:', response.status, response.statusText);
+            console.log('Response headers:', [...response.headers.entries()]);
+            
+            const text = await response.text();
+            console.log('Response text:', text);
+            console.log('Response text length:', text.length);
+            
+            if (text.trim() === '') {
+                resultDiv.innerHTML = '<p style="color: red;">Empty response from API!</p>';
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(text);
+                console.log('Parsed data:', data);
+                resultDiv.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (jsonError) {
+                console.error('JSON parse error:', jsonError);
+                resultDiv.innerHTML = '<p style="color: red;">JSON parse error: ' + jsonError.message + '</p><pre>' + text + '</pre>';
+            }
+            
+        } catch (error) {
+            console.error('API test error:', error);
+            resultDiv.innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    }
+    </script>
+</body>
+</html>
