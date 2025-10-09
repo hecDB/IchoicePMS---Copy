@@ -31,16 +31,6 @@ $user_role = $_SESSION['user_role'] ?? 'user';
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<!-- <style>
-/* --- ใส่ style ของคุณที่นี่ --- */
-.table-card{
-    background:#fff;
-    border-radius:12px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.08);
-    overflow:hidden;
-    margin-top:15px;
-}
-</style> -->
 </head>
 <body>
   <?php include '../templates/sidebar.php'; ?>

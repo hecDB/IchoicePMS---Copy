@@ -39,8 +39,17 @@ try {
     $pending_count = 0;
 }
 
-// ดึงจำนวนสินค้าที่รอรับเข้า - simplified for now to avoid database errors
-$pending_product_count = 0;
+// ดึงจำนวนสินค้าที่รอรับเข้า
+try {
+    $pending_po_sql = "
+        SELECT COUNT(*) 
+        FROM purchase_orders po 
+        WHERE po.status IN ('pending', 'partial')
+    ";
+    $pending_product_count = $pdo->query($pending_po_sql)->fetchColumn();
+} catch (PDOException $e) {
+    $pending_product_count = 0;
+}
 ?>
 <style>
 body {
@@ -184,6 +193,17 @@ body {
                 <a href="<?= getPath('orders/purchase_order_create.php') ?>" class="submenu-item<?=isActive('purchase_order_create.php')?>">
                     <span class="material-icons">add_shopping_cart</span>
                     <span class="submenu-text">สร้างใบสั่งซื้อใหม่</span>
+                </a>
+                <a href="<?= getPath('receive/receive_po_items.php') ?>" class="submenu-item<?=isActive('receive_po_items.php')?>">
+                    <span class="material-icons">input</span>
+                    <span class="submenu-text">รับเข้าสินค้า</span>
+                    <?php if($pending_product_count > 0): ?>
+                        <span class="pending-badge"><?= $pending_product_count ?></span>
+                    <?php endif; ?>
+                </a>
+                <a href="<?= getPath('receive/quick_receive.php') ?>" class="submenu-item<?=isActive('quick_receive.php')?>">
+                    <span class="material-icons">qr_code_scanner</span>
+                    <span class="submenu-text">รับสินค้าด่วน (Scan)</span>
                 </a>
             </div>
         </div>
