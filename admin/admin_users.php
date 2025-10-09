@@ -45,72 +45,276 @@ function formatDate($dt) { return date('d/m/Y H:i', strtotime($dt)); }
 
 
  <style>
-            /* TAB */
-                .tabs {
-                    display: flex;
-                    gap: 10px;
-                    margin-bottom: 20px;
-                }
+            /* Modern Tab Styling */
+            .tabs {
+                display: flex;
+                gap: 4px;
+                margin: 20px 0 30px 0;
+                padding: 6px;
+                background: #f8f9fa;
+                border-radius: 14px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                max-width: fit-content;
+            }
 
-             
-                .tabbtn:hover {
-                    background: #e9ebf5;          
-                }
-                .tabbtn.active {
-                    background: #ffffff;           /* พื้นหลังขาวเด่น */
-                    color: #0b0d66ff;             
-                    border: 2px solid #b0baf5;    /* ขอบฟ้าอ่อน */
-                }
+            .tabbtn {
+                padding: 12px 24px;
+                border: none;
+                border-radius: 10px;
+                background: transparent;
+                color: #6c757d;
+                font-weight: 500;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                position: relative;
+                white-space: nowrap;
+            }
 
-                /* Tab Content */
-                .tabcontent { display:none; }
-                .tabcontent.active { display:block; }
+            .tabbtn:hover {
+                background: #e9ecef;
+                color: #495057;
+                transform: translateY(-1px);
+            }
+            
+            .tabbtn.active {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: #ffffff;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                transform: translateY(-2px);
+            }
 
-                /* Card */
-                .card-sec { display:flex; gap:16px; flex-wrap:wrap; margin-top:20px; }
+            /* Tab Content */
+            .tabcontent { 
+                display: none; 
+                animation: fadeIn 0.3s ease-in;
+            }
+            .tabcontent.active { 
+                display: block; 
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+                /* Modern Card Layout */
+                .card-sec { 
+                    display: grid; 
+                    gap: 24px; 
+                    margin-top: 30px;
+                    grid-template-columns: 1fr;
+                }
 
                 .card { 
-                    flex:1; min-width:300px; 
-                    background:#ffffff;          /* พื้นขาว */
-                    border-radius:16px;          /* ขอบโค้ง */
-                    padding:20px; 
-                    box-shadow:0 6px 20px rgba(0,0,0,0.08); /* เงานุ่ม */
+                    background: #ffffff;
+                    border-radius: 20px;
+                    padding: 28px;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+                    border: 1px solid rgba(0,0,0,0.05);
+                    transition: all 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
                 }
-                .card-title { font-weight:bold; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
 
-                /* User List */
-                .user-list { display:flex; flex-direction:column; gap:10px; }
+                .card::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 4px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }
+
+                .card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 15px 50px rgba(0,0,0,0.12);
+                }
+
+                .card-title { 
+                    font-weight: 700; 
+                    margin-bottom: 20px; 
+                    display: flex; 
+                    align-items: center; 
+                    gap: 12px;
+                    color: #2d3748;
+                    font-size: 18px;
+                }
+
+                .card-title .material-icons {
+                    font-size: 24px;
+                    padding: 8px;
+                    border-radius: 10px;
+                    background: rgba(102, 126, 234, 0.1);
+                }
+
+                /* Special styling for reset password title */
+                .reset-title-container {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 16px 20px;
+                    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+                    border: 2px solid #10b981;
+                    border-radius: 12px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+                }
+
+                .reset-title-container .check-icon {
+                    width: 28px;
+                    height: 28px;
+                    background: #10b981;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 18px;
+                }
+
+                .reset-title-container .title-text {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #047857;
+                    margin: 0;
+                }
+
+                .reset-title-container .count-badge {
+                    background: #059669;
+                    color: white;
+                    padding: 4px 12px;
+                    border-radius: 20px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    margin-left: auto;
+                }
+
+                /* Enhanced User List */
+                .user-list { 
+                    display: flex; 
+                    flex-direction: column; 
+                    gap: 16px; 
+                }
+
                 .usercard { 
-                    display:flex; align-items:center; justify-content:space-between; 
-                    padding:12px 16px; 
-                    border:1px solid #eee; 
-                    border-radius:12px; 
-                    background:#ffffff; 
-                    box-shadow:0 2px 6px rgba(0,0,0,0.05);
-                    transition: all 0.25s;
-                }
-                .usercard:hover { 
-                    background:#f7f9ff; 
-                    box-shadow:0 4px 12px rgba(0,0,0,0.1);
-                }
-                .status-badge { 
-                    background:#f0f0f0; 
-                    padding:2px 6px; 
-                    border-radius:6px; 
-                    font-size:12px; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: space-between; 
+                    padding: 20px 24px; 
+                    border: 1px solid #e2e8f0;
+                    border-radius: 16px; 
+                    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+                    transition: all 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
                 }
 
-                /* Action Buttons */
-                .action-btn { 
-                    padding:6px 12px; 
-                    border-radius:8px; 
-                    text-decoration:none; 
-                    font-size:13px; 
-                    cursor:pointer; 
-                    transition:0.2s;
+                .usercard::before {
+                    content: '';
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    bottom: 0;
+                    width: 4px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    transform: translateX(-4px);
+                    transition: transform 0.3s ease;
                 }
-                .action-btn.reject { background:#f8d7da;color:#721c24; }
-                .action-btn.btn-approve { background:#d4edda;color:#155724; }
+
+                .usercard:hover::before {
+                    transform: translateX(0);
+                }
+
+                .usercard:hover { 
+                    background: linear-gradient(145deg, #f8fafc 0%, #ffffff 100%);
+                    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+                    transform: translateY(-2px);
+                    border-color: #cbd5e0;
+                }
+
+                .user-info {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+
+                .user-info > div:first-child {
+                    font-weight: 600;
+                    font-size: 16px;
+                    color: #2d3748;
+                }
+
+                .user-info small {
+                    color: #718096;
+                    font-size: 13px;
+                }
+
+                .card-empty {
+                    text-align: center;
+                    padding: 40px 20px;
+                    color: #a0aec0;
+                    font-style: italic;
+                    background: #f7fafc;
+                    border-radius: 12px;
+                    border: 2px dashed #e2e8f0;
+                }
+                /* Enhanced Status Badges */
+                .status-badge { 
+                    padding: 6px 12px; 
+                    border-radius: 20px; 
+                    font-size: 11px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+
+                .status-pending {
+                    background: linear-gradient(135deg, #fed7a1 0%, #ffc947 100%);
+                    color: #8b4513;
+                }
+
+                .status-approved {
+                    background: linear-gradient(135deg, #9decf9 0%, #06b6d4 100%);
+                    color: #0c4a6e;
+                }
+
+                /* Modern Action Buttons */
+                .action-btn { 
+                    padding: 10px 18px; 
+                    border-radius: 12px; 
+                    text-decoration: none; 
+                    font-size: 13px;
+                    font-weight: 600;
+                    cursor: pointer; 
+                    transition: all 0.3s ease;
+                    border: none;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+
+                .action-btn:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                }
+
+                .action-btn.reject { 
+                    background: linear-gradient(135deg, #fecaca 0%, #ef4444 100%);
+                    color: #7f1d1d;
+                }
+
+                .action-btn.btn-approve { 
+                    background: linear-gradient(135deg, #bbf7d0 0%, #10b981 100%);
+                    color: #064e3b;
+                }
+
+                .action-btns {
+                    display: flex;
+                    gap: 8px;
+                }
 
                 /* Reset card */
                 /* กรอบใหญ่ครอบ reset-card */
@@ -214,44 +418,140 @@ function formatDate($dt) { return date('d/m/Y H:i', strtotime($dt)); }
                             margin-right: 2px;
                         }   
 
+                /* Enhanced Action Icons */
                 .usercard .actions {
                     display: flex;
-                    gap: 8px;
+                    gap: 12px;
                 }
 
                 .usercard .actions a {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    width: 34px;
-                    height: 34px;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                    width: 42px;
+                    height: 42px;
+                    border-radius: 12px;
                     cursor: pointer;
-                    transition: all 0.2s ease;
+                    transition: all 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .usercard .actions a::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: inherit;
+                    filter: brightness(1.1);
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                }
+
+                .usercard .actions a:hover::before {
+                    opacity: 1;
                 }
 
                 .usercard .actions a .material-icons {
-                    font-size: 18px;
+                    font-size: 20px;
                     color: #fff;
+                    position: relative;
+                    z-index: 1;
                 }
 
                 .btn-edit {
-                    background: #3498db;
+                    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
                 }
+                
                 .btn-edit:hover {
-                    background: #2d83c5;
-                    transform: translateY(-2px);
+                    transform: translateY(-3px);
+                    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
                 }
 
                 .btn-delete {
-                    background: #e74c3c;
+                    background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
                 }
+                
                 .btn-delete:hover {
-                    background: #c0392b;
-                    transform: translateY(-2px);
+                    transform: translateY(-3px);
+                    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
                 }
                                 
+            /* Responsive Design */
+            @media (max-width: 768px) {
+                .tabs {
+                    flex-direction: column;
+                    gap: 8px;
+                    width: 100%;
+                }
+                
+                .tabbtn {
+                    width: 100%;
+                    text-align: center;
+                }
+                
+                .usercard {
+                    flex-direction: column;
+                    gap: 15px;
+                    align-items: flex-start;
+                }
+                
+                .usercard .actions {
+                    align-self: flex-end;
+                }
+                
+                .action-btns {
+                    width: 100%;
+                    justify-content: flex-end;
+                }
+                
+                .card {
+                    padding: 20px;
+                    margin: 0 10px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .card {
+                    padding: 16px;
+                    margin: 0 8px;
+                }
+                
+                .usercard .actions a {
+                    width: 36px;
+                    height: 36px;
+                }
+                
+                .action-btn {
+                    padding: 8px 14px;
+                    font-size: 12px;
+                }
+            }
+
+            /* Loading Animation */
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+
+            .loading {
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+
+            /* Success/Error States */
+            .success-state {
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+            }
+
+            .error-state {
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                color: white;
+            }
                         
 </style>
 </head>
@@ -266,7 +566,15 @@ Swal.fire({icon:'success',title:'อนุมัติสำเร็จ!',text:
 
 <?php  include '../templates/sidebar.php'; ?>
 <div class="mainwrap">
-    <div class="topbar">จัดการผู้ใช้</div>
+    <div class="topbar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 0 0 20px 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span class="material-icons" style="font-size: 28px;">admin_panel_settings</span>
+            <div>
+                <h1 style="margin: 0; font-size: 24px; font-weight: 700;">จัดการผู้ใช้งาน</h1>
+                <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 14px;">จัดการสมาชิกและคำขออนุมัติ</p>
+            </div>
+        </div>
+    </div>
 
     <!-- TAB BUTTONS -->
     <div class="tabs">
@@ -283,10 +591,19 @@ Swal.fire({icon:'success',title:'อนุมัติสำเร็จ!',text:
                 <div class="user-list">
                 <?php if(!$pending_users): ?><div class="card-empty">ไม่มีคำขออนุมัติ</div><?php else: foreach($pending_users as $u): ?>
                     <div class="usercard">
-                        <div><?=htmlspecialchars($u['name'])?> <span class="status-badge status-pending">รออนุมัติ</span><br><small><?=htmlspecialchars($u['email'])?> &bull; <?=htmlspecialchars($u['department'])?></small></div>
+                        <div class="user-info">
+                            <div><?=htmlspecialchars($u['name'])?> <span class="status-badge status-pending">รออนุมัติ</span></div>
+                            <small><?=htmlspecialchars($u['email'])?> &bull; <?=htmlspecialchars($u['department'])?> &bull; สมัครเมื่อ <?=date('d/m/Y', strtotime($u['created_at']))?></small>
+                        </div>
                         <div class="action-btns">
-                            <a href="#" class="action-btn btn-approve" data-uid="<?=$u['user_id']?>">อนุมัติ</a>
-                            <a href="?reject_id=<?=$u['user_id']?>" class="action-btn reject" onclick="return confirm('ไม่อนุมัติลบผู้ใช้นี้?')">ปฏิเสธ</a>
+                            <a href="#" class="action-btn btn-approve" data-uid="<?=$u['user_id']?>">
+                                <span class="material-icons" style="font-size: 16px;">check_circle</span>
+                                อนุมัติ
+                            </a>
+                            <a href="?reject_id=<?=$u['user_id']?>" class="action-btn reject" onclick="return confirm('ไม่อนุมัติและลบผู้ใช้นี้?')">
+                                <span class="material-icons" style="font-size: 16px;">cancel</span>
+                                ปฏิเสธ
+                            </a>
                         </div>
                     </div>
                 <?php endforeach; endif; ?>
@@ -312,18 +629,22 @@ Swal.fire({icon:'success',title:'อนุมัติสำเร็จ!',text:
 
                             <div class="usercard" id="user-<?=$u['user_id']?>">
                         <div class="user-info">
-                            <?=htmlspecialchars($u['name'])?>
-                            <br>
-                            <small><?=htmlspecialchars($u['email'])?> • <?=htmlspecialchars($u['department'])?></small>
+                            <div><?=htmlspecialchars($u['name'])?> <span class="status-badge status-approved">อนุมัติแล้ว</span></div>
+                            <small>
+                                <?=htmlspecialchars($u['email'])?> • <?=htmlspecialchars($u['department'])?> • 
+                                สิทธิ์: <?= $u['role'] === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน' ?> •
+                                เข้าร่วมเมื่อ <?=date('d/m/Y', strtotime($u['created_at']))?>
+                            </small>
                         </div>
-                        <span class="status-badge">อนุมัติแล้ว</span>
                         <div class="actions">
                             <a href="javascript:void(0)" class="btn-edit" 
-                            onclick="editUser(<?=$u['user_id']?>,'<?=htmlspecialchars($u['name'])?>','<?=htmlspecialchars($u['email'])?>','<?=htmlspecialchars($u['department'])?>','<?=htmlspecialchars($u['role'])?>')">
+                            onclick="editUser(<?=$u['user_id']?>,'<?=htmlspecialchars($u['name'])?>','<?=htmlspecialchars($u['email'])?>','<?=htmlspecialchars($u['department'])?>','<?=htmlspecialchars($u['role'])?>')"
+                            title="แก้ไขข้อมูล">
                             <span class="material-icons">edit</span>
                             </a>
                             <a href="javascript:void(0)" class="btn-delete" 
-                            onclick="deleteUser(<?=$u['user_id']?>)">
+                            onclick="deleteUser(<?=$u['user_id']?>)"
+                            title="ลบผู้ใช้">
                             <span class="material-icons">delete</span>
                             </a>
                         </div>
@@ -341,28 +662,18 @@ Swal.fire({icon:'success',title:'อนุมัติสำเร็จ!',text:
            <div id="reset-requests" class="tabcontent">
     <div class="card-sec" id="reset-requests-container">
         <div class="card">
-            <div class="card-title">
-                <span class="material-icons" style="color:#ffc107;">lock_reset</span>
-                คำขอรีเซ็ตรหัสผ่าน
+            <!-- Special title container with green frame -->
+            <div class="reset-title-container">
+                <div class="check-icon">
+                    <span class="material-icons">check</span>
+                </div>
+                <h3 class="title-text">คำขอรีเซ็ตรหัสผ่าน</h3>
+                <span class="count-badge">(2)</span>
             </div>
 
             <div class="user-list" id="reset-list">
-                <!-- AJAX จะโหลด admin_reset_requests.php ที่นี่ -->
-
-                <!-- ตัวอย่างการ์ดผู้ใช้ -->
-                <div class="reset-card">
-                    <div class="uc-details">
-                        <div class="name">ชื่อผู้ใช้ <span class="status-badge status-pending">รอรีเซ็ต</span></div>
-                        <div class="meta">user@example.com &bull; 28-08-2025 15:30</div>
-                    </div>
-                    <button class="action-btn process btn-reset" data-id="1">
-                        <span class="material-icons">lock_reset</span> ตั้งรหัสใหม่
-                    </button>
-                </div>
-
-                <!-- หากไม่มีคำขอ -->
-                <div class="card-empty" id="no-reset">ยังไม่มีคำขอรีเซ็ต</div>
-
+                <!-- AJAX จะโหลดเนื้อหาที่นี่ -->
+                <div class="card-empty">คลิกที่แท็บนี้เพื่อโหลดข้อมูล</div>
             </div>
         </div>
     </div>
@@ -389,14 +700,61 @@ tabButtons.forEach(btn=>{
 // โหลด AJAX tab reset requests
 function loadResetRequests(){
     const container = document.getElementById('reset-requests-container');
-    container.innerHTML = '<p>กำลังโหลด...</p>';
+    container.innerHTML = `
+        <div class="card">
+            <div class="reset-title-container">
+                <div class="check-icon">
+                    <span class="material-icons">check</span>
+                </div>
+                <h3 class="title-text">คำขอรีเซ็ตรหัสผ่าน</h3>
+                <span class="count-badge loading">กำลังโหลด...</span>
+            </div>
+            <div class="user-list" id="reset-list">
+                <p style="text-align:center; padding:20px; color:#666;">กำลังโหลดข้อมูล...</p>
+            </div>
+        </div>
+    `;
+    
     fetch('admin_reset_requests.php')
     .then(res=>res.text())
     .then(html=>{
-        container.innerHTML = html;
+        // Count the number of reset requests from the response
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        const resetCards = tempDiv.querySelectorAll('.reset-card');
+        const count = resetCards.length;
+        
+        // Update the container with proper count
+        container.innerHTML = `
+            <div class="card">
+                <div class="reset-title-container">
+                    <div class="check-icon">
+                        <span class="material-icons">check</span>
+                    </div>
+                    <h3 class="title-text">คำขอรีเซ็ตรหัสผ่าน</h3>
+                    <span class="count-badge">(${count})</span>
+                </div>
+                ${html}
+            </div>
+        `;
         attachResetEvents(); // attach event หลังโหลด
     })
-    .catch(err=>container.innerHTML='<p>โหลดข้อมูลไม่สำเร็จ</p>');
+    .catch(err=>{
+        container.innerHTML = `
+            <div class="card">
+                <div class="reset-title-container">
+                    <div class="check-icon">
+                        <span class="material-icons">error</span>
+                    </div>
+                    <h3 class="title-text">คำขอรีเซ็ตรหัสผ่าน</h3>
+                    <span class="count-badge">(Error)</span>
+                </div>
+                <div class="user-list">
+                    <p style="text-align:center; padding:20px; color:#ef4444;">โหลดข้อมูลไม่สำเร็จ</p>
+                </div>
+            </div>
+        `;
+    });
 }
 
 // attach event ให้ปุ่ม reset password

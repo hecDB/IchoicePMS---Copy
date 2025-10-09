@@ -217,14 +217,14 @@ body {
             <div class="submenu" id="stock-submenu">
                 <a href="<?= getPath('receive/receive_items_view.php') ?>" class="submenu-item<?=isActive('receive_items_view.php')?>">
                     <span class="material-icons">assignment_turned_in</span>
-                    <span class="submenu-text">สินค้าคงคลัง</span>
+                    <span class="submenu-text">ความเคลื่อนไหวสินค้า</span>
                     <?php if($pending_product_count > 0): ?>
                         <span class="pending-badge"><?= $pending_product_count ?></span>
                     <?php endif; ?>
                 </a>
                 <a href="<?= getPath('stock/all_stock.php') ?>" class="submenu-item<?=isActive('all_stock.php')?>">
                     <span class="material-icons">inventory</span>
-                    <span class="submenu-text">คลังสินค้าทั้งหมด</span>
+                    <span class="submenu-text">รายการสินค้าทั้งหมด</span>
                 </a>
                 <a href="<?= getPath('stock/low_stock.php') ?>" class="submenu-item<?=isActive('low_stock.php')?>">
                     <span class="material-icons">warning</span>
@@ -252,6 +252,10 @@ body {
                     <?php if($pending_count > 0): ?>
                         <span class="pending-badge"><?= $pending_count ?></span>
                     <?php endif; ?>
+                </a>
+                <a href="<?= getPath('settings/currency_management.php') ?>" class="submenu-item<?=isActive('currency_management.php')?>">
+                    <span class="material-icons">attach_money</span>
+                    <span class="submenu-text">จัดการสกุลเงิน</span>
                 </a>
             </div>
         </div>

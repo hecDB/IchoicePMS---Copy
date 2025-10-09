@@ -286,5 +286,311 @@ $expiring_soon_count = count($expiring_soon_products);
         </div>
     </div>
 </div>
+
+<!-- Expiry Notification Modal -->
+<div id="expiryModal" style="display: none;">
+    <div class="expiry-modal-overlay">
+        <div class="expiry-modal-content">
+            <div class="expiry-modal-header">
+                <div class="expiry-icon">
+                    <span style="color: #ef4444; font-size: 3rem;">✕</span>
+                </div>
+                <h2 class="expiry-title">แจ้งเตือนสินค้าหมดอายุ!</h2>
+                <p class="expiry-subtitle">
+                    พบสินค้าที่จะหมดอายุใน <span id="expiry-days">7</span> วันข้างหน้า
+                    <br><span id="expiry-count">15</span> รายการ
+                </p>
+            </div>
+            
+            <div class="expiry-modal-body">
+                <div class="expiry-summary">
+                    <div class="expiry-stat" id="expired-stat" style="display: none;">
+                        <span class="stat-number" id="expired-count">0</span>
+                        <span class="stat-label">หมดอายุแล้ว</span>
+                    </div>
+                    <div class="expiry-stat" id="expiring-stat" style="display: none;">
+                        <span class="stat-number" id="expiring-count">0</span>
+                        <span class="stat-label">ใกล้หมดอายุ</span>
+                    </div>
+                </div>
+                
+                <div class="expiry-details">
+                    <p class="detail-text">กรุณาตรวจสอบและติดตามการ<br>ปฏิบัติงานรับทราบแล้ว</p>
+                </div>
+            </div>
+            
+            <div class="expiry-modal-footer">
+                <button id="acknowledge-btn" class="btn-acknowledge">
+                    รับทราบ
+                </button>
+                <button id="view-details-btn" class="btn-details">
+                    ดูรายงาน
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Expiry Notification Modal Styles */
+.expiry-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    font-family: 'Sarabun', sans-serif;
+}
+
+.expiry-modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 0;
+    max-width: 480px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.expiry-modal-header {
+    text-align: center;
+    padding: 32px 32px 24px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.expiry-icon {
+    margin-bottom: 16px;
+}
+
+.expiry-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 12px 0;
+}
+
+.expiry-subtitle {
+    font-size: 1rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.expiry-modal-body {
+    padding: 24px 32px;
+}
+
+.expiry-summary {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.expiry-stat {
+    text-align: center;
+    padding: 16px;
+    border-radius: 12px;
+    min-width: 80px;
+}
+
+.expiry-stat:nth-child(1) {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+}
+
+.expiry-stat:nth-child(2) {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
+.stat-number {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.expiry-details {
+    text-align: center;
+}
+
+.detail-text {
+    font-size: 1rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.expiry-modal-footer {
+    padding: 24px 32px 32px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.btn-acknowledge {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Sarabun', sans-serif;
+}
+
+.btn-acknowledge:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+.btn-details {
+    background: #64748b;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Sarabun', sans-serif;
+}
+
+.btn-details:hover {
+    background: #475569;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+    .expiry-modal-content {
+        margin: 16px;
+        width: calc(100% - 32px);
+    }
+    
+    .expiry-summary {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .expiry-modal-footer {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    checkExpiryNotifications();
+});
+
+async function checkExpiryNotifications() {
+    try {
+        const response = await fetch('api/expiry_notification_api.php');
+        const result = await response.json();
+        
+        if (result.success && result.show_notification) {
+            showExpiryModal(result.data);
+        }
+    } catch (error) {
+        console.error('Error checking expiry notifications:', error);
+    }
+}
+
+function showExpiryModal(data) {
+    const modal = document.getElementById('expiryModal');
+    const expiredStat = document.getElementById('expired-stat');
+    const expiringStat = document.getElementById('expiring-stat');
+    
+    // Update counts
+    if (data.expired.count > 0) {
+        document.getElementById('expired-count').textContent = data.expired.count;
+        expiredStat.style.display = 'block';
+    }
+    
+    if (data.expiring.count > 0) {
+        document.getElementById('expiring-count').textContent = data.expiring.count;
+        expiringStat.style.display = 'block';
+    }
+    
+    // Update summary text
+    document.getElementById('expiry-count').textContent = data.total_items;
+    
+    // Show modal
+    modal.style.display = 'block';
+    
+    // Setup event handlers
+    setupModalEventHandlers();
+}
+
+function setupModalEventHandlers() {
+    const acknowledgeBtn = document.getElementById('acknowledge-btn');
+    const viewDetailsBtn = document.getElementById('view-details-btn');
+    
+    acknowledgeBtn.onclick = async function() {
+        try {
+            const response = await fetch('api/acknowledge_expiry_api.php', {
+                method: 'POST'
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                hideExpiryModal();
+                // Optional: Show success message
+                // alert('รับทราบการแจ้งเตือนเรียบร้อย');
+            } else {
+                alert('เกิดข้อผิดพลาด: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Error acknowledging notification:', error);
+            alert('เกิดข้อผิดพลาดในการบันทึกการรับทราบ');
+        }
+    };
+    
+    viewDetailsBtn.onclick = function() {
+        // Redirect to expiring soon page with critical filter
+        window.location.href = 'stock/expiring_soon.php?filter=critical';
+    };
+}
+
+function hideExpiryModal() {
+    const modal = document.getElementById('expiryModal');
+    modal.style.display = 'none';
+}
+
+// Close modal when clicking overlay
+document.getElementById('expiryModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideExpiryModal();
+    }
+});
+</script>
+
 </body>
 </html>

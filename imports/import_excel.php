@@ -21,10 +21,9 @@ if(isset($_POST['submit'])) {
             $check_original_price = $pdo->query("SHOW COLUMNS FROM purchase_order_items LIKE 'original_price'");
             $has_original_price_column = $check_original_price->rowCount() > 0;
             // ====== สร้างเลข PO ======
-            $date = date('Ymd');
-            $last_po = $pdo->query("SELECT po_number FROM purchase_orders WHERE po_number LIKE 'PO{$date}%' ORDER BY po_number DESC LIMIT 1")->fetchColumn();
-            $num = $last_po ? intval(substr($last_po, -3)) + 1 : 1;
-            $po_number = 'PO'.$date.str_pad($num, 3, '0', STR_PAD_LEFT);
+            $last_po = $pdo->query("SELECT po_number FROM purchase_orders WHERE po_number LIKE 'IMEXCAL%' ORDER BY po_number DESC LIMIT 1")->fetchColumn();
+            $num = $last_po ? intval(substr($last_po, 7)) + 1 : 1; // เริ่มจาก IMEXCAL (7 ตัวอักษร)
+            $po_number = 'IMEXCAL'.str_pad($num, 5, '0', STR_PAD_LEFT);
 
             // ====== โหลด Excel ======
             $file_tmp = $_FILES['excel_file']['tmp_name'];
@@ -188,7 +187,7 @@ if(isset($_POST['submit'])) {
                 
                 if($currency !== 'THB') {
                     // ดึงอัตราแลกเปลี่ยน
-                    $rate_stmt = $pdo->prepare("SELECT exchange_rate_to_thb FROM currencies WHERE currency_code = ? AND is_active = 1");
+                    $rate_stmt = $pdo->prepare("SELECT exchange_rate FROM currencies WHERE code = ? AND is_active = 1");
                     $rate_stmt->execute([$currency]);
                     $rate = $rate_stmt->fetchColumn();
                     
@@ -235,7 +234,7 @@ if(isset($_POST['submit'])) {
                 $currency_support_msg = "<br><small style='color: #ff6b35; font-weight: 500;'>⚠️ ตารางยังไม่รองรับสกุลเงินเต็มรูปแบบ - กรุณารัน migration script</small>";
             }
             
-            $message = "Import สำเร็จ! PO = $po_number" . $currency_support_msg . "<br><small style='color: #666;'>หากมีสกุลเงินไม่ถูกต้อง ระบบจะปรับเป็น THB อัตโนมัติ</small>";
+            $message = "Import สำเร็จ! PO = $po_number" . $currency_support_msg . "<br><small style='color: #666;'>หากมีสกุลเงินอื่น ระบบจะปรับเป็น THB อัตโนมัติ</small>";
 
         } catch (Exception $e) {
             $pdo->rollBack();
@@ -372,12 +371,12 @@ if(isset($_POST['submit'])) {
                 Swal.fire({
                     icon: '<?= strpos($message, "สำเร็จ") !== false ? "success" : "error" ?>',
                     title: '<?= strpos($message, "สำเร็จ") !== false ? "สำเร็จ" : "เกิดข้อผิดพลาด" ?>',
-                    text: <?= json_encode($message) ?>,
+                    html: <?= json_encode($message) ?>,
                     timer: 3000,
                     showConfirmButton: false
                 }).then(() => {
                     <?php if(strpos($message, "สำเร็จ") !== false): ?>
-                        window.location.href = "receive_items_view.php";
+                        window.location.href = "../receive/receive_items_view.php";
                     <?php else: ?>
                         window.location.href = "import_excel.php";
                     <?php endif; ?>
@@ -386,7 +385,7 @@ if(isset($_POST['submit'])) {
 
         <?php endif; ?>
 
-        <div class="migration-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 20px 0; color: #856404;">
+        <!-- <div class="migration-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 20px 0; color: #856404;">
             <h4 style="margin: 0 0 10px 0; color: #d68910;">
                 <span class="material-icons" style="vertical-align: middle; margin-right: 8px;">info</span>
                 คำแนะนำสำหรับการรองรับสกุลเงิน
@@ -400,7 +399,7 @@ if(isset($_POST['submit'])) {
             <p style="margin: 10px 0 0 0; font-size: 13px; color: #856404;">
                 <strong>หมายเหตุ:</strong> หากยังไม่ได้รัน migration ระบบจะยังใช้งานได้แต่จะบันทึกข้อมูลสกุลเงินไว้ใน remark ของ PO
             </p>
-        </div>
+        </div> -->
 
         <form method="post" enctype="multipart/form-data">
             <div class="file-upload">

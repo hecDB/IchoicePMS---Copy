@@ -31,91 +31,235 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>รายการรับสินค้า</title>
+<title>รายการรับสินค้า - IchoicePMS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<!-- jQuery CDN: ต้องมาก่อน DataTables, Bootstrap JS, และ script JS อื่นๆ ที่ใช้ $ -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<!-- DataTables JS (ต้องตามหลัง jQuery) -->
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<!-- Bootstrap 5 JS (bundle รวม Popper) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<!-- SweetAlert2 (สำหรับ Swal.fire) -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 <link rel="stylesheet" href="../assets/base.css">
 <link rel="stylesheet" href="../assets/sidebar.css">
 <link rel="stylesheet" href="../assets/components.css">
-<!-- Google Fonts: Prompt -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap">
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+<link href="../assets/modern-table.css" rel="stylesheet">
+<link href="../assets/mainwrap-modern.css" rel="stylesheet">
+
 <style>
-    .table-img {
-        width: 36px; height: 36px;
-        max-width: 48px; max-height: 48px;
-        object-fit: contain;
+    body {
+        font-family: 'Sarabun', sans-serif;
+        background-color: #f8fafc;
+    }
+    
+    .product-image {
+        width: 36px; 
+        height: 36px;
+        max-width: 48px; 
+        max-height: 48px;
+        object-fit: cover;
         border-radius: 6px;
-        background: #f3f3f3;
-        }
-        @media (max-width: 768px) {
-        .table-img { width: 28px; height: 28px; }
-        }
-        @media (max-width: 480px) {
-        .table-img { width: 20px; height: 20px; }
-        }
+        border: 2px solid #e5e7eb;
+    }
+    
+    .qty-plus {
+        color: #059669;
+        font-weight: 700;
+    }
+    
+    .qty-minus {
+        color: #dc2626;
+        font-weight: 700;
+    }
+    
+    .breadcrumb-modern {
+        background: none;
+        padding: 0;
+    }
+    
+    .breadcrumb-modern .breadcrumb-item {
+        color: #6b7280;
+    }
+    
+    .breadcrumb-modern .breadcrumb-item.active {
+        color: #111827;
+        font-weight: 500;
+    }
+
+    @media (max-width: 768px) {
+        .product-image { width: 28px; height: 28px; }
+    }
+    @media (max-width: 480px) {
+        .product-image { width: 20px; height: 20px; }
+    }
 </style>
 
 <?php include '../templates/sidebar.php'; ?>
 <div class="mainwrap">
-    <div class="container-fluid py-3">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <div class="page-bar shadow-sm d-flex align-items-center mb-2" style="background:#fff;border-radius:12px;padding:14px 22px 14px 18px;box-shadow:0 2px 8px 0 rgba(8,86,205,0.07);width:100%;min-width:0;">
-                <i class="fa-solid fa-check-square me-2" style="font-size:1.5em;vertical-align:middle;color:#0856cd;"></i>
-                <span class="page-title" style="font-size:1.25rem;font-weight:600;color:#0856cd;letter-spacing:0.5px;">รายการรับสินค้า</span>
+    <div class="container-fluid py-4">
+        
+
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-0 text-gray-800 fw-bold">
+                    <span class="material-icons align-middle me-2" style="font-size: 2rem; color: #3b82f6;">receipt_long</span>
+                    รายการรับสินค้า
+                </h1>
+                <p class="text-muted mb-0">ประวัติการรับสินค้าเข้าคลัง และการปรับปรุงสต็อก</p>
+            </div>
+            <div>
+                <button class="btn-modern btn-modern-success" onclick="window.location.href='receive_product.php'">
+                    <span class="material-icons" style="font-size: 1.25rem;">add_box</span>
+                    รับสินค้าใหม่
+                </button>
             </div>
         </div>
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="d-flex mb-2">
-                    <button id="delete-selected" class="btn btn-danger btn-sm me-2" type="button"><i class="fa fa-trash"></i> ลบรายการที่เลือก</button>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <div class="col-xl-4 col-md-6 mb-4">
+                <div class="stats-card stats-primary">
+                    <div class="stats-card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="stats-title">รายการทั้งหมด</div>
+                                <div class="stats-value"><?= count($rows) ?></div>
+                                <div class="stats-subtitle">รายการรับสินค้า</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="material-icons stats-icon">receipt</i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="table-responsive">
-                    <table id="receive-table">
+            </div>
+
+            <div class="col-xl-4 col-md-6 mb-4">
+                <div class="stats-card stats-success">
+                    <div class="stats-card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="stats-title">รายการเพิ่ม</div>
+                                <div class="stats-value"><?= count(array_filter($rows, fn($r) => $r['receive_qty'] > 0)) ?></div>
+                                <div class="stats-subtitle">เพิ่มเข้าสต็อก</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="material-icons stats-icon">add_circle</i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-4 col-md-6 mb-4">
+                <div class="stats-card stats-warning">
+                    <div class="stats-card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="stats-title">รายการลด</div>
+                                <div class="stats-value"><?= count(array_filter($rows, fn($r) => $r['receive_qty'] < 0)) ?></div>
+                                <div class="stats-subtitle">ลดจากสต็อก</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="material-icons stats-icon">remove_circle</i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Table -->
+        <div class="table-card">
+            <div class="table-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="table-title mb-0">
+                        <span class="material-icons">table_view</span>
+                        รายการรับสินค้า (<?= count($rows) ?> รายการ)
+                    </h5>
+                    <div class="table-actions">
+                        <button class="btn-modern btn-modern-secondary btn-sm refresh-table me-2" onclick="refreshTableData()">
+                            <span class="material-icons">refresh</span>
+                            รีเฟรช
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="table-body">
+                <!-- Batch Actions Bar -->
+                <div class="batch-actions mb-3" style="display: none;">
+                    <button id="delete-selected" class="btn-modern btn-modern-danger btn-sm" type="button">
+                        <span class="material-icons" style="font-size: 1rem;">delete</span>
+                        ลบรายการที่เลือก (<span class="selected-count">0</span>)
+                    </button>
+                </div>
+
+                <table id="receive-table" class="table modern-table table-striped table-hover">
                     <thead>
-                    <tr>
-                        <th>#<input type="checkbox" id="select-all"></th>
-                        <th>ภาพ</th>
-                        <th>SKU</th>
-                        <th>Barcode</th>
-                        <th>ผู้เพิ่มรายการ</th>
-                        <th>วันที่เพิ่ม</th>
-                        <th>จำนวนก่อน</th>
-                        <th>เพิ่ม/ลด</th>
-                        <th>จำนวนล่าสุด</th>
-                        <th>ตำแหน่ง</th>
-                        <th>ราคาต้นทุน</th>
-                        <th>ราคาขายออก</th>
-                        <th>หมายเลข PO</th>
-                        <th>ประเภทสินค้า</th>
-                        <th>หมายเหตุ</th>
-                        <th>แก้ไข</th>
-                    </tr>
+                        <tr>
+                            <th style="width: 60px;">รูปภาพ</th>
+                            <th>SKU</th>
+                            <th>บาร์โค้ด</th>
+                            <th>ผู้เพิ่มรายการ</th>
+                            <th>วันที่เพิ่ม</th>
+                            <th>จำนวนก่อน</th>
+                            <th>เพิ่ม/ลด</th>
+                            <th>จำนวนล่าสุด</th>
+                            <th>ตำแหน่ง</th>
+                            <th>ราคาต้นทุน</th>
+                            <th>ราคาขาย</th>
+                            <th>PO</th>
+                            <th>ประเภท</th>
+                            <th>หมายเหตุ</th>
+                            <th class="no-sort text-center" style="width: 100px;">จัดการ</th>
+                        </tr>
                     </thead>
                     <tbody>
+                    <?php if (empty($rows)): ?>
+                    <tr>
+                        <td colspan="15" class="text-center py-4">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="material-icons mb-2" style="font-size: 3rem; color: #d1d5db;">receipt</span>
+                                <h5 class="text-muted">ไม่พบข้อมูลการรับสินค้า</h5>
+                                <p class="text-muted mb-0">ยังไม่มีการรับสินค้าเข้าสต็อก</p>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php else: ?>
                     <?php foreach($rows as $row): ?>
-                        <tr>
-                            <td><input type="checkbox" class="row-checkbox" value="<?= $row['receive_id'] ?>"></td>
-                            <td><img   class="table-img" src="<?= htmlspecialchars($row['image']) ?>" alt="img" onerror="this.src='../images/noimg.png'" /></td>
-                            <td class="sku-col" title="<?= htmlspecialchars($row['sku']) ?>"><?= htmlspecialchars($row['sku']) ?></td>
+                        <tr data-id="<?= $row['receive_id'] ?>">
+                            <td>
+                                <?php 
+                                $image_path = '../images/noimg.png';
+                                if (!empty($row['image'])) {
+                                    if (strpos($row['image'], 'images/') === 0) {
+                                        $image_path = '../' . $row['image'];
+                                    } else {
+                                        $image_path = '../images/' . $row['image'];
+                                    }
+                                }
+                                ?>
+                                <img src="<?= htmlspecialchars($image_path) ?>" 
+                                     alt="<?= htmlspecialchars($row['product_name'] ?? '') ?>" 
+                                     class="product-image" 
+                                     onerror="this.src='../images/noimg.png'">
+                            </td>
+                            <td><span class="fw-bold"><?= htmlspecialchars($row['sku']) ?></span></td>
                             <td><?= htmlspecialchars($row['barcode']) ?></td>
-                            <td><?= htmlspecialchars($row['created_by']) ?></td>
-                            <td><?= htmlspecialchars($row['created_at']) ?></td>
-                            <td><?= getPrevQty($row['sku'], $row['barcode'], $row['created_at'], $pdo) ?></td>
-                            <td><?= qtyChange($row['receive_qty']) ?></td>
-                            <td><?= getCurrentQty($row['sku'], $row['barcode'], $row['created_at'], $pdo) ?></td>
+                            <td><?= htmlspecialchars($row['created_by'] ?? 'ไม่ระบุ') ?></td>
+                            <td><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></td>
+                            <td class="text-center">
+                                <span class="fw-bold text-muted">
+                                    <?= number_format(getPrevQty($row['sku'], $row['barcode'], $row['created_at'], $pdo)) ?>
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <?= qtyChange($row['receive_qty']) ?>
+                            </td>
+                            <td class="text-center">
+                                <span class="fw-bold text-primary">
+                                    <?= number_format(getCurrentQty($row['sku'], $row['barcode'], $row['created_at'], $pdo)) ?>
+                                </span>
+                            </td>
                             <td>
                             <?php
                             $rowcode = trim($row['row_code'] ?? '');
@@ -124,85 +268,131 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             if ($rowcode !== '' && $bin !== '' && $shelf !== '') {
                                 echo htmlspecialchars("$rowcode-$bin-$shelf");
                             } else {
-                                echo htmlspecialchars($row['location_desc']);
+                                echo htmlspecialchars($row['location_desc'] ?? '-');
                             }
                             ?>
                             </td>
-                            <td class="price-cost"><?= number_format($row['price_per_unit'],2) ?></td>
-                            <td class="price-sale"><?= number_format($row['sale_price'],2) ?></td>
-                            <td><?= htmlspecialchars($row['po_number']) ?></td>
-                            <td><?= getTypeLabel($row['po_remark']) ?></td>
-                            <td data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>"><?= htmlspecialchars($row['remark']) ?></td>
-                            <td><button class="btn btn-sm btn-warning edit-btn" data-id="<?= $row['receive_id'] ?>">แก้ไข</button></td>
+                            <td class="text-end">
+                                <span class="fw-bold text-success">
+                                    <?= number_format($row['price_per_unit'], 2) ?> ฿
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <span class="fw-bold text-info">
+                                    <?= number_format($row['sale_price'], 2) ?> ฿
+                                </span>
+                            </td>
+                            <td>
+                                <?php if (!empty($row['po_number'])): ?>
+                                    <span class="badge bg-primary"><?= htmlspecialchars($row['po_number']) ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= getTypeLabel($row['remark'] ?? '') ?></td>
+                            <td data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>">
+                                <?= htmlspecialchars($row['remark'] ?? '-') ?>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-btn action-btn-edit edit-btn" 
+                                            data-id="<?= $row['receive_id'] ?>"
+                                            title="แก้ไข">
+                                        <span class="material-icons">edit</span>
+                                    </button>
+                                </div>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
-                        </tbody>
-            </table>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
-    <script>
-    $(function(){
-        let table = $('#receive-table').DataTable({
-            "order": [[5, "desc"]],
-            "pageLength": 50,
-            "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json" }
-        });
-        $('#select-all').on('click', function(){
-            $('.row-checkbox').prop('checked', this.checked);
-        });
+        </div>
+    </div>
+</div>
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="../assets/modern-table.js"></script>
 
-        // ปุ่มลบหลายรายการ
-        $('#delete-selected').on('click', function(){
-            let ids = $('.row-checkbox:checked').map(function(){ return $(this).val(); }).get();
-            if(ids.length === 0) {
-                Swal.fire({icon:'warning',title:'กรุณาเลือกรายการที่ต้องการลบ'});
-                return;
-            }
+<script>
+// Global variable for table instance
+let receiveTable;
+
+$(document).ready(function() {
+    // Destroy existing DataTable if any before initializing
+    if ($.fn.DataTable.isDataTable('#receive-table')) {
+        $('#receive-table').DataTable().destroy();
+    }
+    
+    // Initialize receive items table with modern template
+    receiveTable = new ModernTable('receive-table', {
+        pageLength: 50,
+        language: 'th',
+        exportButtons: true,
+        batchOperations: true,
+        defaultOrder: [[4, 'desc']] // Sort by created date
+    });
+
+    // Custom batch delete handler for receive items - remove existing handlers first
+    $('#delete-selected').off('click').on('click', function(){
+        const selectedIds = $('.row-checkbox:checked').map(function(){ 
+            return $(this).val(); 
+        }).get();
+        
+        if(selectedIds.length === 0) {
             Swal.fire({
-                title: 'ยืนยันการลบ?',
-                text: `คุณต้องการลบ ${ids.length} รายการหรือไม่?`,
                 icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'ลบ',
-                cancelButtonText: 'ยกเลิก'
-            }).then((result)=>{
-               if(result.isConfirmed){
-                    $.ajax({
-                        url: 'receive_delete.php',
-                        method: 'POST',
-                        data: { ids: ids },
-                        dataType: 'json',
-                        success: function(resp){
-                            if(resp && resp.success){
-                                // ลบแถวที่เลือกออกจาก DataTable
-                                $('.row-checkbox:checked').each(function(){
-                                    table.row($(this).closest('tr')).remove();
-                                });
-                                table.draw();
-
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'ลบสำเร็จ!',
-                                    text: `รายการ ${ids.length} รายการถูกลบเรียบร้อยแล้ว`,
-                                    showConfirmButton: false,
-                                    timer: 2000   // 2 วิ
-                                });
-
-                                $('#select-all').prop('checked', false);
-                            } else {
-                                Swal.fire('ผิดพลาด!', (resp && resp.msg) ? resp.msg : 'ไม่สามารถลบได้', 'error');
-                            }
-                        },
-                        error: function(xhr, status, error){
-                            Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
-                        }
-                    });
-                }
-
+                title: 'กรุณาเลือกรายการที่ต้องการลบ'
             });
+            return;
+        }
+        
+        Swal.fire({
+            title: 'ยืนยันการลบ?',
+            text: `คุณต้องการลบ ${selectedIds.length} รายการหรือไม่?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'ลบ',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if(result.isConfirmed){
+                Swal.fire({
+                    title: 'กำลังลบ...',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    willOpen: () => { Swal.showLoading(); }
+                });
+
+                $.ajax({
+                    url: 'receive_delete.php',
+                    method: 'POST',
+                    data: { ids: selectedIds },
+                    dataType: 'json',
+                    success: function(resp){
+                        Swal.close();
+                        if(resp && resp.success){
+                            Swal.fire('สำเร็จ!', `ลบ ${selectedIds.length} รายการเรียบร้อยแล้ว`, 'success')
+                            .then(() => refreshTableData());
+                        } else {
+                            Swal.fire('ข้อผิดพลาด!', resp.message || 'เกิดข้อผิดพลาดในการลบ', 'error');
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        Swal.close();
+                        Swal.fire('ข้อผิดพลาด!', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+                    }
+                });
+            }
+        });
         });
 
-        // ปุ่มแก้ไข (bind ครั้งเดียว)
-        $('#receive-table').off('click', '.edit-btn').on('click', '.edit-btn', function(){
+    // ปุ่มแก้ไข (unbind existing handlers first)
+    $(document).off('click', '#receive-table .edit-btn').on('click', '#receive-table .edit-btn', function(){
             let row = $(this).closest('tr');
             let id = $(this).data('id');
             let remark = row.find('td').eq(13).text();
@@ -246,8 +436,8 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }, 'json');
         });
 
-        // บันทึกการแก้ไข
-        $('#save-edit').on('click', function(){
+    // บันทึกการแก้ไข (unbind existing handlers first)
+    $('#save-edit').off('click').on('click', function(){
             // ป้องกันกดซ้ำ
             let $btn = $(this);
             if ($btn.prop('disabled')) return;
@@ -300,7 +490,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             showConfirmButton: false,
                             timer: 2000   // 2 วิ
                         }).then(() => {
-                            location.reload();
+                            refreshTableData();
                         });
 
                         var modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
@@ -314,7 +504,25 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             });
         });
     });
-    </script>
+
+    // Function to refresh table data without full page reload
+    function refreshTableData() {
+        // Since this is a server-side rendered table, we need to reload the page
+        // But first, show loading indicator
+        Swal.fire({
+            title: 'กำลังรีเฟรชข้อมูล...',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading(); }
+        });
+        
+        // Use setTimeout to ensure loading shows before reload
+        setTimeout(() => {
+            location.reload();
+        }, 300);
+    }
+});
+</script>
 
 <!-- Modal แก้ไข -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">

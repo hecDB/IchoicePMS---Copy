@@ -1,0 +1,260 @@
+/* Modern Table Layout Integration
+   This CSS ensures modern table components work well with existing sidebar layout
+   Use this to bridge modern-table.css with the existing mainwrap structure
+*/
+
+/* Override modern table components to work in mainwrap */
+.mainwrap .table-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.mainwrap .table-header {
+    padding: 1.5rem 2rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.mainwrap .table-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.mainwrap .table-body {
+    padding: 0;
+}
+
+.mainwrap .table-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* Stats Cards for mainwrap */
+.mainwrap .stats-card {
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.mainwrap .stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.mainwrap .stats-card-body {
+    padding: 2rem;
+}
+
+.mainwrap .stats-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.mainwrap .stats-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.25rem;
+}
+
+.mainwrap .stats-subtitle {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.mainwrap .stats-icon {
+    font-size: 2.5rem;
+    opacity: 0.3;
+}
+
+/* Color variations for stats cards */
+.mainwrap .stats-primary .stats-icon { color: #667eea; }
+.mainwrap .stats-success .stats-icon { color: #10b981; }
+.mainwrap .stats-warning .stats-icon { color: #f59e0b; }
+.mainwrap .stats-danger .stats-icon { color: #ef4444; }
+.mainwrap .stats-info .stats-icon { color: #3b82f6; }
+
+.mainwrap .stats-primary {
+    background: linear-gradient(135deg, #eef6ff 0%, #e0f2fe 100%);
+    border-left: 4px solid #667eea;
+}
+
+.mainwrap .stats-success {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border-left: 4px solid #10b981;
+}
+
+.mainwrap .stats-warning {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border-left: 4px solid #f59e0b;
+}
+
+.mainwrap .stats-danger {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border-left: 4px solid #ef4444;
+}
+
+.mainwrap .stats-info {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border-left: 4px solid #3b82f6;
+}
+
+/* Modern buttons for mainwrap */
+.mainwrap .btn-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.75rem;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.mainwrap .btn-modern:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.mainwrap .btn-modern-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.mainwrap .btn-modern-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.mainwrap .btn-modern-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.mainwrap .btn-modern-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+.mainwrap .btn-modern-secondary {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+}
+
+.mainwrap .btn-modern-info {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.mainwrap .btn-sm {
+    padding: 0.375rem 0.875rem;
+    font-size: 0.8125rem;
+}
+
+/* Action buttons in tables */
+.mainwrap .action-buttons {
+    display: flex;
+    gap: 0.25rem;
+    justify-content: center;
+}
+
+.mainwrap .action-btn {
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+}
+
+.mainwrap .action-btn-view {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.mainwrap .action-btn-edit {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.mainwrap .action-btn-delete {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+.mainwrap .action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive adjustments for mainwrap */
+@media (max-width: 768px) {
+    .mainwrap .table-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .mainwrap .stats-card-body {
+        padding: 1.5rem;
+    }
+    
+    .mainwrap .stats-value {
+        font-size: 1.5rem;
+    }
+}
+
+/* Ensure modern elements don't interfere with sidebar */
+.mainwrap * {
+    position: relative;
+}
+
+.mainwrap .position-fixed,
+.mainwrap .position-absolute {
+    position: absolute !important;
+}
+
+/* Keep DataTables modern styling in mainwrap */
+.mainwrap .dataTables_wrapper {
+    padding: 1.5rem;
+}
+
+.mainwrap .dataTables_filter input {
+    border-radius: 0.5rem !important;
+    border: 1px solid #d1d5db !important;
+    padding: 0.5rem 1rem !important;
+}
+
+.mainwrap .dataTables_length select {
+    border-radius: 0.5rem !important;
+    border: 1px solid #d1d5db !important;
+    padding: 0.375rem 2rem 0.375rem 0.75rem !important;
+}
