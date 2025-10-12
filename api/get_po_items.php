@@ -19,20 +19,22 @@ try {
         SELECT 
             poi.item_id,
             poi.product_id,
-            p.product_name,
+            p.name as product_name,
+            p.sku,
             p.barcode,
-            p.unit_cost,
-            poi.quantity as order_qty,
-            poi.unit_price,
-            poi.total_price,
-            COALESCE(SUM(ri.received_qty), 0) as received_qty,
-            (poi.quantity - COALESCE(SUM(ri.received_qty), 0)) as remaining_qty
+            p.unit,
+            poi.qty as order_qty,
+            poi.price_per_unit as unit_price,
+            poi.total as total_price,
+            poi.currency as currency_code,
+            COALESCE(SUM(ri.receive_qty), 0) as received_qty,
+            (poi.qty - COALESCE(SUM(ri.receive_qty), 0)) as remaining_qty
         FROM purchase_order_items poi
         LEFT JOIN products p ON poi.product_id = p.product_id
         LEFT JOIN receive_items ri ON poi.item_id = ri.item_id
         WHERE poi.po_id = :po_id
-        GROUP BY poi.item_id, poi.product_id, p.product_name, p.barcode, p.unit_cost, poi.quantity, poi.unit_price, poi.total_price
-        ORDER BY p.product_name
+        GROUP BY poi.item_id, poi.product_id, p.name, p.sku, p.barcode, p.unit, poi.qty, poi.price_per_unit, poi.total, poi.currency
+        ORDER BY p.name
     ";
     
     $stmt = $pdo->prepare($sql);
@@ -43,7 +45,6 @@ try {
     
     // Format numbers for display
     foreach ($items as &$item) {
-        $item['unit_cost'] = number_format($item['unit_cost'], 2);
         $item['unit_price'] = number_format($item['unit_price'], 2);
         $item['total_price'] = number_format($item['total_price'], 2);
         $item['order_qty'] = number_format($item['order_qty'], 0);

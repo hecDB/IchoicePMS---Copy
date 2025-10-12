@@ -176,14 +176,10 @@ window.currencies = <?php echo json_encode($currencies, JSON_UNESCAPED_UNICODE);
   <form id="supplierForm" autocomplete="off">
     <label>ชื่อผู้ขาย *</label>
     <input name="name" type="text" class="form-control" required placeholder="ชื่อบริษัทหรือร้านค้า">
-    <label>ผู้ติดต่อ</label>
-    <input name="contact_name" type="text" class="form-control" placeholder="ชื่อผู้ติดต่อ">
     <label>เบอร์ติดต่อ</label>
     <input name="phone" type="text" class="form-control" placeholder="หมายเลขโทรศัพท์">
     <label>อีเมล</label>
     <input name="email" type="email" class="form-control" placeholder="อีเมลสำหรับติดต่อ">
-    <label>เลขประจำตัวผู้เสียภาษี</label>
-    <input name="tax_id" type="text" class="form-control" placeholder="เลขประจำตัวผู้เสียภาษี">
     <label>ที่อยู่</label>
     <textarea name="address" class="form-control" placeholder="ที่อยู่ของผู้ขาย"></textarea>
     <div class="modal-actions" style="margin-top:24px;">
@@ -224,7 +220,7 @@ supplierForm.onsubmit = async function(e){
     const data = new FormData(this);
 
     try {
-        let res = await fetch('supplier_add_api.php', {method:'POST', body:data});
+        let res = await fetch('../api/supplier_add_api.php', {method:'POST', body:data});
         let json = await res.json();
         if(json.success){
             // เพิ่มเข้า select
@@ -285,6 +281,11 @@ currencySelect.addEventListener('change', function(){
         span.textContent = symbol;
     });
     
+    // อัปเดตการแสดงราคาในสกุลเงินฐานสำหรับรายการที่มีอยู่
+    document.querySelectorAll('.price-input').forEach(priceInput => {
+        updatePriceBaseDisplay(priceInput);
+    });
+    
     calcTotal();
 });
 
@@ -299,6 +300,12 @@ const productRows = document.getElementById('productRows');
 function addProductRow(detail={}) {
     rowCount++;
     const idx = rowCount;
+    
+    // ดึงสัญลักษณ์สกุลเงินปัจจุบัน
+    const currencySelect = document.getElementById('currencySelect');
+    const selectedOption = currencySelect.options[currencySelect.selectedIndex];
+    const currentSymbol = selectedOption.dataset.symbol || '฿';
+    
     const row = document.createElement('div');
     row.className = "product-item-card";
     row.style.position = "relative";
@@ -332,7 +339,7 @@ function addProductRow(detail={}) {
             <div>
                 <div class="small-label">ราคาต่อหน่วย *</div>
                 <div style="display:flex;align-items:center;">
-                    <span class="currency-symbol" style="margin-right:5px;font-weight:bold;color:#1976d2;">$</span>
+                    <span class="currency-symbol" style="margin-right:5px;font-weight:bold;color:#1976d2;">${currentSymbol}</span>
                     <input type="number" class="price-input" min="0" step="0.01" value="${detail.price||0}" required style="width:95px;">
                 </div>
                 <div class="price-base-display" style="font-size:12px;color:#666;margin-top:2px;">≈ ฿0.00</div>
@@ -444,6 +451,10 @@ function addProductRow(detail={}) {
     row.querySelector('.remove-row-btn').onclick = ()=>{ row.remove(); calcTotal(); };
 
     productRows.appendChild(row);
+    
+    // อัปเดตการแสดงราคาในสกุลเงินฐานสำหรับแถวใหม่
+    updatePriceBaseDisplay(row.querySelector('.price-input'));
+    
     calcTotal();
 }
 

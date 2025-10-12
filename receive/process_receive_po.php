@@ -26,6 +26,7 @@ if ($input) {
                 $product_id = $item_data['product_id'] ?? null;
                 $quantity = (float)($item_data['received_qty'] ?? 0);
                 $notes = $item_data['notes'] ?? '';
+                $expiry_date = $item_data['expiry_date'] ?? null;
 
                 if (!$item_id) {
                     throw new Exception('ไม่พบ item_id');
@@ -33,6 +34,20 @@ if ($input) {
                 
                 if ($quantity <= 0) {
                     throw new Exception('จำนวนต้องมากกว่า 0');
+                }
+                
+                // ตรวจสอบรูปแบบวันที่หมดอายุ
+                if ($expiry_date && !empty($expiry_date)) {
+                    $expiry_date_obj = DateTime::createFromFormat('Y-m-d', $expiry_date);
+                    if (!$expiry_date_obj) {
+                        throw new Exception('รูปแบบวันที่หมดอายุไม่ถูกต้อง');
+                    }
+                    // ตรวจสอบว่าวันที่หมดอายุไม่เป็นอดีต
+                    if ($expiry_date_obj < new DateTime('today')) {
+                        throw new Exception('วันที่หมดอายุไม่สามารถเป็นวันที่ผ่านมาแล้วได้');
+                    }
+                } else {
+                    $expiry_date = null;
                 }
 
                 // Get PO information from item_id
@@ -60,15 +75,16 @@ if ($input) {
                 }
 
                 // Insert receive record
-                $insert_sql = "INSERT INTO receive_items (item_id, po_id, receive_qty, created_by, created_at, remark) 
-                               VALUES (?, ?, ?, ?, NOW(), ?)";
+                $insert_sql = "INSERT INTO receive_items (item_id, po_id, receive_qty, created_by, created_at, remark, expiry_date) 
+                               VALUES (?, ?, ?, ?, NOW(), ?, ?)";
                 $insert_stmt = $pdo->prepare($insert_sql);
                 $insert_stmt->execute([
                     $item_id,
                     $item['po_id'],
                     $quantity,
                     $user_id,
-                    $notes
+                    $notes,
+                    $expiry_date
                 ]);
 
                 $received_count++;
@@ -111,7 +127,7 @@ try {
         }
 
         // Verify item belongs to PO
-        $check_sql = "SELECT poi.item_id, poi.quantity, p.name FROM purchase_order_items poi 
+        $check_sql = "SELECT poi.item_id, poi.qty as quantity, p.name FROM purchase_order_items poi 
                       LEFT JOIN products p ON poi.product_id = p.product_id
                       WHERE poi.item_id = ? AND poi.po_id = ?";
         $check_stmt = $pdo->prepare($check_sql);
@@ -133,16 +149,31 @@ try {
             throw new Exception("จำนวนที่รับมากเกินไป (เหลือ $remaining)");
         }
 
+        // ตรวจสอบวันที่หมดอายุ (ถ้ามี)
+        $expiry_date = $_POST['expiry_date'] ?? null;
+        if ($expiry_date && !empty($expiry_date)) {
+            $expiry_date_obj = DateTime::createFromFormat('Y-m-d', $expiry_date);
+            if (!$expiry_date_obj) {
+                throw new Exception('รูปแบบวันที่หมดอายุไม่ถูกต้อง');
+            }
+            if ($expiry_date_obj < new DateTime('today')) {
+                throw new Exception('วันที่หมดอายุไม่สามารถเป็นวันที่ผ่านมาแล้วได้');
+            }
+        } else {
+            $expiry_date = null;
+        }
+
         // Insert receive record
-        $insert_sql = "INSERT INTO receive_items (item_id, receive_qty, created_by, created_at, po_id, remark) 
-                       VALUES (?, ?, ?, NOW(), ?, ?)";
+        $insert_sql = "INSERT INTO receive_items (item_id, receive_qty, created_by, created_at, po_id, remark, expiry_date) 
+                       VALUES (?, ?, ?, NOW(), ?, ?, ?)";
         $insert_stmt = $pdo->prepare($insert_sql);
         $insert_stmt->execute([
             $item_id,
             $quantity,
             $user_id,
             $po_id,
-            "รับสินค้าจาก PO: " . $_POST['po_number'] ?? ''
+            "รับสินค้าจาก PO: " . $_POST['po_number'] ?? '',
+            $expiry_date
         ]);
 
         $message = "รับสินค้า {$item['name']} จำนวน $quantity เรียบร้อย";
@@ -159,14 +190,25 @@ try {
 
         foreach ($items as $item_data) {
             $item_id = $item_data['item_id'] ?? null;
-            $quantity = (int)($item_data['quantity'] ?? 0);
+            $quantity = (float)($item_data['quantity'] ?? 0);
+            $expiry_date = $item_data['expiry_date'] ?? null;
 
             if (!$item_id || $quantity <= 0) {
                 continue;
             }
+            
+            // ตรวจสอบวันที่หมดอายุ (ถ้ามี)
+            if ($expiry_date && !empty($expiry_date)) {
+                $expiry_date_obj = DateTime::createFromFormat('Y-m-d', $expiry_date);
+                if (!$expiry_date_obj || $expiry_date_obj < new DateTime('today')) {
+                    continue; // Skip item with invalid expiry date
+                }
+            } else {
+                $expiry_date = null;
+            }
 
             // Verify item belongs to PO
-            $check_sql = "SELECT poi.quantity FROM purchase_order_items poi WHERE poi.item_id = ? AND poi.po_id = ?";
+            $check_sql = "SELECT poi.qty as quantity FROM purchase_order_items poi WHERE poi.item_id = ? AND poi.po_id = ?";
             $check_stmt = $pdo->prepare($check_sql);
             $check_stmt->execute([$item_id, $po_id]);
             $po_item = $check_stmt->fetch(PDO::FETCH_ASSOC);
@@ -179,7 +221,7 @@ try {
             $received_sql = "SELECT COALESCE(SUM(receive_qty), 0) as received FROM receive_items WHERE item_id = ?";
             $received_stmt = $pdo->prepare($received_sql);
             $received_stmt->execute([$item_id]);
-            $already_received = (int)$received_stmt->fetchColumn();
+            $already_received = (float)$received_stmt->fetchColumn();
 
             $remaining = $po_item['quantity'] - $already_received;
             if ($quantity > $remaining) {
@@ -188,15 +230,16 @@ try {
 
             if ($quantity > 0) {
                 // Insert receive record
-                $insert_sql = "INSERT INTO receive_items (item_id, receive_qty, created_by, created_at, po_id, remark) 
-                               VALUES (?, ?, ?, NOW(), ?, ?)";
+                $insert_sql = "INSERT INTO receive_items (item_id, receive_qty, created_by, created_at, po_id, remark, expiry_date) 
+                               VALUES (?, ?, ?, NOW(), ?, ?, ?)";
                 $insert_stmt = $pdo->prepare($insert_sql);
                 $insert_stmt->execute([
                     $item_id,
                     $quantity,
                     $user_id,
                     $po_id,
-                    "รับสินค้าจาก PO (Batch)"
+                    "รับสินค้าจาก PO (Batch)",
+                    $expiry_date
                 ]);
                 $received_count++;
             }
@@ -233,7 +276,7 @@ function updatePOStatus($pdo, $po_id) {
     $status_sql = "
         SELECT 
             COUNT(poi.item_id) as total_items,
-            SUM(CASE WHEN COALESCE(received_qty.total_received, 0) >= poi.quantity THEN 1 ELSE 0 END) as completed_items
+            SUM(CASE WHEN COALESCE(received_qty.total_received, 0) >= poi.qty THEN 1 ELSE 0 END) as completed_items
         FROM purchase_order_items poi
         LEFT JOIN (
             SELECT item_id, SUM(receive_qty) as total_received 

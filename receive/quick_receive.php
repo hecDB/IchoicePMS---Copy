@@ -101,6 +101,15 @@ if (!$user_id) {
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
         }
 
+        .po-item.border-primary {
+            border: 2px solid #3b82f6 !important;
+            background: #f0f7ff;
+        }
+
+        .po-item.border-primary:hover {
+            background: #e6f2ff;
+        }
+
         .quantity-badge {
             background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
             color: white;
@@ -320,6 +329,10 @@ if (!$user_id) {
                     รับสินค้าด่วน
                 </h1>
                 <p class="text-muted mb-0">สแกนบาร์โค้ด หรือ ค้นหา SKU เพื่อรับเข้าสินค้าอย่างรวดเร็ว</p>
+                <small class="text-info">
+                    <span class="material-icons align-middle me-1" style="font-size: 1rem;">auto_awesome</span>
+                    <strong>เลือกอัตโนมัติ:</strong> PO เก่าสุด (วันที่+เวลา → PO Number)
+                </small>
             </div>
             <a href="receive_po_items.php" class="btn btn-outline-secondary">
                 <span class="material-icons me-1">list</span>
@@ -549,6 +562,7 @@ $(document).ready(function() {
             }, 800);
         } else if (value.length === 0) {
             $('#searchResults').hide();
+            $('#loadingIndicator').hide();
         }
     });
     
@@ -576,12 +590,21 @@ $(document).ready(function() {
                 showLoading(false);
                 
                 if (response.success) {
-                    displaySearchResults(response.data);
+                    if (response.data && response.data.length > 0) {
+                        displaySearchResults(response.data);
+                    } else {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'ไม่พบสินค้า',
+                            text: 'ไม่พบสินค้าที่ค้นหา หรือ สินค้าทั้งหมดรับครบแล้ว',
+                            footer: 'ลองค้นหาด้วย SKU หรือ ชื่อสินค้าอื่น'
+                        });
+                    }
                 } else {
                     Swal.fire({
                         icon: 'info',
                         title: 'ไม่พบข้อมูล',
-                        text: response.message
+                        text: response.message || 'ไม่พบสินค้าที่ค้นหา'
                     });
                 }
             },
@@ -606,9 +629,81 @@ $(document).ready(function() {
     }
     
     function displaySearchResults(products) {
+        // Auto-select oldest PO if only one product found
+        if (products.length === 1 && products[0].purchase_orders.length > 0) {
+            const product = products[0];
+            
+            // Sort POs by order date (oldest first) and filter only pending items
+            const pendingPOs = product.purchase_orders
+                .filter(po => po.remaining_qty > 0)
+                .sort((a, b) => {
+                    // Primary: เรียงตามวันที่และเวลา
+                    const dateCompare = new Date(a.order_date) - new Date(b.order_date);
+                    if (dateCompare !== 0) return dateCompare;
+                    
+                    // Secondary: เรียงตาม PO Number (ถ้าวันเดียวกัน)
+                    return a.po_number.localeCompare(b.po_number);
+                });
+            
+            // Debug log (for development)
+            console.log('🔍 Auto-Select Debug:', {
+                product: product.product_name,
+                sku: product.sku,
+                totalPOs: product.purchase_orders.length,
+                pendingPOs: pendingPOs.length,
+                sortedPOs: pendingPOs.map(po => ({
+                    po_number: po.po_number,
+                    order_date: po.order_date,
+                    remaining_qty: po.remaining_qty,
+                    parsed_date: new Date(po.order_date)
+                }))
+            });
+            
+            if (pendingPOs.length > 0) {
+                // Auto-select the oldest pending PO
+                const oldestPO = pendingPOs[0];
+                
+                // Show brief notification with sorting info
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'info',
+                    title: 'เลือกใบสั่งซื้อโดยอัตโนมัติ',
+                    text: `${oldestPO.po_number} (เก่าที่สุด: ${formatDateTime(oldestPO.order_date)})`,
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+                
+                // Auto-open receive modal
+                setTimeout(() => {
+                    showReceiveModal(product, oldestPO);
+                }, 300);
+                
+                return; // Don't show search results
+            }
+        }
+        
+        // Show search results for manual selection (multiple products or no pending POs)
         let html = '';
         
         products.forEach(function(product) {
+            // Filter only POs with remaining quantity > 0
+            const pendingPOs = product.purchase_orders.filter(po => po.remaining_qty > 0);
+            
+            if (pendingPOs.length === 0) {
+                return; // Skip products with no pending POs
+            }
+            
+            // Sort POs by order date (oldest first) with secondary sort
+            pendingPOs.sort((a, b) => {
+                // Primary: เรียงตามวันที่และเวลา
+                const dateCompare = new Date(a.order_date) - new Date(b.order_date);
+                if (dateCompare !== 0) return dateCompare;
+                
+                // Secondary: เรียงตาม PO Number (ถ้าวันเดียวกัน)
+                return a.po_number.localeCompare(b.po_number);
+            });
+            
             html += `
                 <div class="product-result-card">
                     <div class="card-header bg-light">
@@ -617,17 +712,19 @@ $(document).ready(function() {
                                 <h6 class="mb-0 fw-bold">${escapeHtml(product.product_name)}</h6>
                                 <small class="text-muted">SKU: ${escapeHtml(product.sku)} | Barcode: ${escapeHtml(product.barcode || 'N/A')}</small>
                             </div>
-                            <span class="quantity-badge">${product.purchase_orders.length} PO</span>
+                            <span class="quantity-badge">${pendingPOs.length} PO ค้างอยู่</span>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="row">
             `;
             
-            product.purchase_orders.forEach(function(po) {
+            pendingPOs.forEach(function(po, index) {
+                const isOldest = index === 0;
                 html += `
                     <div class="col-md-6 mb-3">
-                        <div class="po-item" data-item-id="${po.item_id}" data-product='${JSON.stringify(product)}' data-po='${JSON.stringify(po)}'>
+                        <div class="po-item ${isOldest ? 'border-primary' : ''}" data-item-id="${po.item_id}" data-product='${JSON.stringify(product)}' data-po='${JSON.stringify(po)}'>
+                            ${isOldest ? '<div class="small text-primary fw-bold mb-1"><span class="material-icons align-middle me-1" style="font-size: 1rem;">schedule</span>เก่าที่สุด</div>' : ''}
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <div>
                                     <div class="fw-bold text-primary">${escapeHtml(po.po_number)}</div>
@@ -635,7 +732,7 @@ $(document).ready(function() {
                                 </div>
                                 <div class="text-end">
                                     <div class="small text-muted">วันที่สั่ง</div>
-                                    <div class="small">${formatDate(po.order_date)}</div>
+                                    <div class="small">${formatDateTime(po.order_date)}</div>
                                 </div>
                             </div>
                             
@@ -660,9 +757,9 @@ $(document).ready(function() {
                             </div>
                             
                             <div class="mt-3 text-center">
-                                <button class="btn receive-btn btn-sm receive-item-btn">
+                                <button class="btn receive-btn btn-sm receive-item-btn ${isOldest ? 'btn-lg' : ''}">
                                     <span class="material-icons me-1" style="font-size: 1rem;">input</span>
-                                    รับเข้าสินค้า
+                                    ${isOldest ? 'รับเข้า (แนะนำ)' : 'รับเข้าสินค้า'}
                                 </button>
                             </div>
                         </div>
@@ -676,6 +773,15 @@ $(document).ready(function() {
                 </div>
             `;
         });
+        
+        if (html === '') {
+            html = `
+                <div class="text-center py-4">
+                    <span class="material-icons text-muted mb-2" style="font-size: 3rem;">inventory_2</span>
+                    <p class="text-muted">ไม่พบสินค้าที่ค้างรับ หรือ รับครบแล้วทั้งหมด</p>
+                </div>
+            `;
+        }
         
         $('#resultsContainer').html(html);
         $('#searchResults').show();
@@ -691,6 +797,192 @@ $(document).ready(function() {
     }
     
     function showReceiveModal(product, po) {
+        // โหลดข้อมูลตำแหน่งสินค้าจากฐานข้อมูล
+        loadProductLocation(product.product_id).then(locationData => {
+            const modalContent = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0">ข้อมูลสินค้า</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <strong>${escapeHtml(product.product_name)}</strong>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted">SKU</small>
+                                        <div>${escapeHtml(product.sku)}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">หน่วย</small>
+                                        <div>${escapeHtml(product.unit)}</div>
+                                    </div>
+                                </div>
+                                ${product.barcode ? `
+                                <div class="mt-2">
+                                    <small class="text-muted">Barcode</small>
+                                    <div>${escapeHtml(product.barcode)}</div>
+                                </div>
+                                ` : ''}
+                                ${locationData ? `
+                                <div class="mt-2">
+                                    <small class="text-muted">ตำแหน่งเก็บ</small>
+                                    <div class="d-flex align-items-center">
+                                        <span class="material-icons text-info me-1" style="font-size: 1rem;">place</span>
+                                        <span>${formatLocation(locationData)}</span>
+                                    </div>
+                                    ${locationData.description ? `
+                                    <small class="text-muted">${escapeHtml(locationData.description)}</small>
+                                    ` : ''}
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0">ใบสั่งซื้อ</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <strong>${escapeHtml(po.po_number)}</strong>
+                            </div>
+                            <div class="mb-2">
+                                <small class="text-muted">ผู้จำหน่าย</small>
+                                <div>${escapeHtml(po.supplier_name)}</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">สั่งซื้อ</small>
+                                    <div class="fw-bold text-info">${po.ordered_qty} ${escapeHtml(product.unit)}</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">รับแล้ว</small>
+                                    <div class="fw-bold text-success">${po.received_qty} ${escapeHtml(product.unit)}</div>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">คงเหลือรับได้</small>
+                                <div class="fw-bold text-warning">${po.remaining_qty} ${escapeHtml(product.unit)}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <hr>
+            
+            <form id="receiveForm">
+                <input type="hidden" name="item_id" value="${po.item_id}">
+                <input type="hidden" name="product_id" value="${product.product_id}">
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">จำนวนที่รับเข้า *</label>
+                        <div class="input-group">
+                            <input type="number" 
+                                   class="form-control" 
+                                   name="receive_qty" 
+                                   id="receiveQty"
+                                   max="${po.remaining_qty}" 
+                                   min="0.01" 
+                                   step="0.01" 
+                                   value="${po.remaining_qty}"
+                                   required>
+                            <span class="input-group-text">${escapeHtml(product.unit)}</span>
+                        </div>
+                        <small class="text-muted">สูงสุด: ${po.remaining_qty} ${escapeHtml(product.unit)}</small>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">วันที่หมดอายุ</label>
+                        <input type="date" 
+                               class="form-control" 
+                               name="expiry_date" 
+                               id="expiryDate"
+                               min="${new Date().toISOString().split('T')[0]}">
+                        <small class="text-muted">
+                            <span class="material-icons align-middle me-1" style="font-size: 0.8rem;">event</span>
+                            วันที่หมดอายุของล็อตนี้
+                        </small>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">หมายเหตุ (ถ้ามี)</label>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="หมายเหตุการรับเข้าสินค้า..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="text-end mt-4">
+                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn receive-btn">
+                        <span class="material-icons me-1" style="font-size: 1rem;">check</span>
+                        ยืนยันรับเข้าสินค้า
+                    </button>
+                </div>
+            </form>
+            `;
+            
+            $('#modalContent').html(modalContent);
+            $('#receiveModal').modal('show');
+            
+            // Focus on quantity input
+            setTimeout(() => {
+                $('#receiveQty').focus().select();
+            }, 500);
+            
+            // Handle form submission
+            $('#receiveForm').on('submit', function(e) {
+                e.preventDefault();
+                processReceive($(this));
+            });
+        }).catch(error => {
+            console.error('Error loading product location:', error);
+            // แสดง modal แม้ไม่สามารถโหลดข้อมูลตำแหน่งได้
+            showReceiveModalFallback(product, po);
+        });
+    }
+    
+    // ฟังก์ชันโหลดข้อมูลตำแหน่งสินค้า
+    function loadProductLocation(productId) {
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                url: '../api/get_product_location.php',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ product_id: productId }),
+                success: function(response) {
+                    if (response.success && response.data) {
+                        resolve(response.data);
+                    } else {
+                        resolve(null);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading product location:', error);
+                    resolve(null); // ไม่ reject เพื่อให้ modal แสดงได้
+                }
+            });
+        });
+    }
+    
+    // ฟังก์ชันจัดรูปแบบตำแหน่ง
+    function formatLocation(locationData) {
+        if (locationData.row_code && locationData.bin && locationData.shelf) {
+            return `${locationData.row_code}-${locationData.bin}-${locationData.shelf}`;
+        } else if (locationData.description) {
+            return locationData.description;
+        } else {
+            return 'ไม่ระบุตำแหน่ง';
+        }
+    }
+    
+    // ฟังก์ชันสำรองสำหรับแสดง modal เมื่อไม่สามารถโหลดข้อมูลตำแหน่งได้
+    function showReceiveModalFallback(product, po) {
         const modalContent = `
             <div class="row">
                 <div class="col-md-6">
@@ -761,7 +1053,7 @@ $(document).ready(function() {
                 <input type="hidden" name="product_id" value="${product.product_id}">
                 
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label fw-bold">จำนวนที่รับเข้า *</label>
                         <div class="input-group">
                             <input type="number" 
@@ -778,7 +1070,20 @@ $(document).ready(function() {
                         <small class="text-muted">สูงสุด: ${po.remaining_qty} ${escapeHtml(product.unit)}</small>
                     </div>
                     
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <label class="form-label">วันที่หมดอายุ</label>
+                        <input type="date" 
+                               class="form-control" 
+                               name="expiry_date" 
+                               id="expiryDate"
+                               min="${new Date().toISOString().split('T')[0]}">
+                        <small class="text-muted">
+                            <span class="material-icons align-middle me-1" style="font-size: 0.8rem;">event</span>
+                            วันที่หมดอายุของล็อตนี้
+                        </small>
+                    </div>
+                    
+                    <div class="col-md-4">
                         <label class="form-label">หมายเหตุ (ถ้ามี)</label>
                         <textarea class="form-control" name="notes" rows="2" placeholder="หมายเหตุการรับเข้าสินค้า..."></textarea>
                     </div>
@@ -851,7 +1156,8 @@ $(document).ready(function() {
                     item_id: data.item_id,
                     product_id: data.product_id,
                     received_qty: parseFloat(data.receive_qty),
-                    notes: data.notes || ''
+                    notes: data.notes || '',
+                    expiry_date: data.expiry_date || null
                 }]
             }),
             success: function(response) {
@@ -866,7 +1172,21 @@ $(document).ready(function() {
                         $('#receiveModal').modal('hide');
                         $('#barcodeInput').val('').focus();
                         $('#searchResults').hide();
+                        $('#loadingIndicator').hide();
                         loadRecentActivities();
+                        
+                        // Show ready for next scan message
+                        setTimeout(() => {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'info',
+                                title: 'พร้อมสแกนต่อ',
+                                text: 'สแกนบาร์โค้ดสินค้าถัดไป',
+                                showConfirmButton: false,
+                                timer: 2000
+                            });
+                        }, 500);
                     });
                 } else {
                     Swal.fire({
@@ -1161,6 +1481,14 @@ $(document).ready(function() {
     function formatDate(dateString) {
         const date = new Date(dateString);
         return date.toLocaleDateString('th-TH');
+    }
+    
+    function formatDateTime(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('th-TH') + ' ' + date.toLocaleTimeString('th-TH', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
     }
     
     function formatNumber(number) {

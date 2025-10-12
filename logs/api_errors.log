@@ -186,3 +186,73 @@
 [04-Oct-2025 19:43:00 Asia/Bangkok] Processing update: po_id=6, type=add_item
 [04-Oct-2025 19:44:01 Asia/Bangkok] update_po_section.php called with: {"po_id":"6","item_id":"23","update_type":"delete_item"}
 [04-Oct-2025 19:44:01 Asia/Bangkok] Processing update: po_id=6, type=delete_item
+[12-Oct-2025 12:05:26 Asia/Bangkok] update_po_section.php called with: {"po_id":"6","supplier_id":"9","update_type":"supplier"}
+[12-Oct-2025 12:05:26 Asia/Bangkok] Processing update: po_id=6, type=supplier
+[12-Oct-2025 12:05:44 Asia/Bangkok] === product_search_api.php START ===
+[12-Oct-2025 12:05:44 Asia/Bangkok] Request query: test
+[12-Oct-2025 12:05:44 Asia/Bangkok] Request method: GET
+[12-Oct-2025 12:05:44 Asia/Bangkok] Request URI: /api/product_search_api.php?q=test&limit=10
+[12-Oct-2025 12:05:44 Asia/Bangkok] Searching for: 'test' with limit: 10
+[12-Oct-2025 12:05:44 Asia/Bangkok] About to encode 10 results
+[12-Oct-2025 12:05:44 Asia/Bangkok] Sent JSON response length: 3736
+[12-Oct-2025 12:05:44 Asia/Bangkok] === product_search_api.php END ===
+[12-Oct-2025 12:05:50 Asia/Bangkok] === product_search_api.php START ===
+[12-Oct-2025 12:05:50 Asia/Bangkok] Request query: 6
+[12-Oct-2025 12:05:50 Asia/Bangkok] Request method: GET
+[12-Oct-2025 12:05:50 Asia/Bangkok] Request URI: /api/product_search_api.php?q=6&limit=10
+[12-Oct-2025 12:05:50 Asia/Bangkok] Searching for: '6' with limit: 10
+[12-Oct-2025 12:05:50 Asia/Bangkok] About to encode 10 results
+[12-Oct-2025 12:05:50 Asia/Bangkok] Sent JSON response length: 4670
+[12-Oct-2025 12:05:50 Asia/Bangkok] === product_search_api.php END ===
+[12-Oct-2025 12:05:50 Asia/Bangkok] === product_search_api.php START ===
+[12-Oct-2025 12:05:50 Asia/Bangkok] Request query: 64
+[12-Oct-2025 12:05:50 Asia/Bangkok] Request method: GET
+[12-Oct-2025 12:05:50 Asia/Bangkok] Request URI: /api/product_search_api.php?q=64&limit=10
+[12-Oct-2025 12:05:50 Asia/Bangkok] Searching for: '64' with limit: 10
+[12-Oct-2025 12:05:50 Asia/Bangkok] About to encode 0 results
+[12-Oct-2025 12:05:50 Asia/Bangkok] Sent JSON response length: 2
+[12-Oct-2025 12:05:50 Asia/Bangkok] === product_search_api.php END ===
+[12-Oct-2025 12:05:51 Asia/Bangkok] === product_search_api.php START ===
+[12-Oct-2025 12:05:51 Asia/Bangkok] Request query: 6
+[12-Oct-2025 12:05:51 Asia/Bangkok] Request method: GET
+[12-Oct-2025 12:05:51 Asia/Bangkok] Request URI: /api/product_search_api.php?q=6&limit=10
+[12-Oct-2025 12:05:51 Asia/Bangkok] Searching for: '6' with limit: 10
+[12-Oct-2025 12:05:51 Asia/Bangkok] About to encode 10 results
+[12-Oct-2025 12:05:51 Asia/Bangkok] Sent JSON response length: 4670
+[12-Oct-2025 12:05:51 Asia/Bangkok] === product_search_api.php END ===
+[12-Oct-2025 12:06:19 Asia/Bangkok] update_po_section.php called with: {"po_id":"6","product_id":"12","product_name":"Giovanni - Moisturizing Shave Cream Invigorating Tea Tree&Mint 207ml.","qty":"10","price_per_unit":"3.2","unit":"\u0e0a\u0e34\u0e49\u0e19","currency_id":"2","price_original":"3.2","exchange_rate":"39","update_type":"add_item"}
+[12-Oct-2025 12:06:19 Asia/Bangkok] Processing update: po_id=6, type=add_item
+[12-Oct-2025 23:28:52 Asia/Bangkok] === product_search_api.php START ===
+[12-Oct-2025 23:28:52 Asia/Bangkok] Request query: ะำห
+[12-Oct-2025 23:28:52 Asia/Bangkok] Request method: GET
+[12-Oct-2025 23:28:52 Asia/Bangkok] Request URI: /api/product_search_api.php?q=%E0%B8%B0%E0%B8%B3%E0%B8%AB&limit=10
+[12-Oct-2025 23:28:52 Asia/Bangkok] Searching for: 'ะำห' with limit: 10
+[12-Oct-2025 23:28:52 Asia/Bangkok] About to encode 0 results
+[12-Oct-2025 23:28:52 Asia/Bangkok] Sent JSON response length: 2
+[12-Oct-2025 23:28:52 Asia/Bangkok] === product_search_api.php END ===
+[12-Oct-2025 23:28:53 Asia/Bangkok] === product_search_api.php START ===
+[12-Oct-2025 23:28:53 Asia/Bangkok] Request query: ะำหะ
+[12-Oct-2025 23:28:53 Asia/Bangkok] Request method: GET
+[12-Oct-2025 23:28:53 Asia/Bangkok] Request URI: /api/product_search_api.php?q=%E0%B8%B0%E0%B8%B3%E0%B8%AB%E0%B8%B0&limit=10
+[12-Oct-2025 23:28:53 Asia/Bangkok] Searching for: 'ะำหะ' with limit: 10
+[12-Oct-2025 23:28:53 Asia/Bangkok] About to encode 0 results
+[12-Oct-2025 23:28:53 Asia/Bangkok] Sent JSON response length: 2
+[12-Oct-2025 23:28:53 Asia/Bangkok] === product_search_api.php END ===
+[12-Oct-2025 23:28:55 Asia/Bangkok] === product_search_api.php START ===
+[12-Oct-2025 23:28:55 Asia/Bangkok] Request query: t
+[12-Oct-2025 23:28:55 Asia/Bangkok] Request method: GET
+[12-Oct-2025 23:28:55 Asia/Bangkok] Request URI: /api/product_search_api.php?q=t&limit=10
+[12-Oct-2025 23:28:55 Asia/Bangkok] Searching for: 't' with limit: 10
+[12-Oct-2025 23:28:55 Asia/Bangkok] About to encode 10 results
+[12-Oct-2025 23:28:55 Asia/Bangkok] Sent JSON response length: 5413
+[12-Oct-2025 23:28:55 Asia/Bangkok] === product_search_api.php END ===
+[12-Oct-2025 23:28:57 Asia/Bangkok] === product_search_api.php START ===
+[12-Oct-2025 23:28:57 Asia/Bangkok] Request query: test1
+[12-Oct-2025 23:28:57 Asia/Bangkok] Request method: GET
+[12-Oct-2025 23:28:57 Asia/Bangkok] Request URI: /api/product_search_api.php?q=test1&limit=10
+[12-Oct-2025 23:28:57 Asia/Bangkok] Searching for: 'test1' with limit: 10
+[12-Oct-2025 23:28:57 Asia/Bangkok] About to encode 2 results
+[12-Oct-2025 23:28:57 Asia/Bangkok] Sent JSON response length: 749
+[12-Oct-2025 23:28:57 Asia/Bangkok] === product_search_api.php END ===
+[12-Oct-2025 23:29:15 Asia/Bangkok] update_po_section.php called with: {"po_id":"23","product_id":"1","product_name":"test1","qty":"10","price_per_unit":"4.7","unit":"\u0e41\u0e1e\u0e47\u0e04","currency_id":"1","price_original":"4.7","exchange_rate":"1","update_type":"add_item"}
+[12-Oct-2025 23:29:15 Asia/Bangkok] Processing update: po_id=23, type=add_item

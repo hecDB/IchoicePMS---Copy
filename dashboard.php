@@ -97,6 +97,22 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total_products = count($products);
 $total_stock_qty = array_sum(array_column($products, 'total_stock'));
 
+// ====== คำนวณสถานะสต็อกตามเงื่อนไขใหม่ ======
+$high_stock_count = 0;
+$medium_stock_count = 0;
+$low_stock_count = 0;
+
+foreach ($products as $product) {
+    $stock = $product['total_stock'];
+    if ($stock > 10) {
+        $high_stock_count++;
+    } elseif ($stock >= 2 && $stock <= 10) {
+        $medium_stock_count++;
+    } elseif ($stock <= 1 && $stock > 0) {
+        $low_stock_count++;
+    }
+}
+
 // ====== สินค้าหมดแล้ว (total_qty < 1) ======
 $sql_low_stock = "
   SELECT 
@@ -222,6 +238,65 @@ $expiring_soon_count = count($expiring_soon_products);
         </div>
         <?php } ?>
 
+        <!-- สถานะสต็อกสินค้า -->
+        <div class="card" style="display:flex;gap:32px;flex-wrap:wrap;justify-content:space-between;margin-top:20px;">
+          <!-- สต็อกเพียงพอ -->
+          <a href="stock/all_stock.php" 
+             style="flex:1 1 170px;min-width:155px;max-width:280px;
+                    display:flex;align-items:center;gap:17px;
+                    text-decoration:none;background:#dcfce7;
+                    border-radius:13px;padding:12px;
+                    transition:0.2s;cursor:pointer;"
+             onmouseover="this.style.background='#bbf7d0';"
+             onmouseout="this.style.background='#dcfce7';">
+              <span class="material-icons" style="font-size:41px;color:#16a34a;background:#bbf7d0;border-radius:13px;padding:7px;">check_circle</span>
+              <div>
+                <div style="font-size:15px;color:#6c7fb0;">สต็อกเพียงพอ</div>
+                <div style="font-size:26px;font-weight:bold;"><?=$high_stock_count?></div>
+                <div style="font-size:12px;color:#16a34a;">มากกว่า 10 ชิ้น</div>
+              </div>
+          </a>
+
+          <!-- สต็อกปานกลาง -->
+          <a href="stock/all_stock.php" 
+             style="flex:1 1 170px;min-width:155px;max-width:280px;
+                    display:flex;align-items:center;gap:17px;
+                    text-decoration:none;background:#fef3c7;
+                    border-radius:13px;padding:12px;
+                    transition:0.2s;cursor:pointer;"
+             onmouseover="this.style.background='#fde68a';"
+             onmouseout="this.style.background='#fef3c7';">
+              <span class="material-icons" style="font-size:41px;color:#d97706;background:#fde68a;border-radius:13px;padding:7px;">warning</span>
+              <div>
+                <div style="font-size:15px;color:#6c7fb0;">สต็อกปานกลาง</div>
+                <div style="font-size:26px;font-weight:bold;"><?=$medium_stock_count?></div>
+                <div style="font-size:12px;color:#d97706;">2-10 ชิ้น</div>
+              </div>
+          </a>
+
+          <!-- สต็อกต่ำ -->
+          <a href="stock/low_stock.php" 
+              style="flex:1 1 170px;min-width:155px;max-width:280px;
+                      display:flex;align-items:center;gap:17px;
+                      text-decoration:none;background:#fee2e2;
+                      border-radius:13px;padding:12px;
+                      transition:0.2s;cursor:pointer;"
+              onmouseover="this.style.background='#fecaca';"
+              onmouseout="this.style.background='#fee2e2';">
+                <span class="material-icons" 
+                      style="font-size:41px;color:#dc2626;background:#fecaca;
+                            border-radius:13px;padding:7px;">
+                    remove_circle
+                </span>
+                <div>
+                    <div style="font-size:15px;color:#6c7fb0;">สต็อกต่ำ</div>
+                    <div style="font-size:26px;font-weight:bold;"><?=$low_stock_count?></div>
+                    <div style="font-size:12px;color:#dc2626;">เหลือ 1 ชิ้น</div>
+                </div>
+            </a>
+        </div>
+
+        <!-- ข้อมูลเพิ่มเติม -->
         <div class="card" style="display:flex;gap:32px;flex-wrap:wrap;justify-content:space-between;margin-top:20px;">
           <a href="stock/expiring_soon.php" 
              style="flex:1 1 170px;min-width:155px;max-width:280px;
@@ -249,29 +324,10 @@ $expiring_soon_count = count($expiring_soon_products);
              onmouseout="this.style.background='#f0f8ff';">
               <span class="material-icons" style="font-size:41px;color:#1abc9c;background:#d4f8f4;border-radius:13px;padding:7px;">inventory</span>
               <div>
-                <div style="font-size:15px;color:#6c7fb0;">รายการสินค้าทั้วหมด</div>
+                <div style="font-size:15px;color:#6c7fb0;">รายการสินค้าทั้งหมด</div>
                 <div style="font-size:26px;font-weight:bold;"><?=$total_products?></div>
               </div>
           </a>
-          <!-- สินค้าใกล้หมด -->
-          <a href="stock/low_stock.php" 
-              style="flex:1 1 170px;min-width:155px;max-width:280px;
-                      display:flex;align-items:center;gap:17px;
-                      text-decoration:none;background:#f0f8ff;
-                      border-radius:13px;padding:12px;
-                      transition:0.2s;cursor:pointer;"
-              onmouseover="this.style.background='#d4f8f4';"
-              onmouseout="this.style.background='#f0f8ff';">
-                <span class="material-icons" 
-                      style="font-size:41px;color:#e67e22;background:#fdebd0;
-                            border-radius:13px;padding:7px;">
-                    warning
-                </span>
-                <div>
-                    <div style="font-size:15px;color:#6c7fb0;">สินค้าใกล้หมด</div>
-                    <div style="font-size:26px;font-weight:bold;"><?=$low_stock_qty?></div>
-                </div>
-            </a>
         </div>
         <div class="card" style="margin-top:34px;">
             <div class="card-title" style="font-size:18px;">

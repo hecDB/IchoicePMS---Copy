@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>ทดสอบฟังก์ชั่นค้นหาและปุ่มแก้ไข</title>
+    <link rel="icon" href="../images/favicon.png" type="image/png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container py-4">
+    <div class="alert alert-info">
+        <h4>ทดสอบฟังก์ชั่นหลัก</h4>
+        <p>ทดสอบการค้นหาและปุ่มแก้ไขในหน้า receive_items_view.php</p>
+    </div>
+    
+    <!-- Search Test -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>ทดสอบการค้นหา</h5>
+        </div>
+        <div class="card-body">
+            <input type="text" class="form-control" id="custom-search" placeholder="ค้นหาในตาราง...">
+            <div class="mt-2">
+                <small class="text-muted">พิมพ์เพื่อทดสอบการค้นหา</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Button Test -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>ทดสอบปุ่มแก้ไข</h5>
+        </div>
+        <div class="card-body">
+            <table id="receive-table" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>SKU</th>
+                        <th>ชื่อสินค้า</th>
+                        <th>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-id="1">
+                        <td>1</td>
+                        <td>TEST001</td>
+                        <td>สินค้าทดสอบ 1</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm edit-btn" data-id="1">
+                                <span class="material-icons">edit</span>
+                                แก้ไข
+                            </button>
+                        </td>
+                    </tr>
+                    <tr data-id="2">
+                        <td>2</td>
+                        <td>TEST002</td>
+                        <td>สินค้าทดสอบ 2</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm edit-btn" data-id="2">
+                                <span class="material-icons">edit</span>
+                                แก้ไข
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Debug Log -->
+    <div class="card">
+        <div class="card-header">
+            <h5>Debug Log</h5>
+        </div>
+        <div class="card-body">
+            <div id="debug-log" style="height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border: 1px solid #dee2e6;"></div>
+        </div>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="mt-4">
+        <a href="receive_items_view.php" class="btn btn-success">
+            <span class="material-icons">open_in_new</span>
+            เปิดหน้าจริง
+        </a>
+        <button onclick="location.reload()" class="btn btn-secondary">
+            <span class="material-icons">refresh</span>
+            รีเฟรช
+        </button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+function addLog(message) {
+    const log = document.getElementById('debug-log');
+    const time = new Date().toLocaleTimeString();
+    log.innerHTML += `[${time}] ${message}<br>`;
+    log.scrollTop = log.scrollHeight;
+    console.log(message);
+}
+
+$(document).ready(function() {
+    addLog('📝 Document ready - เริ่มการทดสอบ');
+    addLog('📦 jQuery version: ' + $.fn.jquery);
+    addLog('📊 DataTable available: ' + (typeof $.fn.DataTable));
+    
+    // Initialize DataTable
+    let receiveTable = $('#receive-table').DataTable({
+        language: {
+            "search": "ค้นหา:",
+            "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
+            "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+            "paginate": {
+                "first": "หน้าแรก",
+                "last": "หน้าสุดท้าย", 
+                "next": "ถัดไป",
+                "previous": "ก่อนหน้า"
+            }
+        },
+        drawCallback: function() {
+            addLog('🔄 DataTable drawCallback triggered');
+            bindEditButtons();
+        },
+        initComplete: function() {
+            addLog('✅ DataTable initialized successfully');
+            bindEditButtons();
+        }
+    });
+    
+    function bindEditButtons() {
+        addLog('🔗 Binding edit buttons...');
+        const editButtons = $('.edit-btn');
+        addLog('🔍 Found edit buttons: ' + editButtons.length);
+        
+        editButtons.off('click.test').on('click.test', function(e) {
+            e.preventDefault();
+            const id = $(this).data('id');
+            addLog('✏️ Edit button clicked for ID: ' + id);
+            
+            // Show success message
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ปุ่มแก้ไขทำงาน!',
+                    text: 'ID: ' + id,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                alert('ปุ่มแก้ไขทำงาน! ID: ' + id);
+            }
+        });
+        
+        addLog('✅ Edit buttons bound successfully');
+    }
+    
+    // Test search functionality
+    $('#custom-search').on('keyup input', function() {
+        const value = this.value;
+        addLog('🔍 Search input: "' + value + '"');
+        
+        if (receiveTable && typeof receiveTable.search === 'function') {
+            receiveTable.search(value).draw();
+            addLog('✅ Search executed successfully');
+        } else {
+            addLog('❌ ERROR: receiveTable.search is not available');
+        }
+    });
+    
+    // Event delegation fallback
+    $(document).on('click', '.edit-btn', function(e) {
+        const id = $(this).data('id');
+        addLog('🔄 Fallback edit handler triggered for ID: ' + id);
+    });
+    
+    addLog('🎉 All initialization complete - พร้อมทดสอบ');
+});
+</script>
+
+<!-- Include SweetAlert2 for better alerts -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+</html>

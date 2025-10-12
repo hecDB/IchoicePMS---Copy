@@ -13,17 +13,26 @@ $sql_stock = "
         p.unit,
         p.image,
         COALESCE(SUM(ri.receive_qty), 0) AS total_stock,
-        GROUP_CONCAT(DISTINCT ri.expiry_date ORDER BY ri.expiry_date SEPARATOR ', ') as expiry_dates,
         CASE 
-            WHEN COALESCE(SUM(ri.receive_qty), 0) > 100 THEN 'high'
-            WHEN COALESCE(SUM(ri.receive_qty), 0) >= 20 THEN 'medium' 
-            WHEN COALESCE(SUM(ri.receive_qty), 0) > 0 THEN 'low'
+            WHEN l.row_code IS NOT NULL AND l.bin IS NOT NULL AND l.shelf IS NOT NULL 
+            THEN CONCAT(l.row_code, '-', l.bin, '-', l.shelf)
+            WHEN l.description IS NOT NULL 
+            THEN l.description
+            ELSE 'ไม่ระบุตำแหน่ง'
+        END as location_display,
+        l.description as location_description,
+        CASE 
+            WHEN COALESCE(SUM(ri.receive_qty), 0) > 10 THEN 'high'
+            WHEN COALESCE(SUM(ri.receive_qty), 0) BETWEEN 2 AND 10 THEN 'medium' 
+            WHEN COALESCE(SUM(ri.receive_qty), 0) <= 1 AND COALESCE(SUM(ri.receive_qty), 0) > 0 THEN 'low'
             ELSE 'out'
         END as stock_status
     FROM products p
     LEFT JOIN purchase_order_items poi ON poi.product_id = p.product_id
     LEFT JOIN receive_items ri ON ri.item_id = poi.item_id
-    GROUP BY p.product_id, p.name, p.sku, p.barcode, p.unit, p.image
+    LEFT JOIN product_location pl ON pl.product_id = p.product_id
+    LEFT JOIN locations l ON l.location_id = pl.location_id
+    GROUP BY p.product_id, p.name, p.sku, p.barcode, p.unit, p.image, l.row_code, l.bin, l.shelf, l.description
     HAVING total_stock >= 0
     ORDER BY p.name
 ";
@@ -33,9 +42,9 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Get statistics using subquery approach
 $stats_sql = "SELECT 
     COUNT(*) as total_products,
-    SUM(CASE WHEN total_stock > 100 THEN 1 ELSE 0 END) as high_stock,
-    SUM(CASE WHEN total_stock BETWEEN 20 AND 100 THEN 1 ELSE 0 END) as medium_stock,  
-    SUM(CASE WHEN total_stock BETWEEN 1 AND 19 THEN 1 ELSE 0 END) as low_stock,
+    SUM(CASE WHEN total_stock > 10 THEN 1 ELSE 0 END) as high_stock,
+    SUM(CASE WHEN total_stock BETWEEN 2 AND 10 THEN 1 ELSE 0 END) as medium_stock,  
+    SUM(CASE WHEN total_stock <= 1 AND total_stock > 0 THEN 1 ELSE 0 END) as low_stock,
     SUM(CASE WHEN total_stock = 0 THEN 1 ELSE 0 END) as out_stock
 FROM (
     SELECT 
@@ -116,6 +125,33 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC) ?: ['total_products' => 0, 'high_s
             color: #111827;
             font-weight: 500;
         }
+        
+        .location-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .location-code {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #1f2937;
+            background: #f3f4f6;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        
+        .location-description {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.125rem;
+        }
+        
+        .no-location {
+            color: #9ca3af;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -135,76 +171,6 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC) ?: ['total_products' => 0, 'high_s
             </div>
         </div>
 
-        <!-- Stats Cards -->
-        <div class="row mb-4">
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-primary">
-                    <div class="stats-card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="stats-title">สินค้าทั้งหมด</div>
-                                <div class="stats-value"><?= number_format(count($products)) ?></div>
-                                <div class="stats-subtitle">รายการในคลัง</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="material-icons stats-icon">inventory</i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-success">
-                    <div class="stats-card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="stats-title">สต็อกเพียงพอ</div>
-                                <div class="stats-value"><?= number_format(array_sum(array_filter($products, fn($p) => $p['stock_status'] === 'high'))) ?></div>
-                                <div class="stats-subtitle">มากกว่า 100 ชิ้น</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="material-icons stats-icon">check_circle</i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-warning">
-                    <div class="stats-card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="stats-title">สต็อกปานกลาง</div>
-                                <div class="stats-value"><?= number_format(array_sum(array_filter($products, fn($p) => $p['stock_status'] === 'medium'))) ?></div>
-                                <div class="stats-subtitle">20-100 ชิ้น</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="material-icons stats-icon">warning</i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-danger">
-                    <div class="stats-card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="stats-title">สต็อกต่ำ</div>
-                                <div class="stats-value"><?= number_format(array_sum(array_filter($products, fn($p) => $p['stock_status'] === 'low'))) ?></div>
-                                <div class="stats-subtitle">น้อยกว่า 20 ชิ้น</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="material-icons stats-icon">remove_circle</i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Main Table -->
         <div class="table-card">
@@ -233,7 +199,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC) ?: ['total_products' => 0, 'high_s
                             <th>จำนวนคงคลัง</th>
                             <th>หน่วย</th>
                             <th>สถานะ</th>
-                            <th>วันหมดอายุ</th>
+                            <th>ตำแหน่งเก็บ</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -254,10 +220,25 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC) ?: ['total_products' => 0, 'high_s
                                     <?php 
                                     $image_path = '../images/noimg.png'; // Default
                                     if (!empty($product['image'])) {
+                                        // Try different path variations
+                                        $possible_paths = [];
+                                        
+                                        // Check if image already includes 'images/' prefix
                                         if (strpos($product['image'], 'images/') === 0) {
-                                            $image_path = '../' . $product['image'];
+                                            $possible_paths[] = '../' . $product['image'];
                                         } else {
-                                            $image_path = '../images/' . $product['image'];
+                                            $possible_paths[] = '../images/' . $product['image'];
+                                        }
+                                        
+                                        // Also try direct path
+                                        $possible_paths[] = '../' . $product['image'];
+                                        
+                                        // Check which file actually exists
+                                        foreach ($possible_paths as $path) {
+                                            if (file_exists($path)) {
+                                                $image_path = $path;
+                                                break;
+                                            }
                                         }
                                     }
                                     ?>
@@ -292,7 +273,21 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC) ?: ['total_products' => 0, 'high_s
                                     ?>
                                     <span class="badge stock-badge <?= $status_class ?>"><?= $status_text ?></span>
                                 </td>
-                                <td><?= htmlspecialchars($product['expiry_dates'] ?? 'ไม่ได้กำหนด') ?></td>
+                                <td>
+                                    <div class="location-info">
+                                        <span class="material-icons text-info" style="font-size: 1.1rem;">place</span>
+                                        <div>
+                                            <?php if ($product['location_display'] === 'ไม่ระบุตำแหน่ง'): ?>
+                                                <span class="no-location"><?= htmlspecialchars($product['location_display']) ?></span>
+                                            <?php else: ?>
+                                                <div class="location-code"><?= htmlspecialchars($product['location_display']) ?></div>
+                                                <?php if (!empty($product['location_description']) && $product['location_description'] != $product['location_display']): ?>
+                                                    <div class="location-description"><?= htmlspecialchars($product['location_description']) ?></div>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                         <?php endif; ?>

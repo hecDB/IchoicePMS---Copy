@@ -3,10 +3,8 @@ header('Content-Type: application/json');
 include '../config/db_connect.php';
 
 $name = trim($_POST['name']??'');
-$contact = trim($_POST['contact_name']??'');
 $phone = trim($_POST['phone']??'');
 $email = trim($_POST['email']??'');
-$tax_id = trim($_POST['tax_id']??'');
 $address = trim($_POST['address']??'');
 
 if(!$name) {
@@ -20,5 +18,5 @@ try {
   $id = $pdo->lastInsertId();
   echo json_encode(['success'=>true, 'supplier_id'=>$id]);
 } catch(Exception $ex) {
-  echo json_encode(['success'=>false,'error'=>'ไม่สามารถเพิ่มข้อมูลได้']);
+  echo json_encode(['success'=>false,'error'=>'ไม่สามารถเพิ่มข้อมูลได้: ' . $ex->getMessage()]);
 }

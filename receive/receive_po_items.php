@@ -21,12 +21,18 @@ $sql_pos = "
         po.remark,
         po.status,
         COUNT(poi.item_id) as total_items,
-        COALESCE(SUM(CASE WHEN ri.item_id IS NOT NULL THEN 1 ELSE 0 END), 0) as received_items
+        COALESCE(SUM(
+            CASE WHEN COALESCE(received_summary.total_received, 0) >= poi.qty THEN 1 ELSE 0 END
+        ), 0) as received_items
     FROM purchase_orders po
     LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
     LEFT JOIN currencies c ON po.currency_id = c.currency_id
     LEFT JOIN purchase_order_items poi ON po.po_id = poi.po_id
-    LEFT JOIN receive_items ri ON poi.item_id = ri.item_id
+    LEFT JOIN (
+        SELECT item_id, SUM(receive_qty) as total_received 
+        FROM receive_items 
+        GROUP BY item_id
+    ) received_summary ON poi.item_id = received_summary.item_id
     WHERE po.status IN ('pending', 'partial')
     GROUP BY po.po_id, po.po_number, s.name, po.order_date, po.total_amount, c.code, po.remark, po.status
     ORDER BY po.order_date DESC, po.po_number DESC
@@ -620,6 +626,7 @@ $(document).ready(function() {
         const poNumber = $(this).data('po-number');
         const supplier = $(this).data('supplier');
         
+        console.log('Receive button clicked:', { poId, poNumber, supplier });
         loadPoItems(poId, poNumber, supplier, 'receive');
     });
     
@@ -634,6 +641,7 @@ $(document).ready(function() {
     
     // Load PO items
     function loadPoItems(poId, poNumber, supplier, mode) {
+        console.log('loadPoItems called with:', { poId, poNumber, supplier, mode });
         currentPoData = { poId, poNumber, supplier, mode };
         
         $('#modalPoNumber').text(poNumber);
@@ -655,19 +663,22 @@ $(document).ready(function() {
         
         // Load data via AJAX
         $.ajax({
-            url: 'get_po_items.php',
+            url: '../api/get_po_items.php',
             method: 'GET',
             data: { po_id: poId },
             dataType: 'json',
             success: function(response) {
+                console.log('API Response:', response);
                 if (response.success) {
-                    displayPoItems(response.data, mode);
+                    console.log('Items:', response.items);
+                    displayPoItems(response.items, mode);
                 } else {
+                    console.error('API Error:', response.error);
                     $('#poItemsTableBody').html(`
                         <tr>
                             <td colspan="9" class="text-center py-4 text-danger">
                                 <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
-                                <div>${response.message}</div>
+                                <div>${response.error}</div>
                             </td>
                         </tr>
                     `);
@@ -689,10 +700,11 @@ $(document).ready(function() {
     
     // Display PO items in table
     function displayPoItems(items, mode) {
+        console.log('displayPoItems called with:', items, mode);
         let html = '';
         receiveItems = {};
         
-        if (items.length === 0) {
+        if (!items || !Array.isArray(items) || items.length === 0) {
             html = `
                 <tr>
                     <td colspan="9" class="text-center py-4 text-muted">
@@ -703,7 +715,7 @@ $(document).ready(function() {
             `;
         } else {
             items.forEach(function(item, index) {
-                const remainingQty = parseFloat(item.ordered_qty) - parseFloat(item.received_qty || 0);
+                const remainingQty = parseFloat(item.remaining_qty);
                 const canReceive = remainingQty > 0;
                 
                 html += `
@@ -715,12 +727,11 @@ $(document).ready(function() {
                         </td>
                         <td><span class="badge bg-secondary">${escapeHtml(item.sku)}</span></td>
                         <td>${escapeHtml(item.unit)}</td>
-                        <td class="fw-bold text-info">${parseFloat(item.ordered_qty).toLocaleString()}</td>
-                        <td>${parseFloat(item.unit_cost).toLocaleString()} ${escapeHtml(item.currency_code)}</td>
+                        <td class="fw-bold text-info">${parseFloat(item.order_qty).toLocaleString()}</td>
+                        <td>${parseFloat(item.unit_price).toLocaleString()} ${escapeHtml(item.currency_code || '')}</td>
                         <td class="fw-bold text-success">${parseFloat(item.received_qty || 0).toLocaleString()}</td>
                         <td class="fw-bold ${canReceive ? 'text-warning' : 'text-muted'}">${remainingQty.toLocaleString()}</td>
-                        <td>
-                `;
+                        <td>`;
                 
                 if (mode === 'receive' && canReceive) {
                     html += `
@@ -737,7 +748,7 @@ $(document).ready(function() {
                                     class="btn btn-outline-primary quick-receive-btn"
                                     data-item-id="${item.item_id}"
                                     data-product-name="${escapeHtml(item.product_name)}"
-                                    data-ordered-qty="${item.ordered_qty}"
+                                    data-ordered-qty="${item.order_qty}"
                                     data-remaining-qty="${remainingQty}"
                                     data-unit="${escapeHtml(item.unit)}"
                                     title="รับเข้าด่วน">

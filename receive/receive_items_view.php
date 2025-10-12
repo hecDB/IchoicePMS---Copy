@@ -33,6 +33,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <meta charset="UTF-8">
 <title>รายการรับสินค้า - IchoicePMS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="../images/favicon.png" type="image/png">
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -89,6 +90,334 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     @media (max-width: 480px) {
         .product-image { width: 20px; height: 20px; }
+    }
+
+    /* PO Selection Modal Styles */
+    .po-item {
+        transition: all 0.3s ease;
+        border-radius: 8px;
+    }
+    
+    .po-item:hover {
+        background-color: #f8f9ff;
+        border-color: #3b82f6;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    }
+    
+    .po-item:active {
+        transform: translateY(0);
+    }
+    
+    #selectPOModal .modal-dialog {
+        max-width: 800px;
+    }
+    
+    #po-search {
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 0.75rem;
+        font-size: 1rem;
+    }
+    
+    #po-search:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .list-group-item {
+        border: 1px solid #e5e7eb;
+        margin-bottom: 0.5rem;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.65rem;
+    }
+
+    /* Table responsive adjustments */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    #receive-table {
+        min-width: 1400px; /* กำหนดความกว้างขั้นต่ำของตาราง */
+        white-space: nowrap;
+    }
+    
+    #receive-table th,
+    #receive-table td {
+        padding: 0.5rem 0.25rem; /* ลดขนาด padding */
+        font-size: 0.85rem; /* ลดขนาดตัวอักษร */
+        vertical-align: middle;
+    }
+    
+    /* กำหนดความกว้างคอลัมน์ */
+    #receive-table th:nth-child(1) { width: 60px; min-width: 60px; } /* รูปภาพ */
+    #receive-table th:nth-child(2) { width: 100px; min-width: 100px; } /* SKU */
+    #receive-table th:nth-child(3) { width: 150px; min-width: 150px; } /* ชื่อสินค้า */
+    #receive-table th:nth-child(4) { width: 120px; min-width: 120px; } /* บาร์โค้ด */
+    #receive-table th:nth-child(5) { width: 100px; min-width: 100px; } /* ผู้เพิ่มรายการ */
+    #receive-table th:nth-child(6) { width: 110px; min-width: 110px; } /* วันที่เพิ่ม */
+    #receive-table th:nth-child(7) { width: 80px; min-width: 80px; } /* จำนวนก่อน */
+    #receive-table th:nth-child(8) { width: 80px; min-width: 80px; } /* เพิ่ม/ลด */
+    #receive-table th:nth-child(9) { width: 80px; min-width: 80px; } /* จำนวนล่าสุด */
+    #receive-table th:nth-child(10) { width: 100px; min-width: 100px; } /* ตำแหน่ง */
+    #receive-table th:nth-child(11) { width: 90px; min-width: 90px; } /* ราคาต้นทุน */
+    #receive-table th:nth-child(12) { width: 90px; min-width: 90px; } /* ราคาขาย */
+    #receive-table th:nth-child(13) { width: 100px; min-width: 100px; } /* PO */
+    #receive-table th:nth-child(14) { width: 80px; min-width: 80px; } /* ประเภท */
+    #receive-table th:nth-child(15) { width: 120px; min-width: 120px; } /* หมายเหตุ */
+    #receive-table th:nth-child(16) { width: 100px; min-width: 100px; } /* จัดการ */
+    
+    /* ปรับ text overflow สำหรับข้อความยาว */
+    #receive-table td:nth-child(3), /* ชื่อสินค้า */
+    #receive-table td:nth-child(15) { /* หมายเหตุ */
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* Tooltip สำหรับข้อความที่ถูกตัด */
+    #receive-table td[title] {
+        cursor: help;
+    }
+    
+    /* ปรับขนาดรูปภาพให้เล็กลง */
+    .product-image {
+        width: 32px !important; 
+        height: 32px !important;
+        max-width: 32px !important; 
+        max-height: 32px !important;
+    }
+    
+    /* ปรับขนาด badge */
+    .badge {
+        font-size: 0.7rem !important;
+        padding: 0.25rem 0.5rem !important;
+    }
+    
+    /* ปรับปุ่มจัดการ */
+    .action-btn {
+        padding: 0.25rem;
+        font-size: 0.8rem;
+    }
+    
+    .action-btn .material-icons {
+        font-size: 1rem;
+    }
+    
+    /* Mobile responsive adjustments */
+    @media (max-width: 768px) {
+        #receive-table {
+            min-width: 1200px; /* ลดความกว้างสำหรับมือถือ */
+        }
+        
+        #receive-table th,
+        #receive-table td {
+            padding: 0.25rem 0.1rem;
+            font-size: 0.8rem;
+        }
+        
+        .product-image {
+            width: 24px !important; 
+            height: 24px !important;
+            max-width: 24px !important; 
+            max-height: 24px !important;
+        }
+        
+        .badge {
+            font-size: 0.65rem !important;
+            padding: 0.2rem 0.4rem !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        #receive-table {
+            min-width: 1000px;
+        }
+        
+        #receive-table th,
+        #receive-table td {
+            padding: 0.2rem 0.05rem;
+            font-size: 0.75rem;
+        }
+        
+        .product-image {
+            width: 20px !important; 
+            height: 20px !important;
+            max-width: 20px !important; 
+            max-height: 20px !important;
+        }
+    }
+    
+    /* DataTable pagination and search styling */
+    .dataTables_wrapper {
+        padding: 0;
+    }
+    
+    .dataTables_length,
+    .dataTables_filter,
+    .dataTables_info,
+    .dataTables_paginate {
+        margin: 0.5rem 0;
+    }
+    
+    .dataTables_filter input {
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        padding: 0.5rem 0.75rem;
+        margin-left: 0.5rem;
+        width: 250px;
+    }
+    
+    .dataTables_filter input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        outline: none;
+    }
+    
+    .dataTables_length select {
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        padding: 0.25rem 0.5rem;
+        margin: 0 0.5rem;
+    }
+    
+    .dataTables_paginate .paginate_button {
+        border: 1px solid #d1d5db !important;
+        background: white !important;
+        color: #374151 !important;
+        padding: 0.5rem 0.75rem !important;
+        margin: 0 0.125rem !important;
+        border-radius: 0.375rem !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .dataTables_paginate .paginate_button:hover {
+        background: #f3f4f6 !important;
+        border-color: #9ca3af !important;
+        color: #111827 !important;
+    }
+    
+    .dataTables_paginate .paginate_button.current {
+        background: #3b82f6 !important;
+        border-color: #3b82f6 !important;
+        color: white !important;
+    }
+    
+    .dataTables_paginate .paginate_button.disabled {
+        opacity: 0.5 !important;
+        cursor: not-allowed !important;
+    }
+    
+    .dataTables_info {
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+    
+    .dataTables_processing {
+        background: rgba(255, 255, 255, 0.9) !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 0.5rem !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+        color: #374151 !important;
+        font-size: 0.875rem !important;
+        padding: 1rem !important;
+    }
+    
+    /* Custom search box styling */
+    .search-box .input-group {
+        min-width: 300px;
+    }
+    
+    .search-box .input-group-text {
+        background-color: #f8f9fa;
+        border-color: #d1d5db;
+        color: #6b7280;
+    }
+    
+    .search-box .form-control {
+        border-color: #d1d5db;
+    }
+    
+    .search-box .form-control:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .table-actions {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    @media (max-width: 768px) {
+        .search-box .input-group {
+            min-width: 250px;
+        }
+        
+        .table-actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
+    
+    /* Quantity Split Modal Styles */
+    #quantitySplitModal .modal-dialog {
+        max-width: 1000px;
+    }
+    
+    .additional-po-row {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+        background-color: #f8f9fa;
+    }
+    
+    .additional-po-item {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .additional-po-item:hover {
+        background-color: #f8f9ff;
+        border-color: #3b82f6;
+    }
+    
+    .quantity-summary-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .split-status {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+        border-radius: 1rem;
+    }
+    
+    .split-main-po {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .split-additional-po {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    }
+    
+    @media (max-width: 768px) {
+        #quantitySplitModal .modal-dialog {
+            max-width: 95%;
+            margin: 1rem;
+        }
+        
+        .additional-po-row {
+            padding: 0.5rem;
+        }
+        
+        .additional-po-row .col-md-4 {
+            margin-bottom: 0.5rem;
+        }
     }
 </style>
 
@@ -176,8 +505,16 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <span class="material-icons">table_view</span>
                         รายการรับสินค้า (<?= count($rows) ?> รายการ)
                     </h5>
-                    <div class="table-actions">
-                        <button class="btn-modern btn-modern-secondary btn-sm refresh-table me-2" onclick="refreshTableData()">
+                    <div class="table-actions d-flex align-items-center">
+                        <div class="search-box me-3">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <span class="material-icons" style="font-size: 1rem;">search</span>
+                                </span>
+                                <input type="text" class="form-control" id="custom-search" placeholder="ค้นหาในตาราง...">
+                            </div>
+                        </div>
+                        <button class="btn-modern btn-modern-secondary btn-sm refresh-table" onclick="refreshTableData()">
                             <span class="material-icons">refresh</span>
                             รีเฟรช
                         </button>
@@ -193,11 +530,13 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </button>
                 </div>
 
-                <table id="receive-table" class="table modern-table table-striped table-hover">
+                <div class="table-responsive">
+                    <table id="receive-table" class="table modern-table table-striped table-hover">
                     <thead>
                         <tr>
                             <th style="width: 60px;">รูปภาพ</th>
                             <th>SKU</th>
+                            <th>ชื่อสินค้า</th>
                             <th>บาร์โค้ด</th>
                             <th>ผู้เพิ่มรายการ</th>
                             <th>วันที่เพิ่ม</th>
@@ -216,7 +555,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <tbody>
                     <?php if (empty($rows)): ?>
                     <tr>
-                        <td colspan="15" class="text-center py-4">
+                        <td colspan="16" class="text-center py-4">
                             <div class="d-flex flex-column align-items-center">
                                 <span class="material-icons mb-2" style="font-size: 3rem; color: #d1d5db;">receipt</span>
                                 <h5 class="text-muted">ไม่พบข้อมูลการรับสินค้า</h5>
@@ -228,22 +567,16 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php foreach($rows as $row): ?>
                         <tr data-id="<?= $row['receive_id'] ?>">
                             <td>
-                                <?php 
-                                $image_path = '../images/noimg.png';
-                                if (!empty($row['image'])) {
-                                    if (strpos($row['image'], 'images/') === 0) {
-                                        $image_path = '../' . $row['image'];
-                                    } else {
-                                        $image_path = '../images/' . $row['image'];
-                                    }
-                                }
-                                ?>
+                                <?php $image_path = getImagePath($row['image'] ?? ''); ?>
                                 <img src="<?= htmlspecialchars($image_path) ?>" 
                                      alt="<?= htmlspecialchars($row['product_name'] ?? '') ?>" 
                                      class="product-image" 
-                                     onerror="this.src='../images/noimg.png'">
+                                     onerror="this.src='../images/noimg.png';">
                             </td>
                             <td><span class="fw-bold"><?= htmlspecialchars($row['sku']) ?></span></td>
+                            <td title="<?= htmlspecialchars($row['product_name'] ?? '-') ?>">
+                                <span class="text-primary"><?= htmlspecialchars($row['product_name'] ?? '-') ?></span>
+                            </td>
                             <td><?= htmlspecialchars($row['barcode']) ?></td>
                             <td><?= htmlspecialchars($row['created_by'] ?? 'ไม่ระบุ') ?></td>
                             <td><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></td>
@@ -290,7 +623,8 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <?php endif; ?>
                             </td>
                             <td><?= getTypeLabel($row['remark'] ?? '') ?></td>
-                            <td data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>">
+                            <td data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>" 
+                                title="<?= htmlspecialchars($row['remark'] ?? '-') ?>">
                                 <?= htmlspecialchars($row['remark'] ?? '-') ?>
                             </td>
                             <td>
@@ -307,6 +641,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php endif; ?>
                     </tbody>
                 </table>
+                </div> <!-- Close table-responsive -->
             </div>
         </div>
     </div>
@@ -324,19 +659,125 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 let receiveTable;
 
 $(document).ready(function() {
+    console.log('Document ready, initializing table...');
+    console.log('jQuery version:', $.fn.jquery);
+    console.log('DataTable available:', typeof $.fn.DataTable);
+    console.log('Found table element:', $('#receive-table').length);
+    
+    // Function to bind edit button events
+    window.bindEditButtonEvents = function() {
+        console.log('Binding edit button events...');
+        const editButtons = $('.edit-btn');
+        console.log('Found edit buttons:', editButtons.length);
+        
+        // Remove any existing handlers first
+        editButtons.off('click.editHandler');
+        
+        // Bind new handlers
+        editButtons.on('click.editHandler', function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Edit button clicked for ID:', $(this).data('id'));
+            if (window.handleEditButtonClick) {
+                window.handleEditButtonClick($(this));
+            } else {
+                console.error('handleEditButtonClick function not found');
+            }
+        });
+        
+        console.log('Edit button events bound to', editButtons.length, 'buttons');
+    };
+    
     // Destroy existing DataTable if any before initializing
     if ($.fn.DataTable.isDataTable('#receive-table')) {
         $('#receive-table').DataTable().destroy();
     }
     
-    // Initialize receive items table with modern template
-    receiveTable = new ModernTable('receive-table', {
-        pageLength: 50,
-        language: 'th',
-        exportButtons: true,
-        batchOperations: true,
-        defaultOrder: [[4, 'desc']] // Sort by created date
+    // Initialize receive items table with DataTable directly (not ModernTable)
+    receiveTable = $('#receive-table').DataTable({
+        pageLength: 25,
+        language: {
+            "decimal": "",
+            "emptyTable": "ไม่มีข้อมูลในตาราง",
+            "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+            "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
+            "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
+            "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
+            "loadingRecords": "กำลังโหลด...",
+            "processing": "กำลังประมวลผล...",
+            "search": "ค้นหา:",
+            "zeroRecords": "ไม่พบรายการที่ตรงกัน",
+            "paginate": {
+                "first": "หน้าแรก",
+                "last": "หน้าสุดท้าย", 
+                "next": "ถัดไป",
+                "previous": "ก่อนหน้า"
+            }
+        },
+        columnDefs: [
+            { orderable: false, targets: 'no-sort' },
+            { className: "text-center", targets: 'text-center' }
+        ],
+        order: [[5, 'desc']], // Sort by created date
+        scrollX: true,
+        scrollCollapse: true,
+        searching: true,
+        paging: true,
+        info: true,
+        lengthChange: true,
+        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
+        responsive: true,
+        processing: true,
+        drawCallback: function(settings) {
+            console.log('DataTable drawCallback triggered');
+            // Re-initialize tooltips after each draw
+            $('[title]').tooltip();
+            
+            // Re-bind edit button events after pagination/search
+            setTimeout(function() {
+                window.bindEditButtonEvents();
+            }, 100);
+        },
+        initComplete: function() {
+            console.log('DataTable initialized successfully');
+            // Initial binding
+            window.bindEditButtonEvents();
+        }
     });
+    
+    // Fallback event handler using event delegation
+    $(document).on('click', '.edit-btn', function(e) {
+        e.preventDefault();
+        console.log('Fallback edit handler triggered for ID:', $(this).data('id'));
+        if (window.handleEditButtonClick) {
+            window.handleEditButtonClick($(this));
+        }
+    });
+    
+    // Initialize tooltips for truncated text
+    $('[title]').tooltip();
+
+    // Custom search functionality
+    $('#custom-search').on('keyup', function() {
+        console.log('Custom search triggered:', this.value);
+        if (receiveTable && typeof receiveTable.search === 'function') {
+            receiveTable.search(this.value).draw();
+        } else {
+            console.error('receiveTable.search is not available');
+        }
+    });
+    
+    // Also listen for input event for better responsiveness
+    $('#custom-search').on('input', function() {
+        if (receiveTable && typeof receiveTable.search === 'function') {
+            receiveTable.search(this.value).draw();
+        }
+    });
+
+    // Hide default DataTable search box
+    setTimeout(function() {
+        $('.dataTables_filter').hide();
+    }, 100);
 
     // Custom batch delete handler for receive items - remove existing handlers first
     $('#delete-selected').off('click').on('click', function(){
@@ -391,50 +832,175 @@ $(document).ready(function() {
         });
         });
 
-    // ปุ่มแก้ไข (unbind existing handlers first)
-    $(document).off('click', '#receive-table .edit-btn').on('click', '#receive-table .edit-btn', function(){
-            let row = $(this).closest('tr');
-            let id = $(this).data('id');
-            let remark = row.find('td').eq(13).text();
-            let qtyText = row.find('td').eq(7).text();
-            let qty = qtyText.replace(/[^\d]/g, '');
-            let qtyType = qtyText.indexOf('-') !== -1 ? 'minus' : 'plus';
-            let expiry = row.find('td').eq(13).attr('data-expiry') || '';
-            let priceCost = row.find('td').eq(10).text().replace(/,/g, '');
-            let priceSale = row.find('td').eq(11).text().replace(/,/g, '');
-            // ใส่ค่าอื่นใน modal ก่อน
-            $('#edit-receive-id').val(id);
-            $('#edit-remark').val(remark);
-            $('#edit-price-cost').val(priceCost);
-            $('#edit-price-sale').val(priceSale);
-            $('#edit-qty-type').val(qtyType);
-            $('#edit-receive-qty').val(qty);
-            $('#edit-expiry-date').val(expiry);
-            // clear select ก่อน
-            $('#edit-row-code').val('');
-            $('#edit-bin').val('');
-            $('#edit-shelf').val('');
-            // AJAX ไปหา row_code, bin, shelf
-            $.get('receive_position_api.php', { receive_id: id }, function(resp){
-                if(resp && resp.success) {
-                    let rowCode = resp.row_code || '';
-                    let bin = resp.bin || '';
-                    let shelf = resp.shelf || '';
-                    function setSelectWithDynamicOption(sel, val) {
-                        val = (val || '').toString().trim();
-                        if(val && sel.find('option[value="'+val+'"]').length === 0) {
-                            sel.append('<option value="'+val+'">'+val+'</option>');
-                        }
-                        sel.val(val).trigger('change');
-                    }
-                    setSelectWithDynamicOption($('#edit-row-code'), rowCode);
-                    setSelectWithDynamicOption($('#edit-bin'), bin);
-                    setSelectWithDynamicOption($('#edit-shelf'), shelf);
-                }
-                var modal = new bootstrap.Modal(document.getElementById('editModal'));
-                modal.show();
-            }, 'json');
+    // Function to handle edit button click (make it global)
+    window.handleEditButtonClick = function($button) {
+        console.log('handleEditButtonClick called with button:', $button);
+        let row = $button.closest('tr'); 
+        let id = $button.data('id');
+        console.log('Edit button ID:', id);
+        console.log('Row found:', row.length);
+        
+        if (!id) {
+            console.error('No ID found on edit button');
+            Swal.fire('ข้อผิดพลาด', 'ไม่พบ ID ของรายการ', 'error');
+            return;
+        }
+        
+        let remark = row.find('td').eq(14).text().trim(); // หมายเหตุ
+        let qtyText = row.find('td').eq(7).text().trim(); // เพิ่ม/ลด column
+        let qty = qtyText.replace(/[^\d]/g, '');
+        let qtyType = qtyText.indexOf('-') !== -1 ? 'minus' : 'plus';
+        let expiry = row.find('td').eq(14).attr('data-expiry') || ''; // หมายเหตุ
+        let priceCost = row.find('td').eq(10).text().replace(/[,฿\s]/g, ''); // ราคาต้นทุน
+        let priceSale = row.find('td').eq(11).text().replace(/[,฿\s]/g, ''); // ราคาขาย
+        let poNumber = row.find('td').eq(12).find('.badge').text().trim() || ''; // PO Number column
+        
+        console.log('Extracted data:', {
+            id, remark, qtyText, qty, qtyType, expiry, priceCost, priceSale, poNumber
         });
+        
+        // ใส่ค่าอื่นใน modal ก่อน
+        $('#edit-receive-id').val(id);
+        $('#edit-remark').val(remark);
+        $('#edit-price-cost').val(priceCost);
+        $('#edit-price-sale').val(priceSale);
+        $('#edit-qty-type').val(qtyType);
+        $('#edit-receive-qty').val(qty);
+        $('#edit-expiry-date').val(expiry);
+        $('#edit-po-number').val(poNumber);
+        // clear select ก่อน
+        $('#edit-row-code').val('');
+        $('#edit-bin').val('');
+        $('#edit-shelf').val('');
+        
+        // ล้างข้อมูลการแบ่งจำนวนก่อนหน้า
+        window.currentSplitData = null;
+        window.additionalPOs = [];
+        if (window.splitMainPO) {
+            window.splitMainPO = null;
+        }
+        
+        // AJAX ไปหา row_code, bin, shelf
+        $.get('../api/receive_position_api.php', { receive_id: id }, function(resp){
+            console.log('Position API response:', resp);
+            if(resp && resp.success) {
+                let rowCode = resp.row_code || '';
+                let bin = resp.bin || '';
+                let shelf = resp.shelf || '';
+                function setSelectWithDynamicOption(sel, val) {
+                    val = (val || '').toString().trim();
+                    if(val && sel.find('option[value="'+val+'"]').length === 0) {
+                        sel.append('<option value="'+val+'">'+val+'</option>');
+                    }
+                    sel.val(val).trigger('change');
+                }
+                setSelectWithDynamicOption($('#edit-row-code'), rowCode);
+                setSelectWithDynamicOption($('#edit-bin'), bin);
+                setSelectWithDynamicOption($('#edit-shelf'), shelf);
+            }
+            var modal = new bootstrap.Modal(document.getElementById('editModal'));
+            modal.show();
+        }, 'json').fail(function(xhr, status, error) {
+            console.error('Position API error:', xhr, status, error);
+            Swal.fire('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลตำแหน่งได้', 'error');
+        });
+    };
+
+    // ปุ่มเปลี่ยน PO
+    $(document).off('click', '#change-po-btn').on('click', '#change-po-btn', function(){
+        let receiveId = $('#edit-receive-id').val();
+        if (!receiveId) {
+            Swal.fire('ข้อผิดพลาด', 'ไม่พบ ID รายการรับสินค้า', 'error');
+            return;
+        }
+        
+        // Get product info from current receive item
+        loadPOList(receiveId);
+        
+        var selectPOModal = new bootstrap.Modal(document.getElementById('selectPOModal'));
+        selectPOModal.show();
+    });
+
+    // ค้นหา PO
+    $(document).off('input', '#po-search').on('input', '#po-search', function(){
+        let searchTerm = $(this).val();
+        filterPOList(searchTerm);
+    });
+
+    // เลือก PO
+    $(document).off('click', '.po-item').on('click', '.po-item', function(){
+        let poId = $(this).data('po-id');
+        let itemId = $(this).data('item-id');
+        let poNumber = $(this).data('po-number');
+        let unitCost = $(this).data('unit-cost');
+        let remainingQty = $(this).data('remaining-qty');
+        let currentReceiveQty = parseInt($('#edit-receive-qty').val()) || 0;
+        
+        // ตรวจสอบว่าจำนวนที่จะรับมากกว่าจำนวนที่เหลือใน PO หรือไม่
+        if (Math.abs(currentReceiveQty) > remainingQty && remainingQty > 0) {
+            // แสดง modal สำหรับแบ่งจำนวน
+            showQuantitySplitModal(poId, itemId, poNumber, unitCost, remainingQty, Math.abs(currentReceiveQty));
+        } else {
+            // เปลี่ยน PO ปกติ
+            updatePOSelection(poId, itemId, poNumber, unitCost);
+        }
+    });
+    
+    // ฟังก์ชันอัพเดต PO ที่เลือก
+    function updatePOSelection(poId, itemId, poNumber, unitCost) {
+        $('#edit-po-id').val(poId);
+        $('#edit-item-id').val(itemId);
+        $('#edit-po-number').val(poNumber);
+        $('#edit-price-cost').val(unitCost);
+        
+        // Close modal
+        var selectPOModal = bootstrap.Modal.getInstance(document.getElementById('selectPOModal'));
+        selectPOModal.hide();
+        
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'เปลี่ยน PO สำเร็จ',
+            text: poNumber,
+            showConfirmButton: false,
+            timer: 2000
+        });
+    }
+    
+    // ฟังก์ชันแสดง modal สำหรับแบ่งจำนวน
+    function showQuantitySplitModal(mainPoId, mainItemId, mainPoNumber, mainUnitCost, availableQty, totalQty) {
+        // ซ่อน PO selection modal ก่อน
+        var selectPOModal = bootstrap.Modal.getInstance(document.getElementById('selectPOModal'));
+        selectPOModal.hide();
+        
+        // เตรียมข้อมูลสำหรับ split modal
+        $('#split-main-po-number').text(mainPoNumber);
+        $('#split-available-qty').text(availableQty);
+        $('#split-total-qty').text(totalQty);
+        $('#split-excess-qty').text(totalQty - availableQty);
+        
+        // เซ็ตค่าเริ่มต้น
+        $('#split-main-qty').val(availableQty);
+        $('#split-main-qty').attr('max', Math.min(availableQty, totalQty));
+        
+        // เก็บข้อมูล PO หลัก
+        window.splitMainPO = {
+            poId: mainPoId,
+            itemId: mainItemId,
+            poNumber: mainPoNumber,
+            unitCost: mainUnitCost,
+            availableQty: availableQty
+        };
+        
+        // ล้างรายการ PO เพิ่มเติม
+        $('#additional-po-list').empty();
+        window.additionalPOs = [];
+        
+        // แสดง modal
+        var splitModal = new bootstrap.Modal(document.getElementById('quantitySplitModal'));
+        splitModal.show();
+    }
 
     // บันทึกการแก้ไข (unbind existing handlers first)
     $('#save-edit').off('click').on('click', function(){
@@ -475,6 +1041,12 @@ $(document).ready(function() {
             $('#edit-location-desc').val(locDesc);
 
             let formData = $('#edit-form').serialize();
+            
+            // เพิ่มข้อมูลการแบ่งจำนวน (ถ้ามี)
+            if (window.currentSplitData) {
+                formData += '&split_data=' + encodeURIComponent(JSON.stringify(window.currentSplitData));
+            }
+            
             Swal.fire({
                 title: 'กำลังบันทึก...',
                 allowOutsideClick: false,
@@ -503,7 +1075,6 @@ $(document).ready(function() {
                 Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
             });
         });
-    });
 
     // Function to refresh table data without full page reload
     function refreshTableData() {
@@ -521,6 +1092,418 @@ $(document).ready(function() {
             location.reload();
         }, 300);
     }
+
+    // ฟังก์ชันโหลดรายการ PO
+    function loadPOList(receiveId) {
+        $('#po-loading').show();
+        $('#po-list').empty();
+        $('#no-po-found').hide();
+        $('#po-search').val('');
+        
+        $.ajax({
+            url: '../api/get_po_for_product.php',
+            method: 'POST',
+            data: { receive_id: receiveId },
+            dataType: 'json',
+            success: function(response) {
+                $('#po-loading').hide();
+                
+                if (response.success && response.data && response.data.length > 0) {
+                    displayPOList(response.data);
+                } else {
+                    $('#no-po-found').show();
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#po-loading').hide();
+                console.error('Error loading PO list:', error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถโหลดรายการ PO ได้', 'error');
+            }
+        });
+    }
+
+    // ฟังก์ชันแสดงรายการ PO
+    function displayPOList(poList) {
+        let html = '';
+        
+        poList.forEach(function(po) {
+            const statusBadge = getStatusBadge(po.po_status);
+            const remainingQty = po.ordered_qty - po.received_qty;
+            
+            html += `
+                <div class="list-group-item po-item" style="cursor: pointer;" 
+                     data-po-id="${po.po_id}"
+                     data-item-id="${po.item_id}"
+                     data-po-number="${po.po_number}"
+                     data-unit-cost="${po.unit_cost}"
+                     data-remaining-qty="${remainingQty}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold text-primary">${po.po_number}</h6>
+                                ${statusBadge}
+                            </div>
+                            <div class="mb-2">
+                                <small class="text-muted">ผู้ขาย:</small>
+                                <span class="fw-medium">${po.supplier_name}</span>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">วันที่สั่ง:</small>
+                                    <div class="small">${formatDate(po.order_date)}</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">ราคา/หน่วย:</small>
+                                    <div class="small fw-bold text-success">${parseFloat(po.unit_cost).toFixed(2)} ฿</div>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-4">
+                                    <small class="text-muted">สั่งซื้อ:</small>
+                                    <div class="small fw-bold text-info">${po.ordered_qty}</div>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted">รับแล้ว:</small>
+                                    <div class="small fw-bold text-success">${po.received_qty}</div>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted">คงเหลือ:</small>
+                                    <div class="small fw-bold text-warning">${remainingQty}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ms-2">
+                            <span class="material-icons text-primary">chevron_right</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        $('#po-list').html(html);
+        window.allPOList = poList; // เก็บไว้สำหรับการค้นหา
+    }
+
+    // ฟังก์ชันกรองรายการ PO
+    function filterPOList(searchTerm) {
+        if (!window.allPOList) return;
+        
+        searchTerm = searchTerm.toLowerCase().trim();
+        
+        if (!searchTerm) {
+            displayPOList(window.allPOList);
+            return;
+        }
+        
+        const filteredList = window.allPOList.filter(po => 
+            po.po_number.toLowerCase().includes(searchTerm) ||
+            po.supplier_name.toLowerCase().includes(searchTerm)
+        );
+        
+        if (filteredList.length > 0) {
+            displayPOList(filteredList);
+            $('#no-po-found').hide();
+        } else {
+            $('#po-list').empty();
+            $('#no-po-found').show();
+        }
+    }
+
+    // Helper functions
+    function getStatusBadge(status) {
+        switch(status) {
+            case 'pending':
+                return '<span class="badge bg-warning">รอดำเนินการ</span>';
+            case 'partial':
+                return '<span class="badge bg-info">รับบางส่วน</span>';
+            case 'completed':
+                return '<span class="badge bg-success">เสร็จสิ้น</span>';
+            case 'cancelled':
+                return '<span class="badge bg-danger">ยกเลิก</span>';
+            default:
+                return '<span class="badge bg-secondary">' + status + '</span>';
+        }
+    }
+
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('th-TH');
+    }
+
+    // ===== Quantity Split Modal Functions =====
+    
+    // เพิ่ม PO เพิ่มเติม
+    $(document).on('click', '#add-additional-po', function() {
+        // แสดง PO selection modal สำหรับเลือก PO เพิ่มเติม
+        showAdditionalPOSelection();
+    });
+    
+    // ฟังก์ชันแสดง PO selection สำหรับเลือกเพิ่มเติม
+    function showAdditionalPOSelection() {
+        if (!window.allPOList) {
+            Swal.fire('ข้อผิดพลาด', 'ไม่พบรายการ PO', 'error');
+            return;
+        }
+        
+        // กรองเอา PO ที่ยังไม่ได้เลือก
+        const usedPOIds = [window.splitMainPO.poId, ...window.additionalPOs.map(po => po.poId)];
+        const availablePOs = window.allPOList.filter(po => !usedPOIds.includes(po.po_id));
+        
+        if (availablePOs.length === 0) {
+            Swal.fire('แจ้งเตือน', 'ไม่มี PO เพิ่มเติมให้เลือก', 'info');
+            return;
+        }
+        
+        // สร้าง HTML สำหรับเลือก PO เพิ่มเติม
+        let html = '<div class="list-group" style="max-height: 300px; overflow-y: auto;">';
+        availablePOs.forEach(po => {
+            const remainingQty = po.ordered_qty - po.received_qty;
+            const statusBadge = getStatusBadge(po.po_status);
+            html += `
+                <div class="list-group-item additional-po-item" style="cursor: pointer;" 
+                     data-po-id="${po.po_id}"
+                     data-item-id="${po.item_id}"
+                     data-po-number="${po.po_number}"
+                     data-unit-cost="${po.unit_cost}"
+                     data-remaining-qty="${remainingQty}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">${po.po_number}</h6>
+                            <small class="text-muted">${po.supplier_name}</small>
+                        </div>
+                        <div class="text-end">
+                            ${statusBadge}
+                            <div><small class="text-muted">เหลือ: ${remainingQty}</small></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        Swal.fire({
+            title: 'เลือก PO เพิ่มเติม',
+            html: html,
+            width: '600px',
+            showCancelButton: true,
+            confirmButtonText: 'ยกเลิก',
+            showConfirmButton: false,
+            didOpen: () => {
+                // Bind click events สำหรับเลือก additional PO
+                $('.additional-po-item').on('click', function() {
+                    const poData = {
+                        poId: $(this).data('po-id'),
+                        itemId: $(this).data('item-id'),
+                        poNumber: $(this).data('po-number'),
+                        unitCost: $(this).data('unit-cost'),
+                        remainingQty: $(this).data('remaining-qty')
+                    };
+                    addAdditionalPO(poData);
+                    Swal.close();
+                });
+            }
+        });
+    }
+    
+    // เพิ่ม PO เข้าไปในรายการเพิ่มเติม
+    function addAdditionalPO(poData) {
+        window.additionalPOs.push(poData);
+        renderAdditionalPOList();
+        updateQuantitySummary();
+    }
+    
+    // แสดงรายการ PO เพิ่มเติม
+    function renderAdditionalPOList() {
+        const container = $('#additional-po-list');
+        
+        if (window.additionalPOs.length === 0) {
+            $('#no-additional-pos').show();
+            return;
+        }
+        
+        $('#no-additional-pos').hide();
+        
+        let html = '';
+        window.additionalPOs.forEach((po, index) => {
+            html += `
+                <div class="row mb-3 additional-po-row" data-index="${index}">
+                    <div class="col-md-4">
+                        <strong>${po.poNumber}</strong>
+                        <br><small class="text-muted">เหลือ: ${po.remainingQty}</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">จำนวนที่จะรับ</label>
+                        <input type="number" class="form-control additional-qty-input" 
+                               data-index="${index}" min="0" max="${po.remainingQty}" value="0">
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-additional-po" data-index="${index}">
+                            <span class="material-icons" style="font-size: 1rem;">delete</span>
+                            ลบ
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.html(html);
+    }
+    
+    // ลบ PO เพิ่มเติม
+    $(document).on('click', '.remove-additional-po', function() {
+        const index = $(this).data('index');
+        window.additionalPOs.splice(index, 1);
+        renderAdditionalPOList();
+        updateQuantitySummary();
+    });
+    
+    // อัพเดทการคำนวณจำนวน
+    $(document).on('input', '#split-main-qty, .additional-qty-input', function() {
+        updateQuantitySummary();
+    });
+    
+    // ฟังก์ชันอัพเดทสรุปจำนวน
+    function updateQuantitySummary() {
+        const totalQty = parseInt($('#split-total-qty').text()) || 0;
+        const mainQty = parseInt($('#split-main-qty').val()) || 0;
+        
+        let additionalTotal = 0;
+        $('.additional-qty-input').each(function() {
+            additionalTotal += parseInt($(this).val()) || 0;
+        });
+        
+        const allocatedQty = mainQty + additionalTotal;
+        const remainingQty = totalQty - allocatedQty;
+        
+        $('#summary-total').text(totalQty);
+        $('#summary-allocated').text(allocatedQty);
+        $('#summary-remaining').text(remainingQty);
+        
+        // อัพเดทสถานะ
+        const statusElement = $('#summary-status');
+        const confirmButton = $('#confirm-split');
+        
+        if (remainingQty === 0 && allocatedQty === totalQty) {
+            statusElement.html('<span class="badge bg-success">สมดุลแล้ว</span>');
+            confirmButton.prop('disabled', false);
+        } else if (remainingQty > 0) {
+            statusElement.html('<span class="badge bg-warning">ยังไม่ครบ</span>');
+            confirmButton.prop('disabled', true);
+        } else {
+            statusElement.html('<span class="badge bg-danger">เกินจำนวน</span>');
+            confirmButton.prop('disabled', true);
+        }
+    }
+    
+    // ยืนยันการแบ่งจำนวน
+    $(document).on('click', '#confirm-split', function() {
+        const splits = [];
+        
+        // เพิ่มข้อมูล PO หลัก
+        const mainQty = parseInt($('#split-main-qty').val()) || 0;
+        if (mainQty > 0) {
+            splits.push({
+                poId: window.splitMainPO.poId,
+                itemId: window.splitMainPO.itemId,
+                poNumber: window.splitMainPO.poNumber,
+                unitCost: window.splitMainPO.unitCost,
+                quantity: mainQty
+            });
+        }
+        
+        // เพิ่มข้อมูล PO เพิ่มเติม
+        $('.additional-qty-input').each(function() {
+            const index = $(this).data('index');
+            const qty = parseInt($(this).val()) || 0;
+            if (qty > 0) {
+                const po = window.additionalPOs[index];
+                splits.push({
+                    poId: po.poId,
+                    itemId: po.itemId,
+                    poNumber: po.poNumber,
+                    unitCost: po.unitCost,
+                    quantity: qty
+                });
+            }
+        });
+        
+        if (splits.length === 0) {
+            Swal.fire('ข้อผิดพลาด', 'กรุณาระบุจำนวนอย่างน้อย 1 PO', 'error');
+            return;
+        }
+        
+        // บันทึกข้อมูลการแบ่ง
+        saveSplitQuantities(splits);
+    });
+    
+    // บันทึกการแบ่งจำนวน
+    function saveSplitQuantities(splits) {
+        if (splits.length === 0) return;
+        
+        // แยก PO หลักกับ PO เพิ่มเติม
+        const mainSplit = splits[0];
+        const additionalSplits = splits.slice(1);
+        
+        // อัพเดทฟอร์มหลักด้วยข้อมูล PO หลัก
+        $('#edit-po-id').val(mainSplit.poId);
+        $('#edit-item-id').val(mainSplit.itemId);
+        $('#edit-po-number').val(mainSplit.poNumber);
+        $('#edit-price-cost').val(mainSplit.unitCost);
+        $('#edit-receive-qty').val(mainSplit.quantity);
+        
+        // เตรียมข้อมูลการแบ่งสำหรับส่งไปยัง backend
+        const splitData = {
+            mainPoId: mainSplit.poId,
+            mainItemId: mainSplit.itemId,
+            mainQty: mainSplit.quantity,
+            additionalPOs: additionalSplits.map(split => ({
+                poId: split.poId,
+                itemId: split.itemId,
+                poNumber: split.poNumber,
+                unitCost: split.unitCost,
+                qty: split.quantity
+            }))
+        };
+        
+        // เก็บข้อมูลการแบ่งในรูปแบบที่ backend คาดหวัง
+        window.currentSplitData = splitData;
+        
+        console.log('Split data prepared:', splitData);
+        
+        // ปิด modal
+        var splitModal = bootstrap.Modal.getInstance(document.getElementById('quantitySplitModal'));
+        splitModal.hide();
+        
+        // แสดงข้อความยืนยัน
+        Swal.fire({
+            icon: 'success',
+            title: 'แบ่งจำนวนสำเร็จ',
+            html: `แบ่งจำนวนไปยัง ${splits.length} PO:<br>` + 
+                  splits.map(s => `• ${s.poNumber}: ${s.quantity} ชิ้น`).join('<br>'),
+            timer: 3000,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false
+        });
+    }
+    
+    // เริ่มต้น modal แบ่งจำนวน
+    $('#quantitySplitModal').on('show.bs.modal', function() {
+        // เซ็ตข้อมูลเริ่มต้น
+        if (window.splitMainPO) {
+            $('#main-po-display').text(window.splitMainPO.poNumber);
+            $('#main-po-remaining').text(window.splitMainPO.availableQty);
+            $('#split-main-qty').attr('max', window.splitMainPO.availableQty);
+        }
+        
+        // รีเซ็ต additional POs
+        if (!window.additionalPOs) {
+            window.additionalPOs = [];
+        }
+        
+        renderAdditionalPOList();
+        updateQuantitySummary();
+    });
 });
 </script>
 
@@ -589,6 +1572,18 @@ $(document).ready(function() {
                         <input type="number" class="form-control" name="receive_qty" id="edit-receive-qty">
                     </div>
                     <div class="mb-2">
+                        <label for="edit-po-number" class="form-label">เลข PO</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="po_number" id="edit-po-number" readonly>
+                            <button type="button" class="btn btn-outline-secondary" id="change-po-btn">
+                                <span class="material-icons" style="font-size: 1rem;">search</span>
+                                เปลี่ยน
+                            </button>
+                        </div>
+                        <input type="hidden" name="po_id" id="edit-po-id">
+                        <input type="hidden" name="item_id" id="edit-item-id">
+                    </div>
+                    <div class="mb-2">
                         <label for="edit-expiry-date" class="form-label">วันหมดอายุ</label>
                         <input type="date" class="form-control" name="expiry_date" id="edit-expiry-date">
                     </div>
@@ -601,9 +1596,174 @@ $(document).ready(function() {
         </div>
     </div>
 </div>
-</script>
+
+<!-- Modal เลือก PO -->
+<div class="modal fade" id="selectPOModal" tabindex="-1" aria-labelledby="selectPOModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="selectPOModalLabel">
+                    <span class="material-icons align-middle me-2">search</span>
+                    เลือกใบสั่งซื้อ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="po-search" class="form-label">ค้นหาเลข PO</label>
+                    <input type="text" class="form-control" id="po-search" placeholder="พิมพ์เลข PO หรือชื่อผู้ขาย...">
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">รายการใบสั่งซื้อที่มีสินค้านี้</h6>
+                        <div id="po-loading" class="spinner-border spinner-border-sm" role="status" style="display: none;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="po-list" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                    <!-- PO items will be loaded here -->
+                </div>
+                
+                <div id="no-po-found" class="text-center py-4" style="display: none;">
+                    <span class="material-icons mb-2" style="font-size: 3rem; color: #d1d5db;">receipt</span>
+                    <p class="text-muted">ไม่พบใบสั่งซื้อ</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal แบ่งจำนวนสินค้า -->
+<div class="modal fade" id="quantitySplitModal" tabindex="-1" aria-labelledby="quantitySplitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="quantitySplitModalLabel">
+                    <span class="material-icons align-middle me-2">call_split</span>
+                    แบ่งจำนวนสินค้าไปยังหลาย PO
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <h6><span class="material-icons align-middle me-2">warning</span>ตรวจพบปัญหา</h6>
+                    <p class="mb-0">
+                        จำนวนที่จะรับ (<span id="split-total-qty" class="fw-bold"></span> ชิ้น) 
+                        มากกว่าจำนวนที่เหลือใน PO <span id="split-main-po-number" class="fw-bold"></span> 
+                        (<span id="split-available-qty" class="fw-bold"></span> ชิ้น)
+                        <br>
+                        ต้องแบ่งจำนวนเกินส่วน (<span id="split-excess-qty" class="fw-bold text-danger"></span> ชิ้น) ไปยัง PO อื่น
+                    </p>
+                </div>
+
+                <!-- PO หลัก -->
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0">PO หลัก</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <strong id="main-po-display"></strong>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">จำนวนที่จะรับ</label>
+                                <input type="number" class="form-control" id="split-main-qty" min="0">
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted">จำนวนที่เหลือใน PO: <span id="main-po-remaining"></span></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PO เพิ่มเติม -->
+                <div class="card mb-3">
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">PO เพิ่มเติม</h6>
+                        <button type="button" class="btn btn-sm btn-outline-light" id="add-additional-po">
+                            <span class="material-icons" style="font-size: 1rem;">add</span>
+                            เพิ่ม PO
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="additional-po-list">
+                            <!-- Additional POs will be added here -->
+                        </div>
+                        <div id="no-additional-pos" class="text-center text-muted py-3">
+                            <p class="mb-0">ยังไม่มี PO เพิ่มเติม กดปุ่ม "เพิ่ม PO" เพื่อเลือก PO อื่น</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- สรุปจำนวน -->
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0">สรุปการแบ่งจำนวน</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label class="form-label">จำนวนรวม</label>
+                                <div class="form-control-plaintext fw-bold" id="summary-total">0</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">จำนวนที่แบ่งแล้ว</label>
+                                <div class="form-control-plaintext fw-bold" id="summary-allocated">0</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">จำนวนที่เหลือ</label>
+                                <div class="form-control-plaintext fw-bold" id="summary-remaining">0</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">สถานะ</label>
+                                <div class="form-control-plaintext fw-bold" id="summary-status">
+                                    <span class="badge bg-warning">ยังไม่สมดุล</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="button" class="btn btn-primary" id="confirm-split" disabled>ยืนยันการแบ่ง</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php
 // Helper ฟังก์ชัน (ควรย้ายไปไฟล์แยกถ้า production)
+
+function getImagePath($imageName) {
+    if (empty($imageName)) {
+        return '../images/noimg.png';
+    }
+    
+    // รายการ path ที่เป็นไปได้
+    $possible_paths = [
+        '../images/' . $imageName,
+        '../' . $imageName,
+        $imageName
+    ];
+    
+    foreach ($possible_paths as $path) {
+        if (file_exists($path)) {
+            return $path;
+        }
+    }
+    
+    // หากไม่พบไฟล์ใดๆ ใช้ noimg.png
+    return '../images/noimg.png';
+}
+
 function getPrevQty($sku, $barcode, $created_at, $pdo) {
     $stmt = $pdo->prepare("SELECT SUM(receive_qty) FROM receive_items r LEFT JOIN purchase_order_items poi ON r.item_id=poi.item_id LEFT JOIN products p ON poi.product_id=p.product_id WHERE p.sku=? AND p.barcode=? AND r.created_at < ?");
     $stmt->execute([$sku, $barcode, $created_at]);
