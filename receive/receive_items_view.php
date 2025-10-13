@@ -182,7 +182,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     #receive-table {
-        min-width: 1400px; /* กำหนดความกว้างขั้นต่ำของตาราง */
+        min-width: 1500px; /* กำหนดความกว้างขั้นต่ำของตาราง */
         white-space: nowrap;
     }
     
@@ -203,8 +203,8 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     #receive-table th:nth-child(7) { width: 80px; min-width: 80px; } /* จำนวนก่อน */
     #receive-table th:nth-child(8) { width: 80px; min-width: 80px; } /* เพิ่ม/ลด */
     #receive-table th:nth-child(9) { width: 80px; min-width: 80px; } /* จำนวนล่าสุด */
-    #receive-table th:nth-child(10) { width: 100px; min-width: 100px; } /* ตำแหน่ง */
-    #receive-table th:nth-child(11) { width: 90px; min-width: 90px; } /* ราคาต้นทุน */
+    #receive-table th:nth-child(10) { width: 140px; min-width: 140px; } /* PO/แท็ค/Lot */
+    #receive-table th:nth-child(11) { width: 100px; min-width: 100px; } /* ตำแหน่ง */
     #receive-table th:nth-child(12) { width: 90px; min-width: 90px; } /* ราคาขาย */
     #receive-table th:nth-child(13) { width: 100px; min-width: 100px; } /* PO */
     #receive-table th:nth-child(14) { width: 80px; min-width: 80px; } /* ประเภท */
@@ -478,6 +478,165 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             margin-bottom: 0.5rem;
         }
     }
+    
+    /* Action Buttons Styling */
+    .action-btn {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1;
+        border-radius: 0.375rem;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 2.25rem;
+        height: 2.25rem;
+    }
+    
+    .action-btn .material-icons {
+        font-size: 1rem !important;
+        line-height: 1;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .action-btn:active {
+        transform: translateY(0);
+    }
+    
+    .btn-outline-primary:hover {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+        color: white;
+    }
+    
+    .btn-outline-danger:hover {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+    }
+    
+    .btn-outline-secondary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .btn-group .action-btn:first-child {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        border-right: 0;
+    }
+    
+    .btn-group .action-btn:last-child {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        border-left: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    .btn-group .action-btn:not(:first-child):not(:last-child) {
+        border-radius: 0;
+        border-left: 1px solid rgba(0, 0, 0, 0.125);
+        border-right: 0;
+    }
+    
+    /* Tooltip styling */
+    .tooltip {
+        font-size: 0.75rem;
+    }
+    
+    .tooltip-inner {
+        background-color: #1f2937;
+        color: white;
+        padding: 0.375rem 0.75rem;
+        border-radius: 0.375rem;
+    }
+    
+    /* Animation for buttons */
+    @keyframes buttonPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    
+    .action-btn:focus {
+        animation: buttonPulse 0.3s ease;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    }
+    
+    .btn-outline-danger:focus {
+        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
+    }
+    
+    /* PO Badge Styling */
+    .badge.bg-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%) !important;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.375rem;
+    }
+    
+    .badge.bg-primary:hover {
+        transform: scale(1.05);
+        transition: transform 0.2s ease;
+    }
+    
+    /* PO Column styling */
+    .po-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-height: 2rem;
+        align-items: flex-start;
+    }
+    
+    .po-remark {
+        font-size: 0.7rem;
+        color: #6b7280;
+        font-style: italic;
+        word-break: break-word;
+        max-width: 120px;
+        line-height: 1.2;
+        padding: 0.1rem 0.3rem;
+        background-color: #f8f9fa;
+        border-radius: 0.25rem;
+        border-left: 3px solid #dee2e6;
+    }
+    
+    .po-badge-icon {
+        font-size: 0.75rem !important;
+        vertical-align: middle;
+        margin-right: 0.25rem;
+    }
+    
+    .badge.bg-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    /* Issue tag styling for better contrast */
+    .issue-tag-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        align-items: flex-start;
+    }
+    
+    .issue-tag-badge {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: white;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.375rem;
+    }
 </style>
 
 <?php include '../templates/sidebar.php'; ?>
@@ -619,7 +778,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <th>จำนวนก่อน</th>
                             <th>เพิ่ม/ลด</th>
                             <th>จำนวนล่าสุด</th>
-                            <th>แท็ค/Lot</th>
+                            <th>PO/แท็ค/Lot</th>
                             <th>สถานที่จัดเก็บ</th>
                             <th>วันหมดอายุ</th>
                             <th class="no-sort text-center" style="width: 100px;">จัดการ</th>
@@ -673,47 +832,73 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </span>
                             </td>
                             <td>
-                                <?php if ($row['transaction_type'] === 'issue' && !empty($row['issue_tag'])): ?>
-                                    <span class="badge bg-warning text-dark">
-                                        <?= htmlspecialchars($row['issue_tag']) ?>
-                                    </span>
-                                    <?php if (!empty($row['platform'])): ?>
-                                        <small class="d-block mt-1">
-                                            <span class="badge bg-secondary"><?= htmlspecialchars($row['platform']) ?></span>
-                                        </small>
+                                <?php if ($row['transaction_type'] === 'issue'): ?>
+                                    <?php if (!empty($row['issue_tag'])): ?>
+                                        <div class="issue-tag-info">
+                                            <span class="badge issue-tag-badge" title="เลขแท็กการขาย">
+                                                <i class="material-icons po-badge-icon">local_offer</i>
+                                                <?= htmlspecialchars($row['issue_tag']) ?>
+                                            </span>
+                                            <?php if (!empty($row['platform'])): ?>
+                                                <span class="badge bg-secondary" title="แพลตฟอร์มการขาย">
+                                                    <i class="material-icons po-badge-icon">storefront</i>
+                                                    <?= htmlspecialchars($row['platform']) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <span class="badge bg-light text-muted" title="รายการออกสินค้าไม่มีแท็ก">
+                                            <i class="material-icons po-badge-icon">remove_shopping_cart</i>
+                                            รายการออก
+                                        </span>
                                     <?php endif; ?>
                                 <?php else: ?>
-                                    <span class="text-white badge bg-info">
-                                        <?= htmlspecialchars($row['remark'] ?? '-') ?>
-                                    </span>
+                                    <div class="po-info">
+                                        <?php if (!empty($row['po_number'])): ?>
+                                            <span class="badge bg-primary" title="เลขใบสั่งซื้อ">
+                                                <i class="material-icons po-badge-icon">description</i>
+                                                <?= htmlspecialchars($row['po_number']) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                        
+                                        <?php if (!empty($row['remark'])): ?>
+                                            <small class="po-remark" title="หมายเหตุ: <?= htmlspecialchars($row['remark']) ?>">
+                                                <i class="material-icons" style="font-size: 0.65rem; vertical-align: middle; opacity: 0.7;">note</i>
+                                                <?= htmlspecialchars($row['remark']) ?>
+                                            </small>
+                                        <?php endif; ?>
+                                        
+                                        <?php if (empty($row['po_number']) && empty($row['remark'])): ?>
+                                            <span class="badge bg-light text-muted" title="ไม่มีข้อมูล">
+                                                <i class="material-icons po-badge-icon">remove</i>
+                                                ไม่มีข้อมูล
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
                                 <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($row['location_desc'] ?? '-') ?></td>
                             <td><?= isset($row['expiry_date']) && $row['expiry_date'] ? date('d/m/Y', strtotime($row['expiry_date'])) : '-' ?></td>
                             <td class="text-center">
                                 <?php if ($row['transaction_type'] === 'receive'): ?>
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                            จัดการ
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary edit-btn action-btn" 
+                                                data-id="<?= $row['transaction_id'] ?>"
+                                                title="แก้ไขรายการ">
+                                            <span class="material-icons" style="font-size: 1rem;">edit</span>
                                         </button>
-                                        <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item edit-item" href="#" 
-                                                   data-id="<?= $row['transaction_id'] ?>" 
-                                                   data-quantity="<?= $row['quantity'] ?>"
-                                                   data-expiry="<?= $row['expiry_date'] ?>"
-                                                   data-location="<?= $row['location_id'] ?? '' ?>"
-                                                   data-remark="<?= htmlspecialchars($row['lot_info'] ?? '') ?>">
-                                                <i class="material-icons">edit</i> แก้ไข
-                                            </a></li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger delete-item" href="#" 
-                                                   data-id="<?= $row['transaction_id'] ?>">
-                                                <i class="material-icons">delete</i> ลบ
-                                            </a></li>
-                                        </ul>
+                                        <button type="button" class="btn btn-sm btn-outline-danger delete-btn action-btn" 
+                                                data-id="<?= $row['transaction_id'] ?>"
+                                                title="ลบรายการ">
+                                            <span class="material-icons" style="font-size: 1rem;">delete</span>
+                                        </button>
                                     </div>
                                 <?php else: ?>
-                                    <span class="text-muted small">ออกแล้ว</span>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="รายการออกสินค้า">
+                                            <span class="material-icons" style="font-size: 1rem;">remove_shopping_cart</span>
+                                        </button>
+                                    </div>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -744,16 +929,19 @@ $(document).ready(function() {
     console.log('DataTable available:', typeof $.fn.DataTable);
     console.log('Found table element:', $('#receive-table').length);
     
-    // Function to bind edit button events
+    // Function to bind action button events
     window.bindEditButtonEvents = function() {
-        console.log('Binding edit button events...');
+        console.log('Binding action button events...');
         const editButtons = $('.edit-btn');
+        const deleteButtons = $('.delete-btn');
         console.log('Found edit buttons:', editButtons.length);
+        console.log('Found delete buttons:', deleteButtons.length);
         
         // Remove any existing handlers first
         editButtons.off('click.editHandler');
+        deleteButtons.off('click.deleteHandler');
         
-        // Bind new handlers
+        // Bind edit button handlers
         editButtons.on('click.editHandler', function(e){
             e.preventDefault();
             e.stopPropagation();
@@ -765,7 +953,15 @@ $(document).ready(function() {
             }
         });
         
-        console.log('Edit button events bound to', editButtons.length, 'buttons');
+        // Bind delete button handlers  
+        deleteButtons.on('click.deleteHandler', function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Delete button clicked for ID:', $(this).data('id'));
+            // Delete handler is already bound via $(document).on() so we don't need to rebind
+        });
+        
+        console.log('Action button events bound - Edit:', editButtons.length, 'Delete:', deleteButtons.length);
     };
     
     // Destroy existing DataTable if any before initializing
@@ -813,6 +1009,12 @@ $(document).ready(function() {
             // Re-initialize tooltips after each draw
             $('[title]').tooltip();
             
+            // Initialize tooltips for action buttons
+            $('.action-btn[title]').tooltip({
+                placement: 'top',
+                trigger: 'hover'
+            });
+            
             // Re-bind edit button events after pagination/search
             setTimeout(function() {
                 window.bindEditButtonEvents();
@@ -822,6 +1024,12 @@ $(document).ready(function() {
             console.log('DataTable initialized successfully');
             // Initial binding
             window.bindEditButtonEvents();
+            
+            // Initialize tooltips for action buttons
+            $('.action-btn[title]').tooltip({
+                placement: 'top',
+                trigger: 'hover'
+            });
         }
     });
     
@@ -834,8 +1042,12 @@ $(document).ready(function() {
         }
     });
     
-    // Initialize tooltips for truncated text
+    // Initialize tooltips for truncated text and action buttons
     $('[title]').tooltip();
+    $('.action-btn[title]').tooltip({
+        placement: 'top',
+        trigger: 'hover'
+    });
 
     // Custom search functionality
     $('#custom-search').on('keyup', function() {
@@ -926,32 +1138,44 @@ $(document).ready(function() {
             return;
         }
         
-        let remark = row.find('td').eq(14).text().trim(); // หมายเหตุ
+        // แมปคอลัมน์ที่ถูกต้องตามโครงสร้างตารางจริง:
+        // 0=รูปภาพ, 1=SKU, 2=ชื่อสินค้า, 3=บาร์โค้ด, 4=ผู้ทำรายการ, 5=วันที่ทำรายการ
+        // 6=จำนวนก่อน, 7=เพิ่ม/ลด, 8=จำนวนล่าสุด, 9=PO/แท็ค/Lot, 10=สถานที่จัดเก็บ, 11=วันหมดอายุ, 12=จัดการ
+        
         let qtyText = row.find('td').eq(7).text().trim(); // เพิ่ม/ลด column
         let qty = qtyText.replace(/[^\d]/g, '');
         let qtyType = qtyText.indexOf('-') !== -1 ? 'minus' : 'plus';
-        let expiry = row.find('td').eq(14).attr('data-expiry') || ''; // หมายเหตุ
-        let priceCost = row.find('td').eq(10).text().replace(/[,฿\s]/g, ''); // ราคาต้นทุน
-        let priceSale = row.find('td').eq(11).text().replace(/[,฿\s]/g, ''); // ราคาขาย
-        let poNumber = row.find('td').eq(12).find('.badge').text().trim() || ''; // PO Number column
+        let locationText = row.find('td').eq(10).text().trim(); // สถานที่จัดเก็บ
+        let expiryText = row.find('td').eq(11).text().trim(); // วันหมดอายุ
+        let poNumber = row.find('td').eq(9).find('.badge').text().trim() || ''; // PO/แท็ค/Lot column
+        
+        // แปลงวันที่หมดอายุเป็นรูปแบบ input date (YYYY-MM-DD)
+        let expiry = '';
+        if (expiryText && expiryText !== '-') {
+            // แปลงจาก dd/mm/yyyy เป็น yyyy-mm-dd
+            let parts = expiryText.split('/');
+            if (parts.length === 3) {
+                expiry = parts[2] + '-' + parts[1].padStart(2, '0') + '-' + parts[0].padStart(2, '0');
+            }
+        }
         
         console.log('Extracted data:', {
-            id, remark, qtyText, qty, qtyType, expiry, priceCost, priceSale, poNumber
+            id, qtyText, qty, qtyType, expiry, poNumber, locationText, expiryText
         });
         
-        // ใส่ค่าอื่นใน modal ก่อน
+        // ใส่ค่าเริ่มต้นใน modal ก่อน
         $('#edit-receive-id').val(id);
-        $('#edit-remark').val(remark);
-        $('#edit-price-cost').val(priceCost);
-        $('#edit-price-sale').val(priceSale);
         $('#edit-qty-type').val(qtyType);
         $('#edit-receive-qty').val(qty);
         $('#edit-expiry-date').val(expiry);
         $('#edit-po-number').val(poNumber);
-        // clear select ก่อน
+        // clear select และราคาก่อน
         $('#edit-row-code').val('');
         $('#edit-bin').val('');
         $('#edit-shelf').val('');
+        $('#edit-price-cost').val('');
+        $('#edit-price-sale').val('');
+        $('#edit-remark').val('');
         
         // ล้างข้อมูลการแบ่งจำนวนก่อนหน้า
         window.currentSplitData = null;
@@ -960,13 +1184,18 @@ $(document).ready(function() {
             window.splitMainPO = null;
         }
         
-        // AJAX ไปหา row_code, bin, shelf
+        // AJAX ไปหา row_code, bin, shelf, ราคา และข้อมูลอื่นๆ
         $.get('../api/receive_position_api.php', { receive_id: id }, function(resp){
             console.log('Position API response:', resp);
             if(resp && resp.success) {
                 let rowCode = resp.row_code || '';
                 let bin = resp.bin || '';
                 let shelf = resp.shelf || '';
+                let priceCost = resp.price_per_unit || '';
+                let priceSale = resp.sale_price || '';
+                let remarkFromAPI = resp.remark || '';
+                let expiryFromAPI = resp.expiry_date || '';
+                
                 function setSelectWithDynamicOption(sel, val) {
                     val = (val || '').toString().trim();
                     if(val && sel.find('option[value="'+val+'"]').length === 0) {
@@ -977,12 +1206,38 @@ $(document).ready(function() {
                 setSelectWithDynamicOption($('#edit-row-code'), rowCode);
                 setSelectWithDynamicOption($('#edit-bin'), bin);
                 setSelectWithDynamicOption($('#edit-shelf'), shelf);
+                
+                // ใส่ราคาและข้อมูลอื่นๆ ที่ได้จาก API
+                $('#edit-price-cost').val(priceCost);
+                $('#edit-price-sale').val(priceSale);
+                $('#edit-remark').val(remarkFromAPI);
+                
+                // อัพเดทวันหมดอายุจาก API ถ้ามี
+                if (expiryFromAPI) {
+                    $('#edit-expiry-date').val(expiryFromAPI);
+                }
+                
+                console.log('Form values set:', {
+                    priceCost: $('#edit-price-cost').val(),
+                    priceSale: $('#edit-price-sale').val(),
+                    remark: $('#edit-remark').val(),
+                    expiry: $('#edit-expiry-date').val(),
+                    qty: $('#edit-receive-qty').val(),
+                    qtyType: $('#edit-qty-type').val(),
+                    poNumber: $('#edit-po-number').val(),
+                    rowCode: $('#edit-row-code').val(),
+                    bin: $('#edit-bin').val(),
+                    shelf: $('#edit-shelf').val()
+                });
             }
             var modal = new bootstrap.Modal(document.getElementById('editModal'));
             modal.show();
         }, 'json').fail(function(xhr, status, error) {
             console.error('Position API error:', xhr, status, error);
-            Swal.fire('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลตำแหน่งได้', 'error');
+            Swal.fire('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลได้', 'error');
+            // แสดง modal แม้ว่าจะโหลดข้อมูลไม่ได้
+            var modal = new bootstrap.Modal(document.getElementById('editModal'));
+            modal.show();
         });
     };
 
@@ -1155,6 +1410,73 @@ $(document).ready(function() {
                 Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
             });
         });
+
+    // Delete single item handler
+    $(document).on('click', '.delete-btn', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const itemId = $(this).data('id');
+        const $row = $(this).closest('tr');
+        const productName = $row.find('td').eq(2).text().trim();
+        
+        console.log('Delete button clicked for ID:', itemId);
+        
+        if (!itemId) {
+            Swal.fire('ข้อผิดพลาด', 'ไม่พบ ID ของรายการ', 'error');
+            return;
+        }
+        
+        Swal.fire({
+            title: 'ยืนยันการลบ?',
+            html: `คุณต้องการลบรายการ<br><strong>${productName}</strong><br>หรือไม่?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="material-icons me-1">delete</i> ลบ',
+            cancelButtonText: '<i class="material-icons me-1">close</i> ยกเลิก',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading
+                Swal.fire({
+                    title: 'กำลังลบ...',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    willOpen: () => { Swal.showLoading(); }
+                });
+
+                $.ajax({
+                    url: 'receive_delete.php',
+                    method: 'POST',
+                    data: { ids: [itemId] },
+                    dataType: 'json',
+                    success: function(response) {
+                        Swal.close();
+                        if (response && response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'ลบสำเร็จ!',
+                                text: 'ลบรายการเรียบร้อยแล้ว',
+                                showConfirmButton: false,
+                                timer: 2000
+                            }).then(() => {
+                                refreshTableData();
+                            });
+                        } else {
+                            Swal.fire('ข้อผิดพลาด!', response.message || 'เกิดข้อผิดพลาดในการลบ', 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        Swal.close();
+                        console.error('Delete error:', xhr, status, error);
+                        Swal.fire('ข้อผิดพลาด!', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+                    }
+                });
+            }
+        });
+    });
 
     // Function to refresh table data without full page reload
     function refreshTableData() {

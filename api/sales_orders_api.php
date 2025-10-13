@@ -168,19 +168,21 @@ try {
     $count_stmt->execute($params);
     $total_records = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    // Get sales orders with details
+    // Get sales orders with details - คำนวณ total_amount จากราคาขายจริง
     $sql = "
         SELECT 
             so.sale_order_id,
             so.issue_tag,
             so.platform,
-            so.total_amount,
+            so.total_amount as original_total_amount,
             so.total_items,
             so.sale_date,
             so.remark,
             u.name as issued_by_name,
             COUNT(ii.issue_id) as actual_items,
-            SUM(ii.issue_qty) as total_qty
+            SUM(ii.issue_qty) as total_qty,
+            SUM(ii.issue_qty * COALESCE(ii.sale_price, 0)) as calculated_total_amount,
+            SUM(ii.issue_qty * COALESCE(ii.cost_price, 0)) as total_cost
         FROM sales_orders so
         LEFT JOIN users u ON u.user_id = so.issued_by
         LEFT JOIN issue_items ii ON ii.sale_order_id = so.sale_order_id
@@ -208,6 +210,7 @@ try {
                 ii.issue_id,
                 ii.issue_qty,
                 ii.sale_price,
+                ii.cost_price,
                 ii.created_at as issue_date,
                 p.name as product_name,
                 p.sku,
@@ -215,7 +218,9 @@ try {
                 p.image,
                 ri.expiry_date,
                 ri.remark as lot_info,
-                (ii.issue_qty * COALESCE(ii.sale_price, 0)) as line_total
+                (ii.issue_qty * COALESCE(ii.sale_price, 0)) as line_total,
+                (ii.issue_qty * COALESCE(ii.cost_price, 0)) as line_cost,
+                ((ii.issue_qty * COALESCE(ii.sale_price, 0)) - (ii.issue_qty * COALESCE(ii.cost_price, 0))) as line_profit
             FROM issue_items ii
             LEFT JOIN products p ON p.product_id = ii.product_id
             LEFT JOIN receive_items ri ON ri.receive_id = ii.receive_id
@@ -240,8 +245,20 @@ try {
             // Format dates
             $order['sale_date_formatted'] = date('d/m/Y H:i', strtotime($order['sale_date']));
             
+            // ใช้ยอดที่คำนวณจากราคาขายจริง แทนยอดเก่า
+            $order['total_amount'] = $order['calculated_total_amount'] ?: 0;
+            $order['total_cost'] = $order['total_cost'] ?: 0;
+            
             // Format amounts
             $order['total_amount_formatted'] = number_format($order['total_amount'], 2);
+            $order['total_cost_formatted'] = number_format($order['total_cost'], 2);
+            
+            // คำนวณกำไร
+            $profit = $order['total_amount'] - $order['total_cost'];
+            $order['profit'] = $profit;
+            $order['profit_formatted'] = number_format($profit, 2);
+            $order['profit_margin'] = $order['total_amount'] > 0 ? 
+                round(($profit / $order['total_amount']) * 100, 2) : 0;
             
             // ตรวจสอบและอัพเดทแพลตฟอร์มด้วยระบบใหม่
             $detected_platform = detectPlatformFromTag($order['issue_tag']);

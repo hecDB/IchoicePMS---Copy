@@ -376,10 +376,22 @@ require_once '../auth/auth_check.php';
                                     <div class="stat-label">สินค้า</div>
                                 </div>
                             </div>
-                            <div class="col-6 col-md-3">
+                            <div class="col-6 col-md-2">
                                 <div class="stat-card">
                                     <div class="stat-number" id="totalAmount">฿0</div>
-                                    <div class="stat-label">ยอดขายรวม</div>
+                                    <div class="stat-label">ยอดขาย</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalCost">฿0</div>
+                                    <div class="stat-label">ต้นทุน</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalProfit">฿0</div>
+                                    <div class="stat-label">กำไรรวม</div>
                                 </div>
                             </div>
                         </div>
@@ -584,8 +596,13 @@ require_once '../auth/auth_check.php';
                             </div>
                             <div class="col-auto text-end">
                                 <div class="qty-badge">${item.issue_qty} ${item.unit || 'ชิ้น'}</div>
-                                ${item.sale_price ? `<div class="price-text mt-1">฿${parseFloat(item.sale_price).toLocaleString()}</div>` : ''}
-                                ${lineTotal > 0 ? `<div class="text-muted small">รวม: ฿${lineTotal.toLocaleString()}</div>` : ''}
+                                ${item.sale_price ? `<div class="price-text mt-1">ขาย ฿${parseFloat(item.sale_price).toLocaleString()}</div>` : ''}
+                                ${item.cost_price ? `<div class="text-muted small">ต้นทุน ฿${parseFloat(item.cost_price).toLocaleString()}</div>` : ''}
+                                ${lineTotal > 0 ? `<div class="fw-bold text-success small">รวม ฿${lineTotal.toLocaleString()}</div>` : ''}
+                                ${item.line_cost > 0 ? `<div class="text-warning small">ต้นทุนรวม ฿${parseFloat(item.line_cost).toLocaleString()}</div>` : ''}
+                                ${item.line_profit ? `<div class="small ${parseFloat(item.line_profit) >= 0 ? 'text-success' : 'text-danger'}">
+                                    ${parseFloat(item.line_profit) >= 0 ? 'กำไร' : 'ขาดทุน'} ฿${Math.abs(parseFloat(item.line_profit)).toLocaleString()}
+                                </div>` : ''}
                             </div>
                         </div>
                     </div>
@@ -619,7 +636,15 @@ require_once '../auth/auth_check.php';
                                         <strong>${order.actual_items || 0}</strong> รายการ 
                                         (<strong>${order.total_qty || 0}</strong> ชิ้น)
                                         ${parseFloat(order.total_amount) > 0 ? 
-                                            ` • <strong>฿${order.total_amount_formatted}</strong>` : ''
+                                            ` • ขาย <strong>฿${order.total_amount_formatted}</strong>` : ''
+                                        }
+                                        ${parseFloat(order.total_cost) > 0 ? 
+                                            ` • ต้นทุน <strong>฿${order.total_cost_formatted}</strong>` : ''
+                                        }
+                                        ${parseFloat(order.profit) > 0 ? 
+                                            ` • กำไร <strong style="color: #10b981;">฿${order.profit_formatted}</strong>` : 
+                                            parseFloat(order.profit) < 0 ? 
+                                            ` • ขาดทุน <strong style="color: #ef4444;">฿${Math.abs(order.profit).toLocaleString()}</strong>` : ''
                                         }
                                     </small>
                                 </div>
@@ -644,10 +669,19 @@ require_once '../auth/auth_check.php';
                                     <strong>รวม ${order.actual_items || 0} รายการ</strong>
                                     <span class="text-muted ms-2">(${order.total_qty || 0} ชิ้น)</span>
                                 </div>
-                                <div class="col-auto">
+                                <div class="col-auto text-end">
                                     ${parseFloat(order.total_amount) > 0 ? 
-                                        `<strong class="price-text">฿${order.total_amount_formatted}</strong>` : 
-                                        '<span class="text-muted">ไม่ระบุราคา</span>'
+                                        `<div><strong class="text-success">ยอดขาย: ฿${order.total_amount_formatted}</strong></div>` : 
+                                        '<div class="text-muted">ไม่ระบุราคาขาย</div>'
+                                    }
+                                    ${parseFloat(order.total_cost) > 0 ? 
+                                        `<div class="text-warning small">ต้นทุน: ฿${order.total_cost_formatted}</div>` : ''
+                                    }
+                                    ${parseFloat(order.profit) !== 0 ? 
+                                        `<div class="fw-bold ${parseFloat(order.profit) >= 0 ? 'text-success' : 'text-danger'}">
+                                            ${parseFloat(order.profit) >= 0 ? 'กำไร' : 'ขาดทุน'}: ฿${Math.abs(parseFloat(order.profit)).toLocaleString()}
+                                            ${order.profit_margin ? ` (${order.profit_margin}%)` : ''}
+                                        </div>` : ''
                                     }
                                 </div>
                             </div>
@@ -793,11 +827,25 @@ require_once '../auth/auth_check.php';
                 const totalTagsEl = document.getElementById('totalTags');
                 const totalItemsEl = document.getElementById('totalItems');
                 const totalAmountEl = document.getElementById('totalAmount');
+                const totalCostEl = document.getElementById('totalCost');
+                const totalProfitEl = document.getElementById('totalProfit');
                 
                 if (totalOrdersEl) totalOrdersEl.textContent = totalStats.total_orders.toLocaleString();
                 if (totalTagsEl) totalTagsEl.textContent = totalStats.total_tags.toLocaleString();
                 if (totalItemsEl) totalItemsEl.textContent = totalStats.total_items.toLocaleString();
                 if (totalAmountEl) totalAmountEl.textContent = `฿${totalStats.total_amount_formatted}`;
+                
+                // เพิ่มสถิติต้นทุนและกำไร
+                if (totalCostEl) {
+                    const totalCost = totalStats.total_cost || 0;
+                    totalCostEl.textContent = `฿${totalCost.toLocaleString()}`;
+                }
+                
+                if (totalProfitEl) {
+                    const profit = (totalStats.total_amount || 0) - (totalStats.total_cost || 0);
+                    totalProfitEl.textContent = `฿${profit.toLocaleString()}`;
+                    totalProfitEl.className = `stat-number ${profit >= 0 ? 'text-success' : 'text-danger'}`;
+                }
             }
             
             // อัพเดตสถิติแพลตฟอร์ม
@@ -813,6 +861,11 @@ require_once '../auth/auth_check.php';
                         const percentage = totalStats.total_amount > 0 ? 
                             ((platform.total_amount / totalStats.total_amount) * 100).toFixed(1) : 0;
                         
+                        const platformCost = platform.total_cost || 0;
+                        const platformProfit = (platform.total_amount || 0) - platformCost;
+                        const profitMargin = platform.total_amount > 0 ? 
+                            ((platformProfit / platform.total_amount) * 100).toFixed(1) : 0;
+                        
                         platformHtml += `
                             <div class="platform-card ${platformClass}">
                                 <div class="platform-header">
@@ -823,7 +876,17 @@ require_once '../auth/auth_check.php';
                                     <span><strong>${platform.order_count}</strong> คำสั่งซื้อ</span>
                                     <span><strong>${platform.tag_count}</strong> แท็ค</span>
                                     <span><strong>${platform.total_qty}</strong> ชิ้น</span>
-                                    <span><strong>${percentage}%</strong> ของยอดรวม</span>
+                                    <span><strong>${percentage}%</strong> ของยอดขาย</span>
+                                </div>
+                                <div class="platform-metrics mt-2" style="border-top: 1px solid rgba(0,0,0,0.1); padding-top: 0.5rem;">
+                                    <span class="text-warning"><strong>฿${platformCost.toLocaleString()}</strong> ต้นทุน</span>
+                                    <span class="${platformProfit >= 0 ? 'text-success' : 'text-danger'}">
+                                        <strong>฿${Math.abs(platformProfit).toLocaleString()}</strong> 
+                                        ${platformProfit >= 0 ? 'กำไร' : 'ขาดทุน'}
+                                    </span>
+                                    <span class="${platformProfit >= 0 ? 'text-success' : 'text-danger'}">
+                                        <strong>${profitMargin}%</strong> อัตรากำไร
+                                    </span>
                                 </div>
                             </div>
                         `;

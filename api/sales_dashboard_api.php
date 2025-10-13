@@ -32,14 +32,16 @@ function getSalesDashboardStats($pdo, $dateFrom = null, $dateTo = null) {
         $params[] = $dateTo;
     }
     
-    // ดึงข้อมูลสถิติรวม
+    // ดึงข้อมูลสถิติรวม - คำนวณจากราคาขายจริง
     $totalQuery = "
         SELECT 
             COUNT(DISTINCT so.sale_order_id) as total_orders,
             COUNT(DISTINCT so.issue_tag) as total_tags,
-            COALESCE(SUM(so.total_items), 0) as total_items,
-            COALESCE(SUM(so.total_amount), 0) as total_amount
+            COALESCE(SUM(ii.issue_qty), 0) as total_items,
+            COALESCE(SUM(ii.issue_qty * COALESCE(ii.sale_price, 0)), 0) as total_amount,
+            COALESCE(SUM(ii.issue_qty * COALESCE(ii.cost_price, 0)), 0) as total_cost
         FROM sales_orders so 
+        LEFT JOIN issue_items ii ON ii.sale_order_id = so.sale_order_id
         $whereClause
     ";
     
@@ -47,7 +49,7 @@ function getSalesDashboardStats($pdo, $dateFrom = null, $dateTo = null) {
     $stmt->execute($params);
     $totalStats = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // ดึงข้อมูลตามแพลตฟอร์ม
+    // ดึงข้อมูลตามแพลตฟอร์ม - คำนวณจากราคาขายจริง
     $platformQuery = "
         SELECT 
             COALESCE(so.platform,
@@ -59,10 +61,12 @@ function getSalesDashboardStats($pdo, $dateFrom = null, $dateTo = null) {
             ) as platform,
             COUNT(DISTINCT so.sale_order_id) as order_count,
             COUNT(DISTINCT so.issue_tag) as tag_count,
-            COALESCE(SUM(so.total_items), 0) as total_qty,
-            COALESCE(SUM(so.total_amount), 0) as total_amount,
-            COALESCE(AVG(so.total_amount), 0) as avg_amount
+            COALESCE(SUM(ii.issue_qty), 0) as total_qty,
+            COALESCE(SUM(ii.issue_qty * COALESCE(ii.sale_price, 0)), 0) as total_amount,
+            COALESCE(AVG(ii.issue_qty * COALESCE(ii.sale_price, 0)), 0) as avg_amount,
+            COALESCE(SUM(ii.issue_qty * COALESCE(ii.cost_price, 0)), 0) as total_cost
         FROM sales_orders so 
+        LEFT JOIN issue_items ii ON ii.sale_order_id = so.sale_order_id
         $whereClause
         GROUP BY platform
         ORDER BY total_amount DESC
@@ -110,6 +114,7 @@ function getSalesDashboardStats($pdo, $dateFrom = null, $dateTo = null) {
             'tag_count' => (int)($platform['tag_count'] ?: 0),
             'total_qty' => (int)($platform['total_qty'] ?: 0),
             'total_amount' => (float)($platform['total_amount'] ?: 0),
+            'total_cost' => (float)($platform['total_cost'] ?: 0),
             'total_amount_formatted' => number_format((float)($platform['total_amount'] ?: 0), 2),
             'avg_amount' => (float)($platform['avg_amount'] ?: 0),
             'avg_amount_formatted' => number_format((float)($platform['avg_amount'] ?: 0), 2)
@@ -122,6 +127,7 @@ function getSalesDashboardStats($pdo, $dateFrom = null, $dateTo = null) {
             'total_tags' => (int)($totalStats['total_tags'] ?: 0),
             'total_items' => (int)($totalStats['total_items'] ?: 0),
             'total_amount' => (float)($totalStats['total_amount'] ?: 0),
+            'total_cost' => (float)($totalStats['total_cost'] ?: 0),
             'total_amount_formatted' => number_format((float)($totalStats['total_amount'] ?: 0), 2)
         ],
         'platform_stats' => $formattedPlatforms,

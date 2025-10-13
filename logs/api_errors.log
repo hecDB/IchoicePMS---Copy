@@ -540,3 +540,110 @@
 [13-Oct-2025 10:24:13 Asia/Bangkok] About to encode 7 results for type: issue
 [13-Oct-2025 10:24:13 Asia/Bangkok] Sent JSON response length: 5606
 [13-Oct-2025 10:24:13 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 14:03:40 Asia/Bangkok] PDO Error in sales_orders_api: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'ii.cost_price' in 'field list'
+[13-Oct-2025 14:04:53 Asia/Bangkok] PDO Error in sales_orders_api: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'ii.cost_price' in 'field list'
+[13-Oct-2025 14:04:56 Asia/Bangkok] PDO Error in sales_orders_api: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'ii.cost_price' in 'field list'
+[13-Oct-2025 14:12:16 Asia/Bangkok] PDO Error in sales_orders_api: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'ii.cost_price' in 'field list'
+[13-Oct-2025 15:44:01 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 15:44:01 Asia/Bangkok] Request query: TEST
+[13-Oct-2025 15:44:01 Asia/Bangkok] Request method: GET
+[13-Oct-2025 15:44:01 Asia/Bangkok] Request URI: /api/product_search_api.php?q=TEST&type=issue&available_only=true
+[13-Oct-2025 15:44:01 Asia/Bangkok] Searching for: 'TEST' with limit: 10
+[13-Oct-2025 15:44:01 Asia/Bangkok] About to encode 10 results for type: issue
+[13-Oct-2025 15:44:01 Asia/Bangkok] Sent JSON response length: 5026
+[13-Oct-2025 15:44:01 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 15:44:18 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 15:44:18 Asia/Bangkok] Request query: TEST
+[13-Oct-2025 15:44:18 Asia/Bangkok] Request method: GET
+[13-Oct-2025 15:44:18 Asia/Bangkok] Request URI: /api/product_search_api.php?q=TEST&type=issue&available_only=true
+[13-Oct-2025 15:44:18 Asia/Bangkok] Searching for: 'TEST' with limit: 10
+[13-Oct-2025 15:44:18 Asia/Bangkok] About to encode 10 results for type: issue
+[13-Oct-2025 15:44:18 Asia/Bangkok] Sent JSON response length: 5026
+[13-Oct-2025 15:44:18 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 15:44:22 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 15:44:22 Asia/Bangkok] Request query: TES
+[13-Oct-2025 15:44:22 Asia/Bangkok] Request method: GET
+[13-Oct-2025 15:44:22 Asia/Bangkok] Request URI: /api/product_search_api.php?q=TES&type=issue&available_only=true
+[13-Oct-2025 15:44:22 Asia/Bangkok] Searching for: 'TES' with limit: 10
+[13-Oct-2025 15:44:22 Asia/Bangkok] About to encode 10 results for type: issue
+[13-Oct-2025 15:44:22 Asia/Bangkok] Sent JSON response length: 5026
+[13-Oct-2025 15:44:22 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 15:44:23 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 15:44:23 Asia/Bangkok] Request query: TES1
+[13-Oct-2025 15:44:23 Asia/Bangkok] Request method: GET
+[13-Oct-2025 15:44:23 Asia/Bangkok] Request URI: /api/product_search_api.php?q=TES1&type=issue&available_only=true
+[13-Oct-2025 15:44:23 Asia/Bangkok] Searching for: 'TES1' with limit: 10
+[13-Oct-2025 15:44:23 Asia/Bangkok] About to encode 0 results for type: issue
+[13-Oct-2025 15:44:23 Asia/Bangkok] Sent JSON response length: 15
+[13-Oct-2025 15:44:23 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 15:44:24 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 15:44:24 Asia/Bangkok] Request query: TES
+[13-Oct-2025 15:44:24 Asia/Bangkok] Request method: GET
+[13-Oct-2025 15:44:24 Asia/Bangkok] Request URI: /api/product_search_api.php?q=TES&type=issue&available_only=true
+[13-Oct-2025 15:44:25 Asia/Bangkok] Searching for: 'TES' with limit: 10
+[13-Oct-2025 15:44:25 Asia/Bangkok] About to encode 10 results for type: issue
+[13-Oct-2025 15:44:25 Asia/Bangkok] Sent JSON response length: 5026
+[13-Oct-2025 15:44:25 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 15:44:25 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 15:44:25 Asia/Bangkok] Request query: TESTQ
+[13-Oct-2025 15:44:25 Asia/Bangkok] Request method: GET
+[13-Oct-2025 15:44:25 Asia/Bangkok] Request URI: /api/product_search_api.php?q=TESTQ&type=issue&available_only=true
+[13-Oct-2025 15:44:25 Asia/Bangkok] Searching for: 'TESTQ' with limit: 10
+[13-Oct-2025 15:44:25 Asia/Bangkok] About to encode 0 results for type: issue
+[13-Oct-2025 15:44:25 Asia/Bangkok] Sent JSON response length: 15
+[13-Oct-2025 15:44:25 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 15:44:26 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 15:44:26 Asia/Bangkok] Request query: TEST
+[13-Oct-2025 15:44:26 Asia/Bangkok] Request method: GET
+[13-Oct-2025 15:44:26 Asia/Bangkok] Request URI: /api/product_search_api.php?q=TEST&type=issue&available_only=true
+[13-Oct-2025 15:44:26 Asia/Bangkok] Searching for: 'TEST' with limit: 10
+[13-Oct-2025 15:44:26 Asia/Bangkok] About to encode 10 results for type: issue
+[13-Oct-2025 15:44:26 Asia/Bangkok] Sent JSON response length: 5026
+[13-Oct-2025 15:44:26 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 15:44:28 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 15:44:28 Asia/Bangkok] Request query: TEST1
+[13-Oct-2025 15:44:28 Asia/Bangkok] Request method: GET
+[13-Oct-2025 15:44:28 Asia/Bangkok] Request URI: /api/product_search_api.php?q=TEST1&type=issue&available_only=true
+[13-Oct-2025 15:44:28 Asia/Bangkok] Searching for: 'TEST1' with limit: 10
+[13-Oct-2025 15:44:28 Asia/Bangkok] About to encode 10 results for type: issue
+[13-Oct-2025 15:44:28 Asia/Bangkok] Sent JSON response length: 5026
+[13-Oct-2025 15:44:28 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 15:45:15 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 15:45:15 Asia/Bangkok] Request query: TEST
+[13-Oct-2025 15:45:15 Asia/Bangkok] Request method: GET
+[13-Oct-2025 15:45:15 Asia/Bangkok] Request URI: /api/product_search_api.php?q=TEST&type=issue&available_only=true
+[13-Oct-2025 15:45:15 Asia/Bangkok] Searching for: 'TEST' with limit: 10
+[13-Oct-2025 15:45:15 Asia/Bangkok] About to encode 10 results for type: issue
+[13-Oct-2025 15:45:15 Asia/Bangkok] Sent JSON response length: 5026
+[13-Oct-2025 15:45:15 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 15:45:16 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 15:45:16 Asia/Bangkok] Request query: TEST1
+[13-Oct-2025 15:45:16 Asia/Bangkok] Request method: GET
+[13-Oct-2025 15:45:16 Asia/Bangkok] Request URI: /api/product_search_api.php?q=TEST1&type=issue&available_only=true
+[13-Oct-2025 15:45:16 Asia/Bangkok] Searching for: 'TEST1' with limit: 10
+[13-Oct-2025 15:45:16 Asia/Bangkok] About to encode 10 results for type: issue
+[13-Oct-2025 15:45:16 Asia/Bangkok] Sent JSON response length: 5026
+[13-Oct-2025 15:45:16 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 15:45:52 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 15:45:52 Asia/Bangkok] Request query: GI
+[13-Oct-2025 15:45:52 Asia/Bangkok] Request method: GET
+[13-Oct-2025 15:45:52 Asia/Bangkok] Request URI: /api/product_search_api.php?q=GI&type=issue&available_only=true
+[13-Oct-2025 15:45:52 Asia/Bangkok] Searching for: 'GI' with limit: 10
+[13-Oct-2025 15:45:52 Asia/Bangkok] About to encode 10 results for type: issue
+[13-Oct-2025 15:45:52 Asia/Bangkok] Sent JSON response length: 7697
+[13-Oct-2025 15:45:52 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 15:46:44 Asia/Bangkok] Issue request: Tag=273665KSJDIUHI, Products=2, User=1
+[13-Oct-2025 15:46:44 Asia/Bangkok] Created sale_order_id: 3
+[13-Oct-2025 15:46:44 Asia/Bangkok] Successfully issued: Product ID 22, Qty 5, Receive ID 27, Sale Order ID 3
+[13-Oct-2025 15:46:44 Asia/Bangkok] Successfully issued: Product ID 12, Qty 1, Receive ID 65, Sale Order ID 3
+[13-Oct-2025 15:46:44 Asia/Bangkok] Issue completed: 2 successful, 0 errors
+[13-Oct-2025 16:20:13 Asia/Bangkok] === product_search_api.php START ===
+[13-Oct-2025 16:20:13 Asia/Bangkok] Request query: test1
+[13-Oct-2025 16:20:13 Asia/Bangkok] Request method: GET
+[13-Oct-2025 16:20:13 Asia/Bangkok] Request URI: /api/product_search_api.php?q=test1&limit=10
+[13-Oct-2025 16:20:13 Asia/Bangkok] Searching for: 'test1' with limit: 10
+[13-Oct-2025 16:20:13 Asia/Bangkok] About to encode 2 results for type: default
+[13-Oct-2025 16:20:13 Asia/Bangkok] Sent JSON response length: 749
+[13-Oct-2025 16:20:13 Asia/Bangkok] === product_search_api.php END ===
+[13-Oct-2025 16:20:24 Asia/Bangkok] update_po_section.php called with: {"po_id":"26","product_id":"1","product_name":"test1","qty":"1","price_per_unit":"1","unit":"\u0e41\u0e1e\u0e47\u0e04","currency_id":"2","price_original":"1","exchange_rate":"39","update_type":"add_item"}
+[13-Oct-2025 16:20:24 Asia/Bangkok] Processing update: po_id=26, type=add_item
