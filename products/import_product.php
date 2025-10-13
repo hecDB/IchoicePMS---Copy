@@ -4,73 +4,209 @@ require_once '../config/db_connect.php';
 include '../templates/sidebar.php';
 // if($_SESSION['user_role']!=='admin'){ http_response_code(403); exit; }
 
-$user_id = $_SESSION['user_id'] ?? 0;
+// เพิ่มสไตล์สำหรับปุ่ม debug
+echo '<style>
+.debug-button {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: #ff4444;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    z-index: 9999;
+}
+.debug-button:hover {
+    background: #cc0000;
+}
+</style>';
+
+echo '<button class="debug-button" onclick="window.open(\'debug_logs.php\', \'_blank\')">🔍 Debug Logs</button>';
+
+// ตรวจสอบ session และ user_id
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['user_id'] = 1; // ตั้งค่าเริ่มต้นสำหรับทดสอบ
+    error_log("Warning: No user_id in session, using default value 1");
+}
+$user_id = $_SESSION['user_id'];
 $message = "";
-$uploadDir = __DIR__ . '/images/';
+$uploadDir = __DIR__ . '/../images/'; // แก้ไข path ให้ถูกต้อง
 $imgWebPath = 'images/';
 
-ini_set('display_errors', 1); error_reporting(E_ALL);
+// ตรวจสอบและสร้างโฟลเดอร์รูปภาพ
+if (!is_dir($uploadDir)) {
+    if (!mkdir($uploadDir, 0755, true)) {
+        $message = "ไม่สามารถสร้างโฟลเดอร์สำหรับรูปภาพได้";
+    }
+}
+
+// เปิด error reporting เฉพาะในโหมด development
+ini_set('display_errors', 1); 
+error_reporting(E_ALL);
+
+// Log การโหลดหน้า
+error_log("=== IMPORT PRODUCT PAGE LOADED ===");
+error_log("Request Method: " . $_SERVER['REQUEST_METHOD']);
+error_log("User ID from session: " . ($user_id ?? 'NULL'));
+error_log("POST data count: " . count($_POST));
+
+// ตรวจสอบการเชื่อมต่อฐานข้อมูล
+try {
+    $pdo->query("SELECT 1");
+    error_log("Database connection OK");
+} catch (Exception $e) {
+    $message = "ปัญหาการเชื่อมต่อฐานข้อมูล: " . $e->getMessage();
+    error_log("Database connection FAILED: " . $e->getMessage());
+}
+
+// ตรวจสอบข้อมูลที่ส่งมาจากฟอร์ม
+if(isset($_POST['submit'])) {
+    error_log("=== FORM SUBMISSION DEBUG ===");
+    error_log("POST submit detected: " . var_export($_POST['submit'], true));
+    error_log("POST items data: " . print_r($_POST['items'] ?? 'NO ITEMS', true));
+    error_log("FILES data: " . print_r($_FILES, true));
+    error_log("User ID: " . $user_id);
+    
+    if(empty($_POST['items'])) {
+        $message = "ไม่พบข้อมูลรายการสินค้า กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ";
+        error_log("ERROR: No items found in POST data");
+    }
+}
 
 if(isset($_POST['submit']) && !empty($_POST['items'])) {
+    error_log("=== STARTING PRODUCT IMPORT PROCESS ===");
+    error_log("User ID: " . $user_id);
+    error_log("Total items to process: " . count($_POST['items']));
+    error_log("Upload directory: " . $uploadDir);
+    error_log("Upload directory exists: " . (is_dir($uploadDir) ? 'YES' : 'NO'));
+    
     $pdo->beginTransaction();
+    error_log("Database transaction started");
+    
     try {
         // สร้างเลข PO
         $date = date('Ymd');
         $last_po = $pdo->query("SELECT po_number FROM purchase_orders WHERE po_number LIKE 'PO{$date}%' ORDER BY po_number DESC LIMIT 1")->fetchColumn();
         $num = $last_po ? intval(substr($last_po, -3)) + 1 : 1;
         $po_number = 'PO'.$date.str_pad($num,3,'0',STR_PAD_LEFT);
+        error_log("Generated PO Number: " . $po_number);
 
         // คำนวณยอดรวม
         $total_amount = 0;
         foreach($_POST['items'] as $item){
-            $total_amount += floatval($item['qty']) * floatval($item['price']);
+            $item_total = floatval($item['qty']) * floatval($item['price']);
+            $total_amount += $item_total;
+            error_log("Item total calculation: " . $item['qty'] . " x " . $item['price'] . " = " . $item_total);
         }
+        error_log("Total PO Amount: " . $total_amount);
 
         // insert PO
         $stmt = $pdo->prepare("INSERT INTO purchase_orders 
             (po_number, supplier_id, order_date, total_amount, ordered_by, status, remark)
             VALUES (?, ?, NOW(), ?, ?, ?, ?)");
-        $stmt->execute([$po_number, 1, $total_amount, $user_id, 'pending', 'imported from form']);
+        $result = $stmt->execute([$po_number, 1, $total_amount, $user_id, 'pending', 'imported from form']);
+        if (!$result) {
+            $errorInfo = $stmt->errorInfo();
+            error_log("PO insert failed: " . print_r($errorInfo, true));
+            throw new Exception("ไม่สามารถสร้าง Purchase Order ได้: " . $errorInfo[2]);
+        }
         $po_id = $pdo->lastInsertId();
+        error_log("PO Insert Result: SUCCESS");
+        error_log("PO ID: " . $po_id);
+        error_log("Total Amount: " . $total_amount);
 
         // insert items
         foreach($_POST['items'] as $idx=>$item){
-            $sku = $item['sku']; $barcode=$item['barcode']; $name=$item['name'];
-            $unit=$item['unit']; $row_code=$item['row_code']; $bin=$item['bin']; $shelf=$item['shelf'];
-            $qty=floatval($item['qty']); $price=floatval($item['price']);
-            $currency = $item['currency'] ?? 'THB'; $sale_price = floatval($item['sale_price'] ?? 0);
+            error_log("=== PROCESSING ITEM $idx ===");
+            error_log("Item data: " . print_r($item, true));
+            
+            $sku = $item['sku'] ?? ''; 
+            $barcode = $item['barcode'] ?? ''; 
+            $name = $item['name'] ?? '';
+            $unit = $item['unit'] ?? 'ชิ้น'; 
+            $row_code = $item['row_code'] ?? ''; 
+            $bin = $item['bin'] ?? ''; 
+            $shelf = $item['shelf'] ?? '';
+            $qty = floatval($item['qty'] ?? 0); 
+            $price = floatval($item['price'] ?? 0);
+            $currency = $item['currency'] ?? 'THB'; 
+            $sale_price = floatval($item['sale_price'] ?? 0);
+            
+            error_log("Parsed values: name=$name, qty=$qty, price=$price, location=$row_code-$bin-$shelf");
+            
+            // ตรวจสอบข้อมูลที่จำเป็น
+            if(empty($name)) {
+                throw new Exception("ชื่อสินค้าในรายการที่ " . ($idx + 1) . " ไม่ถูกต้อง");
+            }
+            if($qty <= 0) {
+                throw new Exception("จำนวนในรายการที่ " . ($idx + 1) . " ต้องมากกว่า 0");
+            }
+            if($price < 0) {
+                throw new Exception("ราคาในรายการที่ " . ($idx + 1) . " ไม่ถูกต้อง");
+            }
 
-            // upload image
+            // upload image - แก้ไขการจัดการไฟล์
             $imageFile = '';
-            if(!empty($_FILES['items']['name'][$idx]['image'])){
+            if(!empty($_FILES['items']['name'][$idx]['image'])) {
                 $tmp_name = $_FILES['items']['tmp_name'][$idx]['image'];
-                $filename = time().'_'.basename($_FILES['items']['name'][$idx]['image']);
-                if(is_uploaded_file($tmp_name) && move_uploaded_file($tmp_name,$uploadDir.$filename)){
+                $original_name = $_FILES['items']['name'][$idx]['image'];
+                $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', basename($original_name));
+                
+                // ตรวจสอบว่าโฟลเดอร์มีอยู่หรือไม่
+                if(!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                
+                if(is_uploaded_file($tmp_name) && move_uploaded_file($tmp_name, $uploadDir . $filename)){
                     $imageFile = $filename;
                 }
             }
 
             // ตรวจสอบ/เพิ่มสินค้า
-            $stmt = $pdo->prepare("SELECT product_id FROM products WHERE sku=? OR barcode=?");
-            $stmt->execute([$sku,$barcode]);
-            $product_id = $stmt->fetchColumn();
-      if(!$product_id){
-        $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, created_by, created_at) VALUES (?,?,?,?,?,?,NOW())");
-        $stmt->execute([$name,$sku,$barcode,$unit,'images/'.$imageFile,$user_id]);
-        $product_id = $pdo->lastInsertId();
-      }
+            $product_id = null;
+            if(!empty($sku) || !empty($barcode)) {
+                $stmt = $pdo->prepare("SELECT product_id FROM products WHERE sku=? OR barcode=?");
+                $stmt->execute([$sku, $barcode]);
+                $product_id = $stmt->fetchColumn();
+                error_log("Existing product check: " . ($product_id ? "Found ID $product_id" : "Not found"));
+            }
+            
+            if(!$product_id){
+                $image_path = !empty($imageFile) ? $imageFile : '';
+                error_log("Creating new product: name=$name, sku=$sku, barcode=$barcode, unit=$unit, image=$image_path");
+                $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, created_by, created_at) VALUES (?,?,?,?,?,?,NOW())");
+                $result = $stmt->execute([$name, $sku, $barcode, $unit, $image_path, $user_id]);
+                if (!$result) {
+                    $errorInfo = $stmt->errorInfo();
+                    error_log("Product insert failed: " . print_r($errorInfo, true));
+                    throw new Exception("ไม่สามารถบันทึกข้อมูลสินค้าได้: " . $errorInfo[2]);
+                }
+                $product_id = $pdo->lastInsertId();
+                error_log("Product Insert Result: SUCCESS");
+                error_log("Created Product ID: " . $product_id);
+            } else {
+                error_log("Using existing Product ID: " . $product_id);
+            }
 
             // ตรวจสอบ/เพิ่ม location
+            if(empty($row_code) || empty($bin) || empty($shelf)) {
+                throw new Exception("ข้อมูลที่เก็บสินค้าไม่ครบถ้วนในรายการที่ " . ($idx + 1));
+            }
+            
             $stmt = $pdo->prepare("SELECT location_id FROM locations WHERE row_code=? AND bin=? AND shelf=?");
-            $stmt->execute([$row_code,$bin,$shelf]);
+            $stmt->execute([$row_code, $bin, $shelf]);
             $loc = $stmt->fetch();
             $location_id = $loc ? $loc['location_id'] : null;
-      if(!$location_id){
-        $desc = "$row_code-$bin-$shelf";
-        $stmt = $pdo->prepare("INSERT INTO locations (row_code, bin, shelf, description) VALUES (?,?,?,?)");
-        $stmt->execute([$row_code,$bin,$shelf,$desc]);
-        $location_id = $pdo->lastInsertId();
-      }
+            
+            if(!$location_id){
+                $desc = "$row_code-$bin-$shelf";
+                $stmt = $pdo->prepare("INSERT INTO locations (row_code, bin, shelf, description) VALUES (?,?,?,?)");
+                $stmt->execute([$row_code, $bin, $shelf, $desc]);
+                $location_id = $pdo->lastInsertId();
+            }
 
             // product_location
             $stmt = $pdo->prepare("SELECT 1 FROM product_location WHERE product_id=? AND location_id=?");
@@ -107,13 +243,47 @@ if(isset($_POST['submit']) && !empty($_POST['items'])) {
         }
 
         $pdo->commit();
-        $message = "บันทึกข้อมูลสำเร็จ PO: <b>$po_number</b>";
+        error_log("=== TRANSACTION COMMITTED SUCCESSFULLY ===");
+        error_log("Final PO Number: " . $po_number);
+        error_log("Total items saved: " . count($_POST['items']));
+        error_log("Success message will be displayed to user");
+        
+        // Set success flag for JavaScript
+        $success = true;
+        $message = "✅ บันทึกข้อมูลสำเร็จ!<br>📋 Purchase Order: <b>$po_number</b><br>📦 จำนวนรายการ: <b>" . count($_POST['items']) . "</b> รายการ";
+        
     } catch(Exception $e){
         $pdo->rollBack();
-        $message = "เกิดข้อผิดพลาด: ".$e->getMessage();
+        error_log("=== TRANSACTION FAILED ===");
+        error_log("Error: " . $e->getMessage());
+        error_log("File: " . $e->getFile());
+        error_log("Line: " . $e->getLine());
+        error_log("Stack trace: " . $e->getTraceAsString());
+        
+        // Set error flag for JavaScript
+        $success = false;
+        $message = "❌ เกิดข้อผิดพลาด: " . $e->getMessage();
     }
+} else if(isset($_POST['submit'])) {
+    $success = false;
+    $message = "ไม่พบข้อมูลรายการสินค้า กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ";
+    error_log("Form submitted but no items found");
 }
+
+// Debug: Log final status
+error_log("=== FINAL PAGE STATUS ===");
+error_log("Message: " . ($message ? "'" . $message . "'" : "EMPTY"));
+error_log("Success flag: " . (isset($success) ? ($success ? 'TRUE' : 'FALSE') : 'NOT SET'));
 ?>
+
+<!-- PHP Debug Info (will show in HTML source) -->
+<!-- 
+MESSAGE DEBUG:
+- Message content: <?= $message ? htmlspecialchars($message) : 'EMPTY' ?>
+- Success flag: <?= isset($success) ? ($success ? 'TRUE' : 'FALSE') : 'NOT SET' ?>
+- POST submit: <?= isset($_POST['submit']) ? 'YES' : 'NO' ?>
+- POST items count: <?= isset($_POST['items']) ? count($_POST['items']) : '0' ?>
+-->
 
 <!DOCTYPE html>
 <html lang="th">
@@ -134,7 +304,8 @@ if(isset($_POST['submit']) && !empty($_POST['items'])) {
 
       <style>
       :root {
-          --primary-color: #4f46e5;
+
+        --primary-color: #4f46e5;
           --primary-hover: #4338ca;
           --success-color: #10b981;
           --danger-color: #ef4444;
@@ -593,12 +764,78 @@ if(isset($_POST['submit']) && !empty($_POST['items'])) {
           color: #0ea5e9 !important;
           background: #e0f2fe;
       }
+      
+      /* Alert styles */
+      .alert {
+          padding: 12px 20px;
+          margin-bottom: 1rem;
+          border: 1px solid transparent;
+          border-radius: 8px;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+      }
+      
+      .alert-info {
+          color: #0c5460;
+          background-color: #d1ecf1;
+          border-color: #bee5eb;
+      }
+      
+      .alert .btn-close {
+          background: none;
+          border: none;
+          font-size: 1.2rem;
+          cursor: pointer;
+          opacity: 0.7;
+          padding: 0;
+          margin-left: 15px;
+      }
+      
+      .alert .btn-close:hover {
+          opacity: 1;
+      }
+      
+      .alert .btn-close::before {
+          content: '×';
+      }
 </style>
 </head>
 <body>
 
 <div class="mainwrap">
 <div class="topbar mb-3">เพิ่มสินค้าใหม่</div>
+
+<!-- Debug Alert -->
+<div class="alert alert-info alert-dismissible fade show" role="alert" style="margin: 1rem; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border: 1px solid #2196f3; border-radius: 8px;">
+  <div class="d-flex align-items-center">
+    <span style="font-size: 1.2rem; margin-right: 8px;">🔍</span>
+    <div>
+      <strong>โหมดการ Debug:</strong> ระบบกำลังตรวจสอบการทำงานของฟอร์ม
+      <br><small class="text-muted">
+        • กดปุ่ม <strong>"🔍 Debug Logs"</strong> (มุมขวาบน) เพื่อดู PHP error logs
+        <br>• กดปุ่ม <strong>"📟 Console"</strong> (มุมซ้ายล่าง) เพื่อดู JavaScript logs
+        <br>• ทดสอบเพิ่มสินค้าแล้วตรวจสอบ logs ทั้งสองช่องทางเพื่อดูปัญหา
+      </small>
+    </div>
+  </div>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+
+<!-- Test Notification Buttons -->
+<div style="margin: 1rem; text-align: center;">
+  <button type="button" onclick="testSuccessNotification()" style="
+    background: #10b981; color: white; border: none; padding: 8px 15px; 
+    border-radius: 5px; margin: 0 5px; cursor: pointer;">
+    🎉 ทดสอบ Success
+  </button>
+  <button type="button" onclick="testErrorNotification()" style="
+    background: #ef4444; color: white; border: none; padding: 8px 15px; 
+    border-radius: 5px; margin: 0 5px; cursor: pointer;">
+    ❌ ทดสอบ Error
+  </button>
+</div>
 
 <div class="table-card">
   <h2>เพิ่มรายการสินค้าทีละรายการ</h2>
@@ -810,13 +1047,90 @@ if(isset($_POST['submit']) && !empty($_POST['items'])) {
 
 <?php if($message): ?>
 <script>
+console.log('=== MESSAGE NOTIFICATION ===');
+console.log('Message exists: true');
+console.log('Message content:', '<?= addslashes($message) ?>');
+console.log('Success flag:', <?= isset($success) && $success ? 'true' : 'false' ?>);
+console.log('SweetAlert2 available:', typeof Swal !== 'undefined');
+console.log('About to show notification...');
+
+// Check if SweetAlert2 is available
+if (typeof Swal === 'undefined') {
+    console.error('SweetAlert2 not loaded! Using fallback alert...');
+    alert('<?= strip_tags($message) ?>');
+} else {
+
+<?php if(isset($success) && $success): ?>
+// Success notification
 Swal.fire({
-icon: "<?= strpos($message,'สำเร็จ')!==false?'success':'error' ?>",
-title: "<?= strpos($message,'สำเร็จ')!==false?'สำเร็จ':'ผิดพลาด' ?>",
-html: '<?= addslashes($message) ?>',
-timer: 3200,
-showConfirmButton: false
+    icon: 'success',
+    title: '🎉 สำเร็จ!',
+    html: '<?= addslashes($message) ?>',
+    timer: 5000,
+    timerProgressBar: true,
+    showConfirmButton: true,
+    confirmButtonText: '✨ เริ่มใหม่',
+    confirmButtonColor: '#10b981',
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    didOpen: () => {
+        console.log('Success notification displayed');
+    }
+}).then((result) => {
+    if (result.isConfirmed) {
+        console.log('User clicked to restart');
+        location.reload();
+    }
 });
+
+// Auto reload after 6 seconds if user doesn't click
+setTimeout(() => {
+    console.log('Auto reloading page after success');
+    location.reload();
+}, 6000);
+
+<?php else: ?>
+// Error notification  
+Swal.fire({
+    icon: 'error',
+    title: '❌ เกิดข้อผิดพลาด',
+    html: '<?= addslashes($message) ?>',
+    confirmButtonText: '🔍 ตรวจสอบ Debug',
+    confirmButtonColor: '#ef4444',
+    showCancelButton: true,
+    cancelButtonText: '↻ ลองใหม่',
+    cancelButtonColor: '#6b7280',
+    allowOutsideClick: false,
+    didOpen: () => {
+        console.log('Error notification displayed');
+    }
+}).then((result) => {
+    if (result.isConfirmed) {
+        console.log('User wants to debug');
+        // Show debug instructions
+        Swal.fire({
+            icon: 'info',
+            title: '🔍 วิธีตรวจสอบปัญหา',
+            html: `
+                <div style="text-align: left;">
+                    <p><strong>1. ตรวจสอบ PHP Logs:</strong></p>
+                    <p>• กดปุ่ม <strong>"🔍 Debug Logs"</strong> มุมขวาบน</p>
+                    <p><strong>2. ตรวจสอบ Console Logs:</strong></p>
+                    <p>• กดปุ่ม <strong>"📟 Console"</strong> มุมซ้ายล่าง</p>
+                    <p><strong>3. หรือกด F12 → Console Tab</strong></p>
+                </div>
+            `,
+            confirmButtonText: 'เข้าใจแล้ว',
+            confirmButtonColor: '#3b82f6'
+        });
+    } else {
+        console.log('User wants to try again');
+        location.reload();
+    }
+});
+<?php endif; ?>
+
+} // End SweetAlert2 check
 </script>
 <?php endif; ?>
 
@@ -1372,8 +1686,50 @@ $('#items-table').on('input', 'input[name*="[name]"]', function(){
 
 // Form validation before submit
 $('form').on('submit', function(e){
+  console.log('=== FORM SUBMISSION STARTED ===');
+  console.log('Form element:', this);
+  console.log('Submit event:', e);
+  console.log('Current time:', new Date().toISOString());
+  
   let isValid = true;
   let emptyFields = [];
+  let formData = new FormData(this);
+  
+  console.log('Form data created:', formData);
+  console.log('Form method:', this.method);
+  console.log('Form action:', this.action || 'same page');
+  
+  // Debug: แสดงข้อมูลฟอร์มทั้งหมด
+  console.log('=== FORM DATA ENTRIES ===');
+  for (let [key, value] of formData.entries()) {
+    console.log(`${key}: ${value}`);
+  }
+  
+  // Debug: ตรวจสอบว่าส่วน items มีข้อมูลหรือไม่
+  console.log('=== ITEMS VALIDATION ===');
+  let itemsFound = false;
+  for (let [key, value] of formData.entries()) {
+    if (key.startsWith('items[')) {
+      itemsFound = true;
+      break;
+    }
+  }
+  console.log('Items found in form data:', itemsFound);
+  
+  // ตรวจสอบว่ามีรายการสินค้าหรือไม่
+  let itemCount = $('#items-table tbody tr').length;
+  console.log('Number of items in table:', itemCount);
+  
+  if(itemCount === 0) {
+    e.preventDefault();
+    Swal.fire({
+      icon: 'error',
+      title: 'ไม่พบรายการสินค้า',
+      text: 'กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ',
+      confirmButtonText: 'ตกลง'
+    });
+    return false;
+  }
   
   // ตรวจสอบฟิลด์ที่จำเป็น
   $('#items-table tbody tr').each(function(index){
@@ -1386,9 +1742,11 @@ $('form').on('submit', function(e){
     let bin = row.find('select[name*="[bin]"]').val();
     let shelf = row.find('select[name*="[shelf]"]').val();
     
+    console.log(`Item ${index}:`, {name, qty, price, currency, rowCode, bin, shelf});
+    
     if(!name) emptyFields.push(`รายการที่ ${index + 1}: ชื่อสินค้า`);
-    if(!qty) emptyFields.push(`รายการที่ ${index + 1}: จำนวน`);
-    if(!price) emptyFields.push(`รายการที่ ${index + 1}: ราคาทุน`);
+    if(!qty || qty <= 0) emptyFields.push(`รายการที่ ${index + 1}: จำนวน`);
+    if(!price && price !== '0') emptyFields.push(`รายการที่ ${index + 1}: ราคาทุน`);
     if(!currency) emptyFields.push(`รายการที่ ${index + 1}: สกุลเงิน`);
     if(!rowCode) emptyFields.push(`รายการที่ ${index + 1}: แถว`);
     if(!bin) emptyFields.push(`รายการที่ ${index + 1}: ล็อค`);
@@ -1397,6 +1755,7 @@ $('form').on('submit', function(e){
   
   if(emptyFields.length > 0){
     e.preventDefault();
+    console.log('Validation errors:', emptyFields);
     Swal.fire({
       icon: 'warning',
       title: 'กรุณากรอกข้อมูลให้ครบถ้วน',
@@ -1406,6 +1765,8 @@ $('form').on('submit', function(e){
     });
     return false;
   }
+  
+  console.log('Form validation passed, submitting...');
   
   // แสดง loading
   $(this).find('button[type="submit"]').html('<div class="loading"></div> กำลังบันทึก...').prop('disabled', true);
@@ -1583,6 +1944,239 @@ function showCameraHelp() {
     confirmButtonText: 'เข้าใจแล้ว',
     confirmButtonColor: '#4f46e5'
   });
+}
+
+// เพิ่ม Console Monitor Panel
+var consoleLogs = [];
+var originalLog = console.log;
+var originalError = console.error;
+var originalWarn = console.warn;
+
+console.log = function() {
+    originalLog.apply(console, arguments);
+    var message = Array.prototype.slice.call(arguments).join(' ');
+    addToConsoleMonitor('LOG', message);
+};
+
+console.error = function() {
+    originalError.apply(console, arguments);
+    var message = Array.prototype.slice.call(arguments).join(' ');
+    addToConsoleMonitor('ERROR', message);
+};
+
+console.warn = function() {
+    originalWarn.apply(console, arguments);
+    var message = Array.prototype.slice.call(arguments).join(' ');
+    addToConsoleMonitor('WARN', message);
+};
+
+function addToConsoleMonitor(type, message) {
+    var timestamp = new Date().toLocaleTimeString();
+    consoleLogs.push({
+        type: type,
+        message: message,
+        timestamp: timestamp
+    });
+    
+    // เก็บแค่ 50 ข้อความล่าสุด
+    if (consoleLogs.length > 50) {
+        consoleLogs.shift();
+    }
+    
+    updateConsoleMonitor();
+}
+
+function updateConsoleMonitor() {
+    var panel = document.getElementById('console-monitor');
+    if (!panel) return;
+    
+    var logContainer = panel.querySelector('.console-logs');
+    logContainer.innerHTML = '';
+    
+    consoleLogs.slice(-20).forEach(function(log) {
+        var logElement = document.createElement('div');
+        logElement.className = 'console-log console-' + log.type.toLowerCase();
+        logElement.innerHTML = '<span class="time">' + log.timestamp + '</span> ' +
+                              '<span class="type">[' + log.type + ']</span> ' +
+                              '<span class="message">' + log.message + '</span>';
+        logContainer.appendChild(logElement);
+    });
+    
+    // Auto scroll to bottom
+    logContainer.scrollTop = logContainer.scrollHeight;
+}
+
+function toggleConsoleMonitor() {
+    var panel = document.getElementById('console-monitor');
+    if (panel.style.display === 'none' || !panel.style.display) {
+        panel.style.display = 'block';
+        updateConsoleMonitor();
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+// สร้าง Console Monitor Panel
+document.addEventListener('DOMContentLoaded', function() {
+    var monitorHTML = `
+        <div id="console-monitor" style="
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 400px;
+            height: 300px;
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            z-index: 10000;
+            display: none;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        ">
+            <div style="
+                background: #333;
+                color: white;
+                padding: 8px 12px;
+                border-radius: 8px 8px 0 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            ">
+                <span>🖥️ Console Monitor</span>
+                <button onclick="toggleConsoleMonitor()" style="
+                    background: none;
+                    border: none;
+                    color: white;
+                    cursor: pointer;
+                    padding: 0 5px;
+                ">✕</button>
+            </div>
+            <div class="console-logs" style="
+                height: 250px;
+                overflow-y: auto;
+                padding: 8px;
+            "></div>
+        </div>
+        
+        <button onclick="toggleConsoleMonitor()" style="
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: #333;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 9998;
+        ">📟 Console</button>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', monitorHTML);
+    
+    // เพิ่ม CSS สำหรับ console logs
+    var style = document.createElement('style');
+    style.textContent = `
+        .console-log {
+            margin: 2px 0;
+            padding: 3px 5px;
+            border-radius: 3px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .console-log .time {
+            color: #888;
+            font-size: 10px;
+        }
+        .console-log .type {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .console-log .message {
+            color: #fff;
+        }
+        .console-log.console-error {
+            background: #4a1010;
+            color: #ff6b6b;
+        }
+        .console-log.console-error .type {
+            color: #ff4757;
+        }
+        .console-log.console-warn {
+            background: #4a3c10;
+            color: #ffa502;
+        }
+        .console-log.console-warn .type {
+            color: #ff7f00;
+        }
+        .console-log.console-log {
+            background: #1a1a1a;
+        }
+        .console-log.console-log .type {
+            color: #70a5fd;
+        }
+    `;
+    document.head.appendChild(style);
+});
+
+// เพิ่ม log เริ่มต้น
+console.log('=== IMPORT PRODUCT PAGE READY ===');
+console.log('Page loaded at:', new Date().toISOString());
+console.log('🔍 Console Monitor เริ่มทำงานแล้ว - กดปุ่ม "📟 Console" เพื่อดู logs');
+console.log('Debug tools available:');
+console.log('  • 🔍 Debug Logs button (top-right corner) - view PHP error logs');
+console.log('  • 📟 Console button (bottom-left corner) - view JavaScript logs'); 
+console.log('  • F12 → Console tab - browser developer console');
+
+// Alert close functionality
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.btn-close').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const alert = this.closest('.alert');
+            if (alert) {
+                alert.style.display = 'none';
+            }
+        });
+    });
+});
+
+// Test notification functions
+function testSuccessNotification() {
+    console.log('Testing success notification...');
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'success',
+            title: '🎉 ทดสอบสำเร็จ!',
+            html: '✅ ระบบแจ้งเตือนทำงานปกติ<br>📋 Purchase Order: <b>PO20251013001</b><br>📦 จำนวนรายการ: <b>3</b> รายการ',
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: true,
+            confirmButtonText: '✨ เข้าใจแล้ว',
+            confirmButtonColor: '#10b981'
+        });
+    } else {
+        alert('ทดสอบสำเร็จ! SweetAlert2 ไม่พร้อมใช้งาน');
+    }
+}
+
+function testErrorNotification() {
+    console.log('Testing error notification...');
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'error',
+            title: '❌ ทดสอบข้อผิดพลาด',
+            html: '❌ นี่คือการทดสอบการแจ้งเตือนแบบ Error',
+            confirmButtonText: '🔍 ตรวจสอบ Debug',
+            confirmButtonColor: '#ef4444',
+            showCancelButton: true,
+            cancelButtonText: '↻ ลองใหม่',
+            cancelButtonColor: '#6b7280'
+        });
+    } else {
+        alert('ทดสอบ Error! SweetAlert2 ไม่พร้อมใช้งาน');
+    }
 }
 </script>
 

@@ -257,6 +257,29 @@ body {
             </div>
         </div>
 
+        <!-- หมวดหมู่: ขายสินค้า -->
+        <div class="menu-category">
+            <div class="category-header" onclick="toggleCategory('sales')">
+                <span class="material-icons">point_of_sale</span>
+                <span class="category-text">ขายสินค้า</span>
+                <span class="material-icons category-arrow">keyboard_arrow_down</span>
+            </div>
+            <div class="submenu" id="sales-submenu">
+                <a href="<?= getPath('issue/issue_product.php') ?>" class="submenu-item<?=isActive('issue_product.php')?>">
+                    <span class="material-icons">shopping_cart_checkout</span>
+                    <span class="submenu-text">ยิงสินค้าออก (ขาย)</span>
+                </a>
+                <a href="<?= getPath('sales/sales_orders.php') ?>" class="submenu-item<?=isActive('sales_orders.php')?>">
+                    <span class="material-icons">receipt_long</span>
+                    <span class="submenu-text">รายการขาย</span>
+                </a>
+                <a href="<?= getPath('sales/tag_management.php') ?>" class="submenu-item<?=isActive('tag_management.php')?>">
+                    <span class="material-icons">label</span>
+                    <span class="submenu-text">จัดการเลขแท็ก</span>
+                </a>
+            </div>
+        </div>
+
         <!-- หมวดหมู่: ผู้ดูแลระบบ (Admin only) -->
         <?php if ($user_role === 'admin'): ?>
         <div class="menu-category">
@@ -322,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function(){
 function toggleCategory(categoryName) {
     const header = document.querySelector(`[onclick="toggleCategory('${categoryName}')"]`);
     const submenu = document.getElementById(categoryName + '-submenu');
-    const categories = ['orders', 'products', 'stock', 'admin'];
+    const categories = ['orders', 'products', 'stock', 'sales', 'admin'];
     
     if (submenu.classList.contains('expanded')) {
         // ปิดหมวดหมู่นี้
@@ -352,7 +375,7 @@ function toggleCategory(categoryName) {
 }
 
 function initializeActiveCategory() {
-    const categories = ['orders', 'products', 'stock', 'admin'];
+    const categories = ['orders', 'products', 'stock', 'sales', 'admin'];
     
     // ปิดหมวดหมู่ทั้งหมดก่อน
     categories.forEach(categoryName => {

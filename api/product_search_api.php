@@ -40,6 +40,8 @@ try {
 // รับ query จาก URL
 $q = isset($_GET['q']) ? trim($_GET['q']) : '';
 $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+$type = isset($_GET['type']) ? $_GET['type'] : 'default';
+$available_only = isset($_GET['available_only']) ? $_GET['available_only'] : false;
 
 if($q === '') {
     echo json_encode([]);
@@ -52,56 +54,116 @@ error_log("Searching for: '$q' with limit: $limit");
 $like = "%$q%";
 
 try {
-    $stmt = $pdo->prepare("
-    SELECT 
-        product_id, 
-        name, 
-        sku, 
-        barcode, 
-        unit, 
-        image,
-        remark_color,
-        remark_split,
-        created_by,
-        created_at
-    FROM products
-    WHERE (name LIKE ? 
-       OR sku LIKE ?
-       OR barcode LIKE ?)
-    ORDER BY 
-        CASE 
-            WHEN name LIKE ? THEN 1 
-            WHEN sku LIKE ? THEN 2
-            WHEN barcode LIKE ? THEN 3
-            ELSE 4 
-        END,
-        name ASC
-    LIMIT ?
-");
-    
-    // bind parameter ทั้ง 7 ช่อง (6 สำหรับ LIKE + 1 สำหรับ LIMIT)
-    $stmt->execute([$like, $like, $like, $like, $like, $like, $limit]);
-    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // ถ้าเป็นการค้นหาสำหรับยิงสินค้า จะใช้ query ที่แตกต่าง
+    if ($type === 'issue' && $available_only) {
+        // Query สำหรับยิงสินค้าออก - แสดงเฉพาะสินค้าที่มีสต็อกและเรียงตาม FIFO
+        $stmt = $pdo->prepare("
+            SELECT 
+                p.product_id,
+                p.name,
+                p.sku,
+                p.barcode,
+                p.unit,
+                p.image,
+                ri.receive_id,
+                ri.receive_qty as available_qty,
+                ri.expiry_date,
+                ri.created_at as receive_date,
+                ri.remark_color,
+                ri.remark_split,
+                CASE 
+                    WHEN ri.expiry_date IS NOT NULL 
+                    THEN CONCAT('ล็อตรับ: ', DATE_FORMAT(ri.created_at, '%d/%m/%Y'), ' | หมดอายุ: ', DATE_FORMAT(ri.expiry_date, '%d/%m/%Y'))
+                    ELSE CONCAT('ล็อตรับ: ', DATE_FORMAT(ri.created_at, '%d/%m/%Y'))
+                END as lot_info,
+                poi.item_id
+            FROM products p
+            INNER JOIN purchase_order_items poi ON poi.product_id = p.product_id
+            INNER JOIN receive_items ri ON ri.item_id = poi.item_id
+            WHERE (p.name LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?)
+              AND ri.receive_qty > 0
+            ORDER BY 
+                CASE 
+                    WHEN p.name LIKE ? THEN 1 
+                    WHEN p.sku LIKE ? THEN 2
+                    WHEN p.barcode LIKE ? THEN 3
+                    ELSE 4 
+                END,
+                p.name ASC,
+                ri.expiry_date ASC,  -- หมดอายุเร็วก่อน
+                ri.created_at ASC    -- รับเข้าเก่าก่อน (FIFO)
+            LIMIT ?
+        ");
+        
+        $stmt->execute([$like, $like, $like, $like, $like, $like, $limit]);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+    } else {
+        // Query เดิมสำหรับการค้นหาทั่วไป
+        $stmt = $pdo->prepare("
+        SELECT 
+            product_id, 
+            name, 
+            sku, 
+            barcode, 
+            unit, 
+            image,
+            remark_color,
+            remark_split,
+            created_by,
+            created_at
+        FROM products
+        WHERE (name LIKE ? 
+           OR sku LIKE ?
+           OR barcode LIKE ?)
+        ORDER BY 
+            CASE 
+                WHEN name LIKE ? THEN 1 
+                WHEN sku LIKE ? THEN 2
+                WHEN barcode LIKE ? THEN 3
+                ELSE 4 
+            END,
+            name ASC
+        LIMIT ?
+    ");
+        
+        // bind parameter ทั้ง 7 ช่อง (6 สำหรับ LIKE + 1 สำหรับ LIMIT)
+        $stmt->execute([$like, $like, $like, $like, $like, $like, $limit]);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     // เพิ่มข้อมูลเพิ่มเติมสำหรับการแสดงผล
     foreach ($results as &$product) {
-        // ตั้งค่าเริ่มต้นสำหรับฟิลด์ที่อาจไม่มี
-        $product['price_per_unit'] = 0; // จะต้องหาจากตารางอื่นหรือตั้งค่าเริ่มต้น
-        $product['stock_qty'] = 0; // จะต้องหาจากตารางอื่นหรือตั้งค่าเริ่มต้น
-        $product['unit'] = $product['unit'] ?? 'ชิ้น';
-        
-        // จัดรูปแบบการแสดงผล
-        $product['formatted_price'] = '0.00';
-        $product['formatted_stock'] = '0';
-        
-        // เพิ่มข้อมูลสำหรับการแสดงผลใน autocomplete
-        $product['display_name'] = $product['name'];
-        $product['display_info'] = 'SKU: ' . ($product['sku'] ?: 'N/A');
+        if ($type === 'issue' && $available_only) {
+            // สำหรับการยิงสินค้า - ข้อมูลมาจาก query ที่ join แล้ว
+            $product['unit'] = $product['unit'] ?? 'ชิ้น';
+            $product['display_name'] = $product['name'];
+            $product['display_info'] = 'SKU: ' . ($product['sku'] ?: 'N/A') . ' | คงเหลือ: ' . $product['available_qty'] . ' ' . $product['unit'];
+        } else {
+            // สำหรับการค้นหาทั่วไป
+            $product['price_per_unit'] = 0; 
+            $product['stock_qty'] = 0; 
+            $product['unit'] = $product['unit'] ?? 'ชิ้น';
+            
+            // จัดรูปแบบการแสดงผล
+            $product['formatted_price'] = '0.00';
+            $product['formatted_stock'] = '0';
+            
+            // เพิ่มข้อมูลสำหรับการแสดงผลใน autocomplete
+            $product['display_name'] = $product['name'];
+            $product['display_info'] = 'SKU: ' . ($product['sku'] ?: 'N/A');
+        }
     }
 
-    error_log('About to encode ' . count($results) . ' results');
+    error_log('About to encode ' . count($results) . ' results for type: ' . $type);
     
-    $json_output = json_encode($results);
+    // ส่งผลลัพธ์ในรูปแบบที่เหมาะสม
+    if ($type === 'issue' && $available_only) {
+        $json_output = json_encode(['products' => $results]);
+    } else {
+        $json_output = json_encode($results);
+    }
+    
     if ($json_output === false) {
         error_log('JSON encoding failed: ' . json_last_error_msg());
         $error_response = json_encode(['error' => 'JSON encoding failed']);

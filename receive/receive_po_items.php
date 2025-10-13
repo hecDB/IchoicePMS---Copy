@@ -35,21 +35,48 @@ $sql_pos = "
     ) received_summary ON poi.item_id = received_summary.item_id
     WHERE po.status IN ('pending', 'partial')
     GROUP BY po.po_id, po.po_number, s.name, po.order_date, po.total_amount, c.code, po.remark, po.status
+    HAVING COALESCE(SUM(
+        CASE WHEN COALESCE(received_summary.total_received, 0) >= poi.qty THEN 1 ELSE 0 END
+    ), 0) < COUNT(poi.item_id)
     ORDER BY po.order_date DESC, po.po_number DESC
 ";
 
 $stmt = $pdo->query($sql_pos);
 $purchase_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Calculate statistics for all POs (including completed ones)
+$sql_stats = "
+    SELECT 
+        po.po_id,
+        COUNT(poi.item_id) as total_items,
+        COALESCE(SUM(
+            CASE WHEN COALESCE(received_summary.total_received, 0) >= poi.qty THEN 1 ELSE 0 END
+        ), 0) as received_items
+    FROM purchase_orders po
+    LEFT JOIN purchase_order_items poi ON po.po_id = poi.po_id
+    LEFT JOIN (
+        SELECT item_id, SUM(receive_qty) as total_received 
+        FROM receive_items 
+        GROUP BY item_id
+    ) received_summary ON poi.item_id = received_summary.item_id
+    WHERE po.status IN ('pending', 'partial', 'completed')
+    GROUP BY po.po_id
+";
+
+$stmt_stats = $pdo->query($sql_stats);
+$all_pos = $stmt_stats->fetchAll(PDO::FETCH_ASSOC);
+
 // Calculate statistics
-$total_pos = count($purchase_orders);
-$ready_to_receive = count(array_filter($purchase_orders, function($po) {
+$total_pos = count($purchase_orders); // Only incomplete POs shown
+$total_all_pos = count($all_pos); // All POs for statistics
+
+$ready_to_receive = count(array_filter($all_pos, function($po) {
     return $po['received_items'] == 0;
 }));
-$partially_received = count(array_filter($purchase_orders, function($po) {
+$partially_received = count(array_filter($all_pos, function($po) {
     return $po['received_items'] > 0 && $po['received_items'] < $po['total_items'];
 }));
-$fully_received = count(array_filter($purchase_orders, function($po) {
+$fully_received = count(array_filter($all_pos, function($po) {
     return $po['received_items'] > 0 && $po['received_items'] >= $po['total_items'];
 }));
 
@@ -276,13 +303,17 @@ $fully_received = count(array_filter($purchase_orders, function($po) {
                     <span class="material-icons align-middle me-2" style="font-size: 2rem; color: #3b82f6;">input</span>
                     รับเข้าสินค้า
                 </h1>
-                <p class="text-muted mb-0">รับสินค้าเข้าคลังจากใบสั่งซื้อ (Purchase Order)</p>
+                <p class="text-muted mb-0">รับสินค้าเข้าคลังจากใบสั่งซื้อ (ซ่อนรายการที่รับครบ 100% แล้ว)</p>
             </div>
             <div class="d-flex gap-2">
                 <a href="quick_receive.php" class="btn btn-outline-primary">
                     <span class="material-icons me-1">qr_code_scanner</span>
                     รับสินค้าด่วน (Scan)
                 </a>
+                <button class="btn btn-outline-success" onclick="toggleCompletedPOs()">
+                    <span class="material-icons me-1">visibility</span>
+                    <span id="toggleText">ดูที่รับครบแล้ว</span>
+                </button>
                 <button class="btn btn-outline-secondary" onclick="location.reload()">
                     <span class="material-icons me-1">refresh</span>
                     รีเฟรช
@@ -298,8 +329,8 @@ $fully_received = count(array_filter($purchase_orders, function($po) {
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
                                 <div class="stats-title">ใบสั่งซื้อทั้งหมด</div>
-                                <div class="stats-value"><?= number_format($total_pos) ?></div>
-                                <div class="stats-subtitle">รอดำเนินการ</div>
+                                <div class="stats-value"><?= number_format($total_all_pos) ?></div>
+                                <div class="stats-subtitle">ทุกสถานะ</div>
                             </div>
                             <div class="col-auto">
                                 <i class="material-icons stats-icon">receipt</i>
@@ -367,7 +398,7 @@ $fully_received = count(array_filter($purchase_orders, function($po) {
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="table-title mb-0">
                         <span class="material-icons">table_view</span>
-                        รายการใบสั่งซื้อ (<?= $total_pos ?> ใบ)
+                        รายการใบสั่งซื้อที่ต้องรับสินค้า (<?= $total_pos ?> ใบ)
                     </h5>
                     <div class="table-actions">
                         <button class="btn-modern btn-modern-secondary btn-sm refresh-table me-2" onclick="location.reload()">
@@ -380,9 +411,14 @@ $fully_received = count(array_filter($purchase_orders, function($po) {
             <div class="table-body">
                 <?php if (empty($purchase_orders)): ?>
                 <div class="text-center py-5">
-                    <span class="material-icons mb-3" style="font-size: 4rem; color: #d1d5db;">receipt_long</span>
-                    <h5 class="text-muted">ไม่พบใบสั่งซื้อที่พร้อมรับสินค้า</h5>
-                    <p class="text-muted mb-0">กรุณาสร้างใบสั่งซื้อใหม่หรือตรวจสอบสถานะใบสั่งซื้อ</p>
+                    <span class="material-icons mb-3" style="font-size: 4rem; color: #34d399;">done_all</span>
+                    <h5 class="text-success">รับสินค้าครบถ้วนแล้ว</h5>
+                    <p class="text-muted mb-0">
+                        ไม่มีใบสั่งซื้อที่ต้องรับสินค้า (รายการที่รับครบ 100% จะไม่แสดงที่นี่)
+                        <?php if ($total_all_pos > 0): ?>
+                        <br><small>รวมทั้งหมด: <?= $total_all_pos ?> ใบ | รับครบแล้ว: <?= $fully_received ?> ใบ | รับบางส่วน: <?= $partially_received ?> ใบ | ยังไม่รับ: <?= $ready_to_receive ?> ใบ</small>
+                        <?php endif; ?>
+                    </p>
                 </div>
                 <?php else: ?>
                 <div class="row">
@@ -609,6 +645,7 @@ $fully_received = count(array_filter($purchase_orders, function($po) {
 $(document).ready(function() {
     let currentPoData = {};
     let receiveItems = {};
+    let showingCompleted = false;
     
     // Add hover effects and animations
     $('.po-card').hover(
@@ -1000,6 +1037,131 @@ $(document).ready(function() {
         location.reload();
     }, 300000);
 });
+
+// Toggle completed POs function
+function toggleCompletedPOs() {
+    const button = $('#toggleText');
+    const tableBody = $('.table-body .row').first();
+    
+    if (!window.showingCompleted) {
+        // Load completed POs
+        button.text('กำลังโหลด...');
+        
+        $.ajax({
+            url: 'get_completed_pos.php',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success && response.data.length > 0) {
+                    displayCompletedPOs(response.data);
+                    button.text('ซ่อนที่รับครบแล้ว');
+                    window.showingCompleted = true;
+                } else {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'ไม่มีรายการ',
+                        text: 'ไม่พบใบสั่งซื้อที่รับครบแล้ว',
+                        timer: 2000
+                    });
+                    button.text('ดูที่รับครบแล้ว');
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถโหลดข้อมูลได้'
+                });
+                button.text('ดูที่รับครบแล้ว');
+            }
+        });
+    } else {
+        // Hide completed POs - reload page
+        location.reload();
+    }
+}
+
+function displayCompletedPOs(completedPOs) {
+    let html = '';
+    
+    completedPOs.forEach(function(po) {
+        html += `
+            <div class="col-lg-6 col-xl-4 mb-4">
+                <div class="po-card" style="opacity: 0.8; border-left: 4px solid #10b981;">
+                    <div class="po-card-header">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="mb-1 fw-bold">${escapeHtml(po.po_number)}</h6>
+                                <p class="text-muted mb-0 small">${escapeHtml(po.supplier_name)}</p>
+                            </div>
+                            <span class="po-status-badge status-received">รับครบแล้ว</span>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="small text-muted">วันที่สั่งซื้อ</div>
+                                <div class="fw-semibold">${formatDate(po.po_date)}</div>
+                            </div>
+                            <div class="progress-circle progress-complete">
+                                100%
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <div class="small text-muted">จำนวนรายการ</div>
+                                <div class="fw-bold">${po.total_items} รายการ</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="small text-muted">รับแล้ว</div>
+                                <div class="fw-bold text-success">${po.received_items} รายการ</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="small text-muted">มูลค่ารวม</div>
+                            <div class="fw-bold text-success">${parseFloat(po.total_amount).toLocaleString()} ${escapeHtml(po.currency_code)}</div>
+                        </div>
+                        
+                        <div class="d-flex gap-2 mt-3">
+                            <button type="button" 
+                                    class="btn btn-outline-success flex-fill view-po-btn"
+                                    data-po-id="${po.po_id}"
+                                    data-po-number="${escapeHtml(po.po_number)}"
+                                    data-supplier="${escapeHtml(po.supplier_name)}">
+                                <span class="material-icons" style="font-size: 1rem;">visibility</span>
+                                ดูรายการ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    // Replace current content
+    $('.table-body .row').first().html(html);
+    
+    // Re-bind click events
+    $('.view-po-btn').off('click').on('click', function() {
+        const poId = $(this).data('po-id');
+        const poNumber = $(this).data('po-number');
+        const supplier = $(this).data('supplier');
+        
+        loadPoItems(poId, poNumber, supplier, 'view');
+    });
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('th-TH', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
 </script>
 
 </body>

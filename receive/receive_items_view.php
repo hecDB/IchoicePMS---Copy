@@ -2,17 +2,25 @@
 session_start();
 require '../config/db_connect.php';
 
-// Query join ข้อมูลที่ต้องการ
+// Query รวมข้อมูลรับเข้าและสินค้าออก
 $sql = "
-SELECT r.receive_id, p.image, p.sku, p.barcode, u.name AS created_by, r.created_at, 
-       r.receive_qty, r.remark_color, r.remark_split, r.remark, r.expiry_date,
-       l.row_code, l.bin, l.shelf, l.description AS location_desc,
-       poi.price_per_unit, poi.sale_price,
-       r.po_id, r.item_id,
-       p.name AS product_name,
-       r.created_by AS created_by_id,
-       po.remark AS po_remark,
-       po.po_number AS po_number
+(SELECT 
+    'receive' as transaction_type,
+    r.receive_id as transaction_id, 
+    p.image, p.sku, p.barcode, 
+    u.name AS created_by, 
+    r.created_at, 
+    r.receive_qty as quantity, 
+    r.remark_color, r.remark_split, r.remark, r.expiry_date,
+    l.row_code, l.bin, l.shelf, l.description AS location_desc,
+    poi.price_per_unit, poi.sale_price,
+    r.po_id, r.item_id,
+    p.name AS product_name,
+    r.created_by AS created_by_id,
+    po.remark AS po_remark,
+    po.po_number AS po_number,
+    NULL as issue_tag,
+    NULL as platform
 FROM receive_items r
 LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
 LEFT JOIN products p ON poi.product_id = p.product_id
@@ -20,8 +28,40 @@ LEFT JOIN locations l ON l.location_id = (
     SELECT pl.location_id FROM product_location pl WHERE pl.product_id = p.product_id LIMIT 1
 )
 LEFT JOIN users u ON r.created_by = u.user_id
-LEFT JOIN purchase_orders po ON r.po_id = po.po_id
-ORDER BY r.created_at DESC
+LEFT JOIN purchase_orders po ON r.po_id = po.po_id)
+
+UNION ALL
+
+(SELECT 
+    'issue' as transaction_type,
+    ii.issue_id as transaction_id,
+    p.image, p.sku, p.barcode,
+    u.name AS created_by,
+    ii.created_at,
+    ii.issue_qty as quantity,
+    NULL as remark_color, NULL as remark_split, 
+    ii.remark, 
+    ri.expiry_date,
+    l.row_code, l.bin, l.shelf, l.description AS location_desc,
+    poi.price_per_unit, ii.sale_price,
+    NULL as po_id, NULL as item_id,
+    p.name AS product_name,
+    ii.issued_by AS created_by_id,
+    NULL as po_remark,
+    NULL as po_number,
+    so.issue_tag,
+    so.platform
+FROM issue_items ii
+LEFT JOIN products p ON ii.product_id = p.product_id
+LEFT JOIN receive_items ri ON ii.receive_id = ri.receive_id
+LEFT JOIN purchase_order_items poi ON ri.item_id = poi.item_id
+LEFT JOIN locations l ON l.location_id = (
+    SELECT pl.location_id FROM product_location pl WHERE pl.product_id = p.product_id LIMIT 1
+)
+LEFT JOIN users u ON ii.issued_by = u.user_id
+LEFT JOIN sales_orders so ON ii.sale_order_id = so.sale_order_id)
+
+ORDER BY created_at DESC
 LIMIT 500
 ";
 $stmt = $pdo->query($sql);
@@ -279,6 +319,25 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         outline: none;
     }
     
+    /* Styles for issue transactions */
+    .table-danger {
+        --bs-table-bg: rgba(220, 53, 69, 0.05);
+    }
+    
+    .qty-minus {
+        font-weight: bold;
+        color: #dc3545 !important;
+    }
+    
+    .stats-danger {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+    }
+    
+    .stats-danger .stats-icon {
+        color: rgba(255, 255, 255, 0.8);
+    }
+    
     .dataTables_length select {
         border: 1px solid #d1d5db;
         border-radius: 0.375rem;
@@ -430,10 +489,10 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="h3 mb-0 text-gray-800 fw-bold">
-                    <span class="material-icons align-middle me-2" style="font-size: 2rem; color: #3b82f6;">receipt_long</span>
-                    รายการรับสินค้า
+                    <span class="material-icons align-middle me-2" style="font-size: 2rem; color: #3b82f6;">swap_horiz</span>
+                    ความเคลื่อนไหวสินค้า
                 </h1>
-                <p class="text-muted mb-0">ประวัติการรับสินค้าเข้าคลัง และการปรับปรุงสต็อก</p>
+                <p class="text-muted mb-0">ประวัติการรับและออกสินค้า รวมถึงการปรับปรุงสต็อกทั้งหมด</p>
             </div>
             <div>
                 <button class="btn-modern btn-modern-success" onclick="window.location.href='receive_product.php'">
@@ -445,31 +504,31 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         <!-- Stats Cards -->
         <div class="row mb-4">
-            <div class="col-xl-4 col-md-6 mb-4">
+            <div class="col-xl-3 col-md-6 mb-4">
                 <div class="stats-card stats-primary">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
                                 <div class="stats-title">รายการทั้งหมด</div>
                                 <div class="stats-value"><?= count($rows) ?></div>
-                                <div class="stats-subtitle">รายการรับสินค้า</div>
+                                <div class="stats-subtitle">ความเคลื่อนไหว</div>
                             </div>
                             <div class="col-auto">
-                                <i class="material-icons stats-icon">receipt</i>
+                                <i class="material-icons stats-icon">swap_horiz</i>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-xl-4 col-md-6 mb-4">
+            <div class="col-xl-3 col-md-6 mb-4">
                 <div class="stats-card stats-success">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
-                                <div class="stats-title">รายการเพิ่ม</div>
-                                <div class="stats-value"><?= count(array_filter($rows, fn($r) => $r['receive_qty'] > 0)) ?></div>
-                                <div class="stats-subtitle">เพิ่มเข้าสต็อก</div>
+                                <div class="stats-title">รายการรับ</div>
+                                <div class="stats-value"><?= count(array_filter($rows, fn($r) => ($r['transaction_type'] ?? '') === 'receive')) ?></div>
+                                <div class="stats-subtitle">รับเข้าสต็อก</div>
                             </div>
                             <div class="col-auto">
                                 <i class="material-icons stats-icon">add_circle</i>
@@ -479,17 +538,34 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <div class="col-xl-4 col-md-6 mb-4">
-                <div class="stats-card stats-warning">
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="stats-card stats-danger">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
-                                <div class="stats-title">รายการลด</div>
-                                <div class="stats-value"><?= count(array_filter($rows, fn($r) => $r['receive_qty'] < 0)) ?></div>
-                                <div class="stats-subtitle">ลดจากสต็อก</div>
+                                <div class="stats-title">รายการออก</div>
+                                <div class="stats-value"><?= count(array_filter($rows, fn($r) => ($r['transaction_type'] ?? '') === 'issue')) ?></div>
+                                <div class="stats-subtitle">ออกจากสต็อก</div>
                             </div>
                             <div class="col-auto">
                                 <i class="material-icons stats-icon">remove_circle</i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="stats-card stats-info">
+                    <div class="stats-card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="stats-title">วันนี้</div>
+                                <div class="stats-value"><?= count(array_filter($rows, fn($r) => date('Y-m-d', strtotime($r['created_at'] ?? '')) === date('Y-m-d'))) ?></div>
+                                <div class="stats-subtitle">รายการวันนี้</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="material-icons stats-icon">today</i>
                             </div>
                         </div>
                     </div>
@@ -538,17 +614,14 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <th>SKU</th>
                             <th>ชื่อสินค้า</th>
                             <th>บาร์โค้ด</th>
-                            <th>ผู้เพิ่มรายการ</th>
-                            <th>วันที่เพิ่ม</th>
+                            <th>ผู้ทำรายการ</th>
+                            <th>วันที่ทำรายการ</th>
                             <th>จำนวนก่อน</th>
                             <th>เพิ่ม/ลด</th>
                             <th>จำนวนล่าสุด</th>
-                            <th>ตำแหน่ง</th>
-                            <th>ราคาต้นทุน</th>
-                            <th>ราคาขาย</th>
-                            <th>PO</th>
-                            <th>ประเภท</th>
-                            <th>หมายเหตุ</th>
+                            <th>แท็ค/Lot</th>
+                            <th>สถานที่จัดเก็บ</th>
+                            <th>วันหมดอายุ</th>
                             <th class="no-sort text-center" style="width: 100px;">จัดการ</th>
                         </tr>
                     </thead>
@@ -565,7 +638,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </tr>
                     <?php else: ?>
                     <?php foreach($rows as $row): ?>
-                        <tr data-id="<?= $row['receive_id'] ?>">
+                        <tr data-id="<?= $row['transaction_id'] ?>" class="<?= $row['transaction_type'] === 'issue' ? 'table-danger' : '' ?>">
                             <td>
                                 <?php $image_path = getImagePath($row['image'] ?? ''); ?>
                                 <img src="<?= htmlspecialchars($image_path) ?>" 
@@ -575,7 +648,9 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </td>
                             <td><span class="fw-bold"><?= htmlspecialchars($row['sku']) ?></span></td>
                             <td title="<?= htmlspecialchars($row['product_name'] ?? '-') ?>">
-                                <span class="text-primary"><?= htmlspecialchars($row['product_name'] ?? '-') ?></span>
+                                <span class="<?= $row['transaction_type'] === 'issue' ? 'text-danger' : 'text-primary' ?>">
+                                    <?= htmlspecialchars($row['product_name'] ?? '-') ?>
+                                </span>
                             </td>
                             <td><?= htmlspecialchars($row['barcode']) ?></td>
                             <td><?= htmlspecialchars($row['created_by'] ?? 'ไม่ระบุ') ?></td>
@@ -586,7 +661,11 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </span>
                             </td>
                             <td class="text-center">
-                                <?= qtyChange($row['receive_qty']) ?>
+                                <?php if ($row['transaction_type'] === 'issue'): ?>
+                                    <span class="qty-minus text-danger fw-bold">-<?= number_format($row['quantity']) ?></span>
+                                <?php else: ?>
+                                    <?= qtyChange($row['quantity']) ?>
+                                <?php endif; ?>
                             </td>
                             <td class="text-center">
                                 <span class="fw-bold text-primary">
@@ -594,47 +673,48 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </span>
                             </td>
                             <td>
-                            <?php
-                            $rowcode = trim($row['row_code'] ?? '');
-                            $bin = trim($row['bin'] ?? '');
-                            $shelf = trim($row['shelf'] ?? '');
-                            if ($rowcode !== '' && $bin !== '' && $shelf !== '') {
-                                echo htmlspecialchars("$rowcode-$bin-$shelf");
-                            } else {
-                                echo htmlspecialchars($row['location_desc'] ?? '-');
-                            }
-                            ?>
-                            </td>
-                            <td class="text-end">
-                                <span class="fw-bold text-success">
-                                    <?= number_format($row['price_per_unit'], 2) ?> ฿
-                                </span>
-                            </td>
-                            <td class="text-end">
-                                <span class="fw-bold text-info">
-                                    <?= number_format($row['sale_price'], 2) ?> ฿
-                                </span>
-                            </td>
-                            <td>
-                                <?php if (!empty($row['po_number'])): ?>
-                                    <span class="badge bg-primary"><?= htmlspecialchars($row['po_number']) ?></span>
+                                <?php if ($row['transaction_type'] === 'issue' && !empty($row['issue_tag'])): ?>
+                                    <span class="badge bg-warning text-dark">
+                                        <?= htmlspecialchars($row['issue_tag']) ?>
+                                    </span>
+                                    <?php if (!empty($row['platform'])): ?>
+                                        <small class="d-block mt-1">
+                                            <span class="badge bg-secondary"><?= htmlspecialchars($row['platform']) ?></span>
+                                        </small>
+                                    <?php endif; ?>
                                 <?php else: ?>
-                                    <span class="text-muted">-</span>
+                                    <span class="text-white badge bg-info">
+                                        <?= htmlspecialchars($row['remark'] ?? '-') ?>
+                                    </span>
                                 <?php endif; ?>
                             </td>
-                            <td><?= getTypeLabel($row['remark'] ?? '') ?></td>
-                            <td data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>" 
-                                title="<?= htmlspecialchars($row['remark'] ?? '-') ?>">
-                                <?= htmlspecialchars($row['remark'] ?? '-') ?>
-                            </td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="action-btn action-btn-edit edit-btn" 
-                                            data-id="<?= $row['receive_id'] ?>"
-                                            title="แก้ไข">
-                                        <span class="material-icons">edit</span>
-                                    </button>
-                                </div>
+                            <td><?= htmlspecialchars($row['location_desc'] ?? '-') ?></td>
+                            <td><?= isset($row['expiry_date']) && $row['expiry_date'] ? date('d/m/Y', strtotime($row['expiry_date'])) : '-' ?></td>
+                            <td class="text-center">
+                                <?php if ($row['transaction_type'] === 'receive'): ?>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            จัดการ
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item edit-item" href="#" 
+                                                   data-id="<?= $row['transaction_id'] ?>" 
+                                                   data-quantity="<?= $row['quantity'] ?>"
+                                                   data-expiry="<?= $row['expiry_date'] ?>"
+                                                   data-location="<?= $row['location_id'] ?? '' ?>"
+                                                   data-remark="<?= htmlspecialchars($row['lot_info'] ?? '') ?>">
+                                                <i class="material-icons">edit</i> แก้ไข
+                                            </a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger delete-item" href="#" 
+                                                   data-id="<?= $row['transaction_id'] ?>">
+                                                <i class="material-icons">delete</i> ลบ
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="text-muted small">ออกแล้ว</span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -1764,15 +1844,46 @@ function getImagePath($imageName) {
     return '../images/noimg.png';
 }
 
-function getPrevQty($sku, $barcode, $created_at, $pdo) {
-    $stmt = $pdo->prepare("SELECT SUM(receive_qty) FROM receive_items r LEFT JOIN purchase_order_items poi ON r.item_id=poi.item_id LEFT JOIN products p ON poi.product_id=p.product_id WHERE p.sku=? AND p.barcode=? AND r.created_at < ?");
-    $stmt->execute([$sku, $barcode, $created_at]);
-    return (int)$stmt->fetchColumn();
+function getPrevQty($sku, $barcode, $current_created_at, $pdo) {
+    // คำนวณจำนวนคงเหลือก่อนหน้ารายการนี้
+    $sql = "
+        SELECT COALESCE(
+            (SELECT SUM(ri.receive_qty) FROM receive_items ri 
+             LEFT JOIN purchase_order_items poi ON ri.item_id = poi.item_id 
+             LEFT JOIN products p ON poi.product_id = p.product_id 
+             WHERE p.sku = ? AND p.barcode = ? AND ri.created_at < ?), 0
+        ) - COALESCE(
+            (SELECT SUM(ii.issue_qty) FROM issue_items ii 
+             LEFT JOIN products p ON ii.product_id = p.product_id 
+             WHERE p.sku = ? AND p.barcode = ? AND ii.created_at < ?), 0
+        ) as total_qty
+    ";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$sku, $barcode, $current_created_at, $sku, $barcode, $current_created_at]);
+    $result = (int)$stmt->fetchColumn();
+    return max(0, $result); // ไม่ให้ติดลบ
 }
-function getCurrentQty($sku, $barcode, $created_at, $pdo) {
-    $stmt = $pdo->prepare("SELECT SUM(receive_qty) FROM receive_items r LEFT JOIN purchase_order_items poi ON r.item_id=poi.item_id LEFT JOIN products p ON poi.product_id=p.product_id WHERE p.sku=? AND p.barcode=? AND r.created_at <= ?");
-    $stmt->execute([$sku, $barcode, $created_at]);
-    return (int)$stmt->fetchColumn();
+
+function getCurrentQty($sku, $barcode, $current_created_at, $pdo) {
+    // คำนวณจำนวนคงเหลือหลังจากรายการนี้
+    $sql = "
+        SELECT COALESCE(
+            (SELECT SUM(ri.receive_qty) FROM receive_items ri 
+             LEFT JOIN purchase_order_items poi ON ri.item_id = poi.item_id 
+             LEFT JOIN products p ON poi.product_id = p.product_id 
+             WHERE p.sku = ? AND p.barcode = ? AND ri.created_at <= ?), 0
+        ) - COALESCE(
+            (SELECT SUM(ii.issue_qty) FROM issue_items ii 
+             LEFT JOIN products p ON ii.product_id = p.product_id 
+             WHERE p.sku = ? AND p.barcode = ? AND ii.created_at <= ?), 0
+        ) as total_qty
+    ";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$sku, $barcode, $current_created_at, $sku, $barcode, $current_created_at]);
+    $result = (int)$stmt->fetchColumn();
+    return max(0, $result); // ไม่ให้ติดลบ
 }
 function qtyChange($qty) {
     if($qty > 0) return '<span class="qty-plus" style="color:#22bb33;font-weight:bold;">+'.(int)$qty.'</span>';
