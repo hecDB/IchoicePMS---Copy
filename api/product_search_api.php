@@ -71,6 +71,7 @@ try {
                 ri.created_at as receive_date,
                 ri.remark_color,
                 ri.remark_split,
+                poi.sale_price,
                 CASE 
                     WHEN ri.expiry_date IS NOT NULL 
                     THEN CONCAT('ล็อตรับ: ', DATE_FORMAT(ri.created_at, '%d/%m/%Y'), ' | หมดอายุ: ', DATE_FORMAT(ri.expiry_date, '%d/%m/%Y'))

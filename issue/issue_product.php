@@ -354,7 +354,7 @@ function displaySearchResults(products) {
     let html = '';
     products.forEach(function(product) {
         html += `
-            <div class="search-item" onclick="selectProduct(${product.product_id}, '${product.name}', '${product.sku}', '${product.barcode}', ${product.available_qty}, '${product.receive_id}', '${product.expiry_date || ''}', '${product.lot_info || ''}')">
+            <div class="search-item" onclick="selectProduct(${product.product_id}, '${product.name}', '${product.sku}', '${product.barcode}', ${product.available_qty}, '${product.receive_id}', '${product.expiry_date || ''}', '${product.lot_info || ''}', ${product.sale_price || 0})">
                 <div class="d-flex align-items-center">
                     <img src="../images/${product.image || 'noimg.png'}" 
                          class="product-image me-3" 
@@ -364,7 +364,7 @@ function displaySearchResults(products) {
                         <h6 class="mb-1">${product.name}</h6>
                         <small class="text-muted">SKU: ${product.sku} | บาร์โค้ด: ${product.barcode}</small>
                         <br>
-                        <small class="text-success">คงเหลือ: ${product.available_qty} ${product.unit}</small>
+                        <small class="text-success">คงเหลือ: ${product.available_qty} ${product.unit} | ราคาขาย: ${product.sale_price || 0} บาท</small>
                         ${product.lot_info ? `<br><small class="text-info">${product.lot_info}</small>` : ''}
                         ${product.expiry_date ? `<br><small class="text-warning">หมดอายุ: ${formatDateThai(product.expiry_date)}</small>` : ''}
                     </div>
@@ -378,7 +378,7 @@ function displaySearchResults(products) {
 }
 
 // เลือกสินค้า
-function selectProduct(productId, name, sku, barcode, availableQty, receiveId, expiryDate, lotInfo) {
+function selectProduct(productId, name, sku, barcode, availableQty, receiveId, expiryDate, lotInfo, salePrice) {
     $('#search-results').hide();
     $('#product-search').val('');
     
@@ -399,6 +399,7 @@ function selectProduct(productId, name, sku, barcode, availableQty, receiveId, e
         available_qty: availableQty,
         expiry_date: expiryDate,
         lot_info: lotInfo,
+        sale_price: parseFloat(salePrice) || 0,
         issue_qty: 1 // จำนวนเริ่มต้น
     };
     
@@ -433,6 +434,7 @@ function updateSelectedProductsDisplay() {
                         ${product.lot_info ? `<div class="lot-info"><strong>ล็อต:</strong> ${product.lot_info}</div>` : ''}
                         ${product.expiry_date ? `<div class="lot-info"><strong>วันหมดอายุ:</strong> ${formatDateThai(product.expiry_date)}</div>` : ''}
                         <div class="lot-info"><strong>คงเหลือ:</strong> ${product.available_qty} ชิ้น</div>
+                        <div class="lot-info"><strong>ราคาขาย:</strong> ${product.sale_price ? product.sale_price.toFixed(2) : '0.00'} บาท</div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <label class="form-label mb-0 me-2">จำนวน:</label>
@@ -500,6 +502,7 @@ function updateSummary() {
     
     let totalItems = selectedProducts.length;
     let totalQty = selectedProducts.reduce((sum, product) => sum + product.issue_qty, 0);
+    let totalAmount = selectedProducts.reduce((sum, product) => sum + (product.issue_qty * (product.sale_price || 0)), 0);
     
     let html = `
         <div class="mb-3">
@@ -511,15 +514,19 @@ function updateSummary() {
         <div class="mb-3">
             <strong>จำนวนชิ้นทั้งหมด:</strong> ${totalQty} ชิ้น
         </div>
+        <div class="mb-3">
+            <strong>ยอดขายรวม:</strong> <span class="text-success fw-bold">${totalAmount.toFixed(2)} บาท</span>
+        </div>
         <hr>
         <div class="small">
     `;
     
     selectedProducts.forEach(function(product) {
+        const itemTotal = product.issue_qty * (product.sale_price || 0);
         html += `
             <div class="d-flex justify-content-between mb-1">
                 <span>${product.name}</span>
-                <span>${product.issue_qty} ชิ้น</span>
+                <span>${product.issue_qty} ชิ้น (${itemTotal.toFixed(2)} บาท)</span>
             </div>
         `;
     });
@@ -542,6 +549,8 @@ function processIssue() {
         return;
     }
 
+    const totalAmount = selectedProducts.reduce((sum, p) => sum + (p.issue_qty * (p.sale_price || 0)), 0);
+    
     Swal.fire({
         title: 'ยืนยันการยิงสินค้า?',
         html: `
@@ -549,6 +558,7 @@ function processIssue() {
                 <p><strong>แท็คส่งออก:</strong> ${currentIssueTag}</p>
                 <p><strong>จำนวนรายการ:</strong> ${selectedProducts.length} รายการ</p>
                 <p><strong>จำนวนชิ้นทั้งหมด:</strong> ${selectedProducts.reduce((sum, p) => sum + p.issue_qty, 0)} ชิ้น</p>
+                <p><strong>ยอดขายรวม:</strong> <span class="text-success fw-bold">${totalAmount.toFixed(2)} บาท</span></p>
             </div>
         `,
         icon: 'question',

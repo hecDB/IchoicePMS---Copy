@@ -77,7 +77,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 <link rel="stylesheet" href="../assets/base.css">
 <link rel="stylesheet" href="../assets/sidebar.css">
@@ -87,7 +87,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <style>
     body {
-        font-family: 'Sarabun', sans-serif;
+        font-family: 'Prompt', sans-serif;
         background-color: #f8fafc;
     }
     
@@ -757,13 +757,10 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
             <div class="table-body">
-                <!-- Batch Actions Bar -->
-                <div class="batch-actions mb-3" style="display: none;">
-                    <button id="delete-selected" class="btn-modern btn-modern-danger btn-sm" type="button">
-                        <span class="material-icons" style="font-size: 1rem;">delete</span>
-                        ลบรายการที่เลือก (<span class="selected-count">0</span>)
-                    </button>
-                </div>
+                <!-- Batch Actions Bar - Removed for security -->
+                <!-- <div class="batch-actions mb-3" style="display: none;"> -->
+                    <!-- Batch delete functionality removed -->
+                <!-- </div> -->
 
                 <div class="table-responsive">
                     <table id="receive-table" class="table modern-table table-striped table-hover">
@@ -887,11 +884,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 title="แก้ไขรายการ">
                                             <span class="material-icons" style="font-size: 1rem;">edit</span>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger delete-btn action-btn" 
-                                                data-id="<?= $row['transaction_id'] ?>"
-                                                title="ลบรายการ">
-                                            <span class="material-icons" style="font-size: 1rem;">delete</span>
-                                        </button>
+                                        <!-- Delete button removed for security -->
                                     </div>
                                 <?php else: ?>
                                     <div class="btn-group" role="group">
@@ -929,17 +922,14 @@ $(document).ready(function() {
     console.log('DataTable available:', typeof $.fn.DataTable);
     console.log('Found table element:', $('#receive-table').length);
     
-    // Function to bind action button events
+    // Function to bind action button events (delete functionality removed)
     window.bindEditButtonEvents = function() {
         console.log('Binding action button events...');
         const editButtons = $('.edit-btn');
-        const deleteButtons = $('.delete-btn');
         console.log('Found edit buttons:', editButtons.length);
-        console.log('Found delete buttons:', deleteButtons.length);
         
         // Remove any existing handlers first
         editButtons.off('click.editHandler');
-        deleteButtons.off('click.deleteHandler');
         
         // Bind edit button handlers
         editButtons.on('click.editHandler', function(e){
@@ -953,15 +943,7 @@ $(document).ready(function() {
             }
         });
         
-        // Bind delete button handlers  
-        deleteButtons.on('click.deleteHandler', function(e){
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Delete button clicked for ID:', $(this).data('id'));
-            // Delete handler is already bound via $(document).on() so we don't need to rebind
-        });
-        
-        console.log('Action button events bound - Edit:', editButtons.length, 'Delete:', deleteButtons.length);
+        console.log('Action button events bound - Edit:', editButtons.length);
     };
     
     // Destroy existing DataTable if any before initializing
@@ -1071,58 +1053,12 @@ $(document).ready(function() {
         $('.dataTables_filter').hide();
     }, 100);
 
-    // Custom batch delete handler for receive items - remove existing handlers first
+    // Batch delete functionality removed for security reasons
+    /* 
     $('#delete-selected').off('click').on('click', function(){
-        const selectedIds = $('.row-checkbox:checked').map(function(){ 
-            return $(this).val(); 
-        }).get();
-        
-        if(selectedIds.length === 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'กรุณาเลือกรายการที่ต้องการลบ'
-            });
-            return;
-        }
-        
-        Swal.fire({
-            title: 'ยืนยันการลบ?',
-            text: `คุณต้องการลบ ${selectedIds.length} รายการหรือไม่?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'ลบ',
-            cancelButtonText: 'ยกเลิก'
-        }).then((result) => {
-            if(result.isConfirmed){
-                Swal.fire({
-                    title: 'กำลังลบ...',
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
-                    willOpen: () => { Swal.showLoading(); }
-                });
-
-                $.ajax({
-                    url: 'receive_delete.php',
-                    method: 'POST',
-                    data: { ids: selectedIds },
-                    dataType: 'json',
-                    success: function(resp){
-                        Swal.close();
-                        if(resp && resp.success){
-                            Swal.fire('สำเร็จ!', `ลบ ${selectedIds.length} รายการเรียบร้อยแล้ว`, 'success')
-                            .then(() => refreshTableData());
-                        } else {
-                            Swal.fire('ข้อผิดพลาด!', resp.message || 'เกิดข้อผิดพลาดในการลบ', 'error');
-                        }
-                    },
-                    error: function(xhr, status, error){
-                        Swal.close();
-                        Swal.fire('ข้อผิดพลาด!', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
-                    }
-                });
-            }
-        });
-        });
+        // Batch delete handler removed
+    });
+    */
 
     // Function to handle edit button click (make it global)
     window.handleEditButtonClick = function($button) {
@@ -1411,72 +1347,12 @@ $(document).ready(function() {
             });
         });
 
-    // Delete single item handler
+    // Delete functionality removed for security reasons
+    /*
     $(document).on('click', '.delete-btn', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const itemId = $(this).data('id');
-        const $row = $(this).closest('tr');
-        const productName = $row.find('td').eq(2).text().trim();
-        
-        console.log('Delete button clicked for ID:', itemId);
-        
-        if (!itemId) {
-            Swal.fire('ข้อผิดพลาด', 'ไม่พบ ID ของรายการ', 'error');
-            return;
-        }
-        
-        Swal.fire({
-            title: 'ยืนยันการลบ?',
-            html: `คุณต้องการลบรายการ<br><strong>${productName}</strong><br>หรือไม่?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: '<i class="material-icons me-1">delete</i> ลบ',
-            cancelButtonText: '<i class="material-icons me-1">close</i> ยกเลิก',
-            reverseButtons: true
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Show loading
-                Swal.fire({
-                    title: 'กำลังลบ...',
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
-                    willOpen: () => { Swal.showLoading(); }
-                });
-
-                $.ajax({
-                    url: 'receive_delete.php',
-                    method: 'POST',
-                    data: { ids: [itemId] },
-                    dataType: 'json',
-                    success: function(response) {
-                        Swal.close();
-                        if (response && response.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'ลบสำเร็จ!',
-                                text: 'ลบรายการเรียบร้อยแล้ว',
-                                showConfirmButton: false,
-                                timer: 2000
-                            }).then(() => {
-                                refreshTableData();
-                            });
-                        } else {
-                            Swal.fire('ข้อผิดพลาด!', response.message || 'เกิดข้อผิดพลาดในการลบ', 'error');
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        Swal.close();
-                        console.error('Delete error:', xhr, status, error);
-                        Swal.fire('ข้อผิดพลาด!', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
-                    }
-                });
-            }
-        });
+        // Delete handler removed
     });
+    */
 
     // Function to refresh table data without full page reload
     function refreshTableData() {

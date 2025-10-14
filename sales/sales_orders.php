@@ -35,41 +35,78 @@ require_once '../auth/auth_check.php';
             font-size: 0.8rem;
         }
         
-        /* Shopee Badge - สีส้ม */
+        /* Platform Badges - สีสันที่ชัดเจน */
         .shopee-badge {
             background: linear-gradient(135deg, #ee4d2d 0%, #ff6b47 100%);
             color: white;
             font-weight: 600;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-            border: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.3);
             padding: 0.4rem 0.8rem;
             border-radius: 20px;
             font-size: 0.8rem;
+            box-shadow: 0 2px 8px rgba(238, 77, 45, 0.3);
         }
         
-        /* Lazada Badge - สีฟ้าอมม่วง */
         .lazada-badge {
             background: linear-gradient(135deg, #0f136d 0%, #1e40af 100%);
             color: white;
             font-weight: 600;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-            border: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.3);
             padding: 0.4rem 0.8rem;
             border-radius: 20px;
             font-size: 0.8rem;
+            box-shadow: 0 2px 8px rgba(15, 19, 109, 0.3);
+        }
+        
+        .general-badge {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+        }
+        
+        .tiktok-badge {
+            background: linear-gradient(135deg, #ff0050 0%, #fe2c55 100%);
+            color: white;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            box-shadow: 0 2px 8px rgba(255, 0, 80, 0.3);
         }
         
         /* Header styling สำหรับแต่ละแพลตฟอร์ม */
         .sales-header.shopee-header {
             background: linear-gradient(135deg, #ee4d2d 0%, #ff6b47 100%);
+            border-left: 5px solid #ff0000;
+            box-shadow: 0 4px 15px rgba(238, 77, 45, 0.3);
         }
         
         .sales-header.lazada-header {
             background: linear-gradient(135deg, #0f136d 0%, #1e40af 100%);
+            border-left: 5px solid #003d82;
+            box-shadow: 0 4px 15px rgba(15, 19, 109, 0.3);
         }
         
         .sales-header.general-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-left: 5px solid #4f46e5;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .sales-header.tiktok-header {
+            background: linear-gradient(135deg, #ff0050 0%, #fe2c55 100%);
+            border-left: 5px solid #c41e3a;
+            box-shadow: 0 4px 15px rgba(255, 0, 80, 0.3);
         }
         
         /* Expand/Collapse Styles */
@@ -147,6 +184,65 @@ require_once '../auth/auth_check.php';
         .price-text {
             color: #2e7d32;
             font-weight: 600;
+        }
+        
+        .cost-text {
+            color: #f57c00;
+            font-weight: 500;
+        }
+        
+        .profit-text {
+            font-weight: 700;
+        }
+        
+        .profit-positive {
+            color: #2e7d32;
+        }
+        
+        .profit-negative {
+            color: #d32f2f;
+        }
+        
+        .metrics-box {
+            background: rgba(0,0,0,0.05);
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+        }
+        
+        .metrics-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+        }
+        
+        .metrics-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .platform-indicator {
+            width: 4px;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            border-radius: 8px 0 0 8px;
+        }
+        
+        .platform-indicator.shopee {
+            background: linear-gradient(180deg, #ee4d2d 0%, #ff6b47 100%);
+        }
+        
+        .platform-indicator.lazada {
+            background: linear-gradient(180deg, #0f136d 0%, #1e40af 100%);
+        }
+        
+        .platform-indicator.general {
+            background: linear-gradient(180deg, #6c757d 0%, #495057 100%);
+        }
+        
+        .platform-indicator.tiktok {
+            background: linear-gradient(180deg, #ff0050 0%, #fe2c55 100%);
         }
         .total-summary {
             background: #f8f9fa;
@@ -260,6 +356,10 @@ require_once '../auth/auth_check.php';
         
         .platform-card.general {
             border-left-color: #6c757d;
+        }
+        
+        .platform-card.tiktok {
+            border-left-color: #ff0050;
         }
         
         .platform-card:hover {
@@ -424,6 +524,7 @@ require_once '../auth/auth_check.php';
                             <option value="">ทั้งหมด</option>
                             <option value="Shopee">🛍️ Shopee</option>
                             <option value="Lazada">🛒 Lazada</option>
+                            <option value="TikTok">🎵 TikTok Shop</option>
                             <option value="General">📦 ทั่วไป</option>
                         </select>
                     </div>
@@ -470,6 +571,65 @@ require_once '../auth/auth_check.php';
     <script>
         let currentPage = 1;
         let totalPages = 1;
+
+        // ฟังก์ชันตรวจสอบแพลตฟอร์มจากแท็ค
+        function detectPlatformFromTag(tag) {
+            if (!tag) return 'General';
+            
+            // Shopee: 14 หลัก, 6 ตัวแรกเป็นตัวเลข + ตัวที่ 7 เป็นตัวอักษร
+            if (tag.length === 14) {
+                const firstSix = tag.substring(0, 6);
+                const seventhChar = tag.substring(6, 7);
+                if (/^\d{6}$/.test(firstSix) && /^[a-zA-Z]$/.test(seventhChar)) {
+                    return 'Shopee';
+                }
+            }
+            
+            // Lazada: 16 หลัก, ตัวเลขทั้งหมด
+            if (tag.length === 16 && /^\d{16}$/.test(tag)) {
+                return 'Lazada';
+            }
+            
+            // TikTok: รูปแบบต่างๆ (เพิ่มตามต้องการ)
+            if (tag.includes('TT') || tag.includes('tk') || tag.toLowerCase().includes('tiktok')) {
+                return 'TikTok';
+            }
+            
+            return 'General';
+        }
+        
+        // ฟังก์ชันสร้าง platform badge
+        function createPlatformBadge(platform, tag) {
+            const platformInfo = {
+                'Shopee': { 
+                    icon: '🛍️', 
+                    name: 'Shopee', 
+                    class: 'shopee-badge',
+                    color: '#ee4d2d'
+                },
+                'Lazada': { 
+                    icon: '🛒', 
+                    name: 'Lazada', 
+                    class: 'lazada-badge',
+                    color: '#0f136d'
+                },
+                'TikTok': { 
+                    icon: '🎵', 
+                    name: 'TikTok Shop', 
+                    class: 'tiktok-badge',
+                    color: '#ff0050'
+                },
+                'General': { 
+                    icon: '📦', 
+                    name: 'ทั่วไป', 
+                    class: 'general-badge',
+                    color: '#6c757d'
+                }
+            };
+            
+            const info = platformInfo[platform] || platformInfo['General'];
+            return `<span class="${info.class}">${info.icon} ${info.name}</span>`;
+        }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -575,48 +735,86 @@ require_once '../auth/auth_check.php';
             const items = order.items || [];
             const orderId = order.sale_order_id;
             
+            // ตรวจสอบแพลตฟอร์มจากแท็ค
+            const platform = detectPlatformFromTag(order.issue_tag) || order.platform || 'General';
+            
             // สร้าง HTML สำหรับรายการสินค้า
             let itemsHtml = '';
             items.forEach(item => {
                 const imageUrl = item.image ? `../images/${item.image}` : '../images/noimg.png';
-                const lineTotal = parseFloat(item.line_total || 0);
+                const salePrice = parseFloat(item.sale_price || 0);
+                const costPrice = parseFloat(item.cost_price || 0);
+                const qty = parseFloat(item.issue_qty || 0);
+                const lineTotal = qty * salePrice;
+                const lineCost = qty * costPrice;
+                const lineProfit = lineTotal - lineCost;
+                const profitMargin = lineTotal > 0 ? ((lineProfit / lineTotal) * 100).toFixed(1) : 0;
                 
                 itemsHtml += `
-                    <div class="item-row">
-                        <div class="row align-items-center">
+                    <div class="item-row position-relative">
+                        <div class="platform-indicator ${platform.toLowerCase()}"></div>
+                        <div class="row align-items-start">
                             <div class="col-auto">
                                 <img src="${imageUrl}" alt="${item.product_name}" class="product-image" 
                                      onerror="this.src='../images/noimg.png'">
                             </div>
                             <div class="col">
-                                <div class="fw-bold">${item.product_name}</div>
-                                <small class="text-muted">SKU: ${item.sku || 'N/A'}</small>
-                                ${item.lot_info ? `<br><small class="text-info">Lot: ${item.lot_info}</small>` : ''}
-                                ${item.expiry_date ? `<br><small class="text-warning">หมดอายุ: ${formatDate(item.expiry_date)}</small>` : ''}
+                                <div class="fw-bold mb-1">${item.product_name}</div>
+                                <small class="text-muted d-block">SKU: ${item.sku || 'N/A'}</small>
+                                ${item.lot_info ? `<small class="text-info d-block">Lot: ${item.lot_info}</small>` : ''}
+                                ${item.expiry_date ? `<small class="text-warning d-block">หมดอายุ: ${formatDate(item.expiry_date)}</small>` : ''}
+                                
+                                <div class="metrics-box mt-2">
+                                    <div class="metrics-row">
+                                        <span class="text-muted">จำนวน:</span>
+                                        <span class="fw-bold">${qty} ${item.unit || 'ชิ้น'}</span>
+                                    </div>
+                                    <div class="metrics-row">
+                                        <span class="text-muted">ราคาขาย/หน่วย:</span>
+                                        <span class="price-text">฿${salePrice.toLocaleString()}</span>
+                                    </div>
+                                    ${costPrice > 0 ? `
+                                    <div class="metrics-row">
+                                        <span class="text-muted">ต้นทุน/หน่วย:</span>
+                                        <span class="cost-text">฿${costPrice.toLocaleString()}</span>
+                                    </div>` : ''}
+                                </div>
                             </div>
                             <div class="col-auto text-end">
-                                <div class="qty-badge">${item.issue_qty} ${item.unit || 'ชิ้น'}</div>
-                                ${item.sale_price ? `<div class="price-text mt-1">ขาย ฿${parseFloat(item.sale_price).toLocaleString()}</div>` : ''}
-                                ${item.cost_price ? `<div class="text-muted small">ต้นทุน ฿${parseFloat(item.cost_price).toLocaleString()}</div>` : ''}
-                                ${lineTotal > 0 ? `<div class="fw-bold text-success small">รวม ฿${lineTotal.toLocaleString()}</div>` : ''}
-                                ${item.line_cost > 0 ? `<div class="text-warning small">ต้นทุนรวม ฿${parseFloat(item.line_cost).toLocaleString()}</div>` : ''}
-                                ${item.line_profit ? `<div class="small ${parseFloat(item.line_profit) >= 0 ? 'text-success' : 'text-danger'}">
-                                    ${parseFloat(item.line_profit) >= 0 ? 'กำไร' : 'ขาดทุน'} ฿${Math.abs(parseFloat(item.line_profit)).toLocaleString()}
-                                </div>` : ''}
+                                <div class="metrics-box">
+                                    ${lineTotal > 0 ? `
+                                    <div class="metrics-row">
+                                        <span class="small text-muted">ยอดขาย:</span>
+                                        <span class="fw-bold price-text">฿${lineTotal.toLocaleString()}</span>
+                                    </div>` : ''}
+                                    ${lineCost > 0 ? `
+                                    <div class="metrics-row">
+                                        <span class="small text-muted">ต้นทุนรวม:</span>
+                                        <span class="cost-text">฿${lineCost.toLocaleString()}</span>
+                                    </div>` : ''}
+                                    ${lineTotal > 0 && lineCost > 0 ? `
+                                    <div class="metrics-row">
+                                        <span class="small text-muted">${lineProfit >= 0 ? 'กำไร' : 'ขาดทุน'}:</span>
+                                        <span class="profit-text ${lineProfit >= 0 ? 'profit-positive' : 'profit-negative'}">
+                                            ฿${Math.abs(lineProfit).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div class="metrics-row">
+                                        <span class="small text-muted">อัตรากำไร:</span>
+                                        <span class="small ${lineProfit >= 0 ? 'profit-positive' : 'profit-negative'}">${profitMargin}%</span>
+                                    </div>` : ''}
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
             });
 
-            const platformBadge = order.platform ? 
-                `<span class="${order.platform_class}">${order.platform_display || order.platform}</span>` : 
-                '<span class="badge bg-secondary">📦 ไม่ระบุ</span>';
+            // สร้าง badge ตามแพลตฟอร์ม
+            const platformBadge = createPlatformBadge(platform, order.issue_tag);
             
             // กำหนดสี header ตามแพลตฟอร์ม
-            const headerClass = order.platform === 'Shopee' ? 'sales-header shopee-header' : 
-                               order.platform === 'Lazada' ? 'sales-header lazada-header' : 
-                               'sales-header general-header';
+            const headerClass = `sales-header ${platform.toLowerCase()}-header`;
 
             return `
                 <div class="sales-card">
@@ -636,16 +834,17 @@ require_once '../auth/auth_check.php';
                                         <strong>${order.actual_items || 0}</strong> รายการ 
                                         (<strong>${order.total_qty || 0}</strong> ชิ้น)
                                         ${parseFloat(order.total_amount) > 0 ? 
-                                            ` • ขาย <strong>฿${order.total_amount_formatted}</strong>` : ''
+                                            ` • ขาย <strong style="color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">฿${order.total_amount_formatted}</strong>` : ''
                                         }
                                         ${parseFloat(order.total_cost) > 0 ? 
-                                            ` • ต้นทุน <strong>฿${order.total_cost_formatted}</strong>` : ''
+                                            ` • ต้นทุน <strong style="color: #ffeb3b; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">฿${order.total_cost_formatted}</strong>` : ''
                                         }
                                         ${parseFloat(order.profit) > 0 ? 
-                                            ` • กำไร <strong style="color: #10b981;">฿${order.profit_formatted}</strong>` : 
+                                            ` • กำไร <strong style="color: #4caf50; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">฿${order.profit_formatted}</strong>` : 
                                             parseFloat(order.profit) < 0 ? 
-                                            ` • ขาดทุน <strong style="color: #ef4444;">฿${Math.abs(order.profit).toLocaleString()}</strong>` : ''
+                                            ` • ขาดทุน <strong style="color: #ff5722; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">฿${Math.abs(order.profit).toLocaleString()}</strong>` : ''
                                         }
+                                        ${order.profit_margin ? ` • <strong style="color: #e8f5e8;">${order.profit_margin}%</strong>` : ''}
                                     </small>
                                 </div>
                             </div>
@@ -665,24 +864,60 @@ require_once '../auth/auth_check.php';
                         </div>
                         <div class="total-summary">
                             <div class="row">
-                                <div class="col">
-                                    <strong>รวม ${order.actual_items || 0} รายการ</strong>
-                                    <span class="text-muted ms-2">(${order.total_qty || 0} ชิ้น)</span>
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <strong class="fs-6">📋 สรุปรายการ</strong>
+                                    </div>
+                                    <div class="small">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>จำนวนรายการ:</span>
+                                            <span class="fw-bold">${order.actual_items || 0} รายการ</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>จำนวนชิ้น:</span>
+                                            <span class="fw-bold">${order.total_qty || 0} ชิ้น</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>แพลตฟอร์ม:</span>
+                                            <span>${platformBadge}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-auto text-end">
-                                    ${parseFloat(order.total_amount) > 0 ? 
-                                        `<div><strong class="text-success">ยอดขาย: ฿${order.total_amount_formatted}</strong></div>` : 
-                                        '<div class="text-muted">ไม่ระบุราคาขาย</div>'
-                                    }
-                                    ${parseFloat(order.total_cost) > 0 ? 
-                                        `<div class="text-warning small">ต้นทุน: ฿${order.total_cost_formatted}</div>` : ''
-                                    }
-                                    ${parseFloat(order.profit) !== 0 ? 
-                                        `<div class="fw-bold ${parseFloat(order.profit) >= 0 ? 'text-success' : 'text-danger'}">
-                                            ${parseFloat(order.profit) >= 0 ? 'กำไร' : 'ขาดทุน'}: ฿${Math.abs(parseFloat(order.profit)).toLocaleString()}
-                                            ${order.profit_margin ? ` (${order.profit_margin}%)` : ''}
-                                        </div>` : ''
-                                    }
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <strong class="fs-6">💰 สรุปการเงิน</strong>
+                                    </div>
+                                    <div class="small">
+                                        ${parseFloat(order.total_amount) > 0 ? 
+                                            `<div class="d-flex justify-content-between mb-1">
+                                                <span>ยอดขาย:</span>
+                                                <span class="fw-bold price-text">฿${order.total_amount_formatted}</span>
+                                            </div>` : 
+                                            `<div class="d-flex justify-content-between mb-1">
+                                                <span>ยอดขาย:</span>
+                                                <span class="text-muted">ไม่ระบุ</span>
+                                            </div>`
+                                        }
+                                        ${parseFloat(order.total_cost) > 0 ? 
+                                            `<div class="d-flex justify-content-between mb-1">
+                                                <span>ต้นทุนรวม:</span>
+                                                <span class="fw-bold cost-text">฿${order.total_cost_formatted}</span>
+                                            </div>` : ''
+                                        }
+                                        ${parseFloat(order.profit) !== 0 ? 
+                                            `<div class="d-flex justify-content-between mb-1">
+                                                <span>${parseFloat(order.profit) >= 0 ? 'กำไรรวม:' : 'ขาดทุนรวม:'}</span>
+                                                <span class="fw-bold ${parseFloat(order.profit) >= 0 ? 'profit-positive' : 'profit-negative'}">
+                                                    ฿${Math.abs(parseFloat(order.profit)).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            ${order.profit_margin ? `
+                                            <div class="d-flex justify-content-between">
+                                                <span>อัตรากำไร:</span>
+                                                <span class="fw-bold ${parseFloat(order.profit) >= 0 ? 'profit-positive' : 'profit-negative'}">${order.profit_margin}%</span>
+                                            </div>` : ''}` : ''
+                                        }
+                                    </div>
                                 </div>
                             </div>
                         </div>
