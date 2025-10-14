@@ -180,13 +180,121 @@ $expiring_soon_count = count($expiring_soon_products);
     .card-sec { max-width: 1200px; margin: 0 auto; }
     .card {
       background: #fff; border-radius: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-      padding: 24px 22px; margin-bottom: 24px;
+      padding: 24px 22px; margin-bottom: 24px; transition: all 0.3s ease;
     }
     .card-title { font-size: 22px; font-weight: 600; margin-bottom: 10px; }
+    
+    /* User Guide Card Styles */
+    .user-guide-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    .user-guide-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      transition: all 0.6s ease;
+    }
+    
+    .user-guide-card:hover::before {
+      left: 100%;
+    }
+    
+    .user-guide-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+    }
+    
+    .guide-icon-container {
+      background: rgba(255,255,255,0.15);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+    
+    .user-guide-card:hover .guide-icon-container {
+      background: rgba(255,255,255,0.25);
+      transform: scale(1.05);
+    }
+    
+    .guide-content {
+      flex: 1;
+      padding-left: 4px;
+    }
+    
+    .guide-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .guide-description {
+      font-size: 15px;
+      opacity: 0.9;
+      line-height: 1.4;
+    }
+    
+    .guide-button {
+      background: rgba(255,255,255,0.2);
+      padding: 12px 16px;
+      border-radius: 25px;
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    .user-guide-card:hover .guide-button {
+      background: rgba(255,255,255,0.3);
+      transform: scale(1.05);
+    }
+    
+    /* Responsive adjustments */
     @media (max-width: 900px) {
-      /* small-screen: adjust padding only, layout (margin-left) is handled by central stylesheet */
       .mainwrap { padding: 18px 4vw 12vw 4vw; }
       .card-sec { padding: 0; }
+      
+      .guide-title {
+        font-size: 18px;
+      }
+      
+      .guide-description {
+        font-size: 14px;
+      }
+      
+      .guide-button {
+        padding: 10px 14px;
+        font-size: 14px;
+      }
+    }
+    
+    @media (max-width: 600px) {
+      .user-guide-card a {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+      }
+      
+      .guide-content {
+        padding-left: 0;
+      }
     }
   </style>
 </head>
@@ -205,6 +313,32 @@ $expiring_soon_count = count($expiring_soon_products);
             <div style="color:#7d869c;margin-bottom:5px;font-size:16px;">
                 สถานะ: <b><?=($user_role == 'admin') ? 'ผู้ดูแลระบบ' : 'สมาชิกทั่วไป'?></b>
             </div>
+        </div>
+
+        <!-- User Guide Card -->
+        <div class="card user-guide-card">
+            <a href="orders/user_guide.html" 
+               target="_blank"
+               style="display: flex; align-items: center; justify-content: space-between; 
+                      text-decoration: none; color: inherit; width: 100%; position: relative; z-index: 1;">
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div class="guide-icon-container">
+                        <span class="material-icons" style="font-size: 36px; color: white;">menu_book</span>
+                    </div>
+                    <div class="guide-content">
+                        <div class="guide-title">
+                            � คู่มือการใช้งานระบบ
+                        </div>
+                        <div class="guide-description">
+                            เรียนรู้วิธีใช้งานระบบจัดการใบสั่งซื้อ การจัดการสินค้า และฟีเจอร์ต่างๆ อย่างละเอียด
+                        </div>
+                    </div>
+                </div>
+                <div class="guide-button">
+                    เปิดคู่มือ
+                    <span class="material-icons" style="font-size: 20px;">open_in_new</span>
+                </div>
+            </a>
         </div>
         <?php if($user_role === 'admin') { ?>
         <div class="card" style="display:flex;gap:32px;flex-wrap:wrap;justify-content:space-between;">
@@ -644,6 +778,100 @@ function hideExpiryModal() {
 document.getElementById('expiryModal').addEventListener('click', function(e) {
     if (e.target === this) {
         hideExpiryModal();
+    }
+});
+
+// User Guide functionality
+function openUserGuide() {
+    // Show loading notification
+    showGuideNotification('กำลังเปิดคู่มือการใช้งาน...', 'info');
+    
+    // Open user guide in new tab
+    window.open('orders/user_guide.html', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+    
+    // Show success notification after a short delay
+    setTimeout(() => {
+        showGuideNotification('✅ เปิดคู่มือเรียบร้อยแล้ว!', 'success');
+    }, 500);
+}
+
+function showGuideNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `guide-notification ${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <span class="notification-icon material-icons">
+                ${type === 'success' ? 'check_circle' : type === 'info' ? 'info' : 'error'}
+            </span>
+            <span class="notification-text">${message}</span>
+        </div>
+    `;
+    
+    // Add styles for notification
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'info' ? '#3b82f6' : '#ef4444'};
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        font-family: 'Sarabun', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+        max-width: 300px;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 10);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Add CSS for notification content
+const notificationStyles = document.createElement('style');
+notificationStyles.textContent = `
+    .notification-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .notification-icon {
+        font-size: 18px;
+    }
+    
+    .notification-text {
+        flex: 1;
+    }
+`;
+document.head.appendChild(notificationStyles);
+
+// Add click handler to user guide card
+document.addEventListener('DOMContentLoaded', function() {
+    const guideCard = document.querySelector('.user-guide-card a');
+    if (guideCard) {
+        guideCard.addEventListener('click', function(e) {
+            e.preventDefault();
+            openUserGuide();
+        });
     }
 });
 </script>

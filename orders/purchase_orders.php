@@ -1568,12 +1568,18 @@ $rows = $stmt->fetchAll();
         const row = document.querySelectorAll('.po-items-table tbody tr')[index];
         const inputs = row.querySelectorAll('.item-edit-input, input[type="hidden"][data-field]');
         
+        console.log('Saving item row:', { poId, itemId, index }); // Debug log
+        console.log('Found inputs:', inputs.length); // Debug log
+        
         const updateData = {};
-        inputs.forEach(input => {
+        inputs.forEach((input, inputIndex) => {
             if (input.dataset.field) {
                 updateData[input.dataset.field] = input.value;
+                console.log(`Input ${inputIndex} (${input.dataset.field}):`, input.value); // Debug log
             }
         });
+        
+        console.log('Update data collected:', updateData); // Debug log
         
         // Get currency information from current order
         const currencyId = currentPoData.order.currency_id || 1;
@@ -1612,13 +1618,19 @@ $rows = $stmt->fetchAll();
             
             if (data.success) {
                 // Update the current data
+                const newQty = parseFloat(updateData.qty || 0);
+                const newPrice = parseFloat(updateData.price_per_unit || 0);
+                const newTotal = newQty * newPrice;
+                
                 currentPoData.items[index] = { 
                     ...currentPoData.items[index], 
                     product_id: updateData.product_id || currentPoData.items[index].product_id,
                     product_name: updateData.product_name || currentPoData.items[index].product_name,
-                    qty: parseFloat(updateData.qty || 0),
-                    price_per_unit: parseFloat(updateData.price_per_unit || 0),
-                    total: parseFloat(updateData.qty || 0) * parseFloat(updateData.price_per_unit || 0)
+                    qty: newQty,
+                    price_per_unit: newPrice,
+                    price_base: newPrice,
+                    price_original: newPrice,
+                    total: newTotal
                 };
                 
                 // Show success message
@@ -1631,8 +1643,21 @@ $rows = $stmt->fetchAll();
                     timer: 1500
                 });
                 
-                // Update the total
-                updateItemsTotal();
+                // Re-render the entire table to show updated values
+                renderItemsTable();
+                
+                // Exit edit mode and refresh data
+                setTimeout(() => {
+                    exitItemEditMode();
+                    // Refresh the PO data from server
+                    fetch('../api/purchase_order_api.php?id=' + poId)
+                        .then(res => res.json())
+                        .then(refreshedData => {
+                            currentPoData = refreshedData;
+                            renderPoView(refreshedData);
+                        })
+                        .catch(err => console.error('Error refreshing data:', err));
+                }, 1000);
             } else {
                 Swal.fire({
                     title: 'เกิดข้อผิดพลาด!', 
@@ -1695,15 +1720,29 @@ $rows = $stmt->fetchAll();
                         // Remove from current data
                         currentPoData.items.splice(index, 1);
                         
-                        // Re-render items table
-                        exitItemEditMode();
-                        
+                        // Show success message
                         Swal.fire({
                             title: 'ลบแล้ว!', 
                             text: 'รายการสินค้าถูกลบเรียบร้อย', 
                             icon: 'success',
+                            timer: 2000,
+                            showConfirmButton: false,
                             customClass: { container: 'swal2-top-z-index' }
                         });
+                        
+                        // Exit edit mode and refresh data
+                        exitItemEditMode();
+                        
+                        // Refresh the PO data from server
+                        setTimeout(() => {
+                            fetch('../api/purchase_order_api.php?id=' + poId)
+                                .then(res => res.json())
+                                .then(refreshedData => {
+                                    currentPoData = refreshedData;
+                                    renderPoView(refreshedData);
+                                })
+                                .catch(err => console.error('Error refreshing data:', err));
+                        }, 500);
                     } else {
                         Swal.fire({
                             title: 'เกิดข้อผิดพลาด!', 
@@ -1834,30 +1873,26 @@ $rows = $stmt->fetchAll();
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        // Add to current data
-                        const newItem = {
-                            item_id: data.item_id,
-                            product_id: productId || null,
-                            product_name: productName,
-                            qty: parseInt(qty),
-                            price_per_unit: parseFloat(price),
-                            total: parseInt(qty) * parseFloat(price),
-                            sku: data.sku || '-',
-                            image: data.image || '',
-                            unit: unit || 'ชิ้น'
-                        };
-                        
-                        currentPoData.items.push(newItem);
-                        
-                        // Re-render items table
-                        renderItemsTable();
-                        
+                        // Show success message
                         Swal.fire({
                             title: 'เพิ่มแล้ว!', 
                             text: 'รายการสินค้าใหม่ถูกเพิ่มเรียบร้อย', 
                             icon: 'success',
+                            timer: 2000,
+                            showConfirmButton: false,
                             customClass: { container: 'swal2-top-z-index' }
                         });
+                        
+                        // Refresh the PO data from server
+                        setTimeout(() => {
+                            fetch('../api/purchase_order_api.php?id=' + poId)
+                                .then(res => res.json())
+                                .then(refreshedData => {
+                                    currentPoData = refreshedData;
+                                    renderPoView(refreshedData);
+                                })
+                                .catch(err => console.error('Error refreshing data:', err));
+                        }, 500);
                     } else {
                         Swal.fire('เกิดข้อผิดพลาด!', data.message || 'ไม่สามารถเพิ่มได้', 'error');
                     }
@@ -1875,10 +1910,14 @@ $rows = $stmt->fetchAll();
             minimumFractionDigits: 2, maximumFractionDigits: 2
         });
 
+        console.log('Rendering items table with data:', currentPoData.items); // Debug log
+
         let itemsHtml = currentPoData.items && currentPoData.items.length > 0 ? currentPoData.items.map((item, index) => {
             const qty = parseFloat(item.qty || 0);
-            const price = parseFloat(item.price_per_unit || 0);
+            const price = parseFloat(item.price_per_unit || item.price_base || 0);
             const total = parseFloat(item.total || (qty * price));
+            
+            console.log(`Item ${index + 1}:`, { qty, price, total }); // Debug log
             
             return `
             <tr>
@@ -1897,23 +1936,42 @@ $rows = $stmt->fetchAll();
             </tr>`;
         }).join('') : `<tr><td colspan="8" style="text-align:center;padding:20px;color:#6c757d;">ไม่พบรายการสินค้า</td></tr>`;
 
-        document.querySelector('.po-items-table tbody').innerHTML = itemsHtml;
+        // Update the table content
+        const tbody = document.querySelector('.po-items-table tbody');
+        if (tbody) {
+            tbody.innerHTML = itemsHtml;
+            console.log('Table updated successfully'); // Debug log
+        } else {
+            console.error('Table tbody not found'); // Debug log
+        }
+        
         updateItemsTotal();
     }
 
     function updateItemsTotal() {
-        const subtotalOriginal = currentPoData.items ? currentPoData.items.reduce((sum, item) => {
+        if (!currentPoData || !currentPoData.items || currentPoData.items.length === 0) {
+            console.log('No items to calculate total for'); // Debug log
+            return;
+        }
+
+        console.log('Calculating total for items:', currentPoData.items); // Debug log
+
+        const subtotalOriginal = currentPoData.items.reduce((sum, item) => {
             const qty = parseFloat(item.qty || 0);
-            const priceOriginal = parseFloat(item.price_original || item.price_per_unit || 0);
-            return sum + (qty * priceOriginal);
-        }, 0) : 0;
+            const priceOriginal = parseFloat(item.price_original || item.price_per_unit || item.price_base || 0);
+            const itemTotal = qty * priceOriginal;
+            console.log(`Item total: ${qty} × ${priceOriginal} = ${itemTotal}`); // Debug log
+            return sum + itemTotal;
+        }, 0);
         
-        const subtotalBase = currentPoData.items ? currentPoData.items.reduce((sum, item) => {
+        const subtotalBase = currentPoData.items.reduce((sum, item) => {
             const qty = parseFloat(item.qty || 0);
             const priceBase = parseFloat(item.price_base || item.price_per_unit || 0);
             const total = parseFloat(item.total || (qty * priceBase));
             return sum + total;
-        }, 0) : 0;
+        }, 0);
+
+        console.log('Calculated totals:', { subtotalOriginal, subtotalBase }); // Debug log
 
         const formatCurrency = (amount) => parseFloat(amount || 0).toLocaleString('th-TH', {
             minimumFractionDigits: 2, maximumFractionDigits: 2
@@ -1926,7 +1984,43 @@ $rows = $stmt->fetchAll();
             `<div>${currencySymbol}${formatCurrency(subtotalOriginal)}</div><div style="font-size:12px;color:#666;font-weight:normal;">≈ ฿${formatCurrency(subtotalBase)} บาท</div>` : 
             `฿${formatCurrency(subtotalBase)} บาท`;
             
-        document.querySelector('.po-items-table tfoot td:last-child').innerHTML = totalHtml;
+        // Try multiple selectors to find the total cell
+        let totalCell = document.querySelector('.po-items-table tfoot td:last-child');
+        if (!totalCell) {
+            totalCell = document.querySelector('.po-items-table tfoot tr td:nth-child(8)');
+        }
+        if (!totalCell) {
+            totalCell = document.querySelector('table tfoot td:last-child');
+        }
+        
+        if (totalCell) {
+            totalCell.innerHTML = totalHtml;
+            console.log('Total updated to:', totalHtml); // Debug log
+        } else {
+            console.error('Total cell not found in table footer, available selectors:'); // Debug log
+            console.log('tfoot:', document.querySelectorAll('tfoot'));
+            console.log('tfoot td:', document.querySelectorAll('tfoot td'));
+            console.log('table:', document.querySelectorAll('table'));
+            
+            // If no footer cell found, try to create/update it
+            const table = document.querySelector('.po-items-table');
+            if (table) {
+                let tfoot = table.querySelector('tfoot');
+                if (!tfoot) {
+                    tfoot = document.createElement('tfoot');
+                    table.appendChild(tfoot);
+                }
+                tfoot.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align:right;font-weight:bold;border-top:1px solid #dee2e6;">รวมทั้งสิ้น</td>
+                        <td style="text-align:right;font-weight:bold;border-top:1px solid #dee2e6;">
+                            ${totalHtml}
+                        </td>
+                    </tr>
+                `;
+                console.log('Created new tfoot with total'); // Debug log
+            }
+        }
     }
     
     // Helper functions for currency handling in forms

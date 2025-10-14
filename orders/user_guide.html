@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>คู่มือการใช้งาน - ระบบใบสั่งซื้อ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f8fafc;
+            line-height: 1.6;
+        }
+        
+        .guide-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .guide-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .guide-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+        
+        .section-title {
+            color: #1f2937;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .step-card {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .step-number {
+            background: #3b82f6;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 1rem;
+        }
+        
+        .screenshot-placeholder {
+            background: #e5e7eb;
+            border: 2px dashed #9ca3af;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            color: #6b7280;
+            margin: 1rem 0;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            align-items: center;
+        }
+        
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .feature-list .material-icons {
+            color: #10b981;
+            margin-right: 0.75rem;
+        }
+        
+        .warning-box {
+            background: #fef3cd;
+            border: 1px solid #fbbf24;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .tip-box {
+            background: #dbeafe;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .table-guide {
+            font-size: 0.9rem;
+        }
+        
+        .table-guide th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        .button-demo {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.9rem;
+            margin: 0.25rem;
+        }
+        
+        .btn-demo-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-demo-success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-demo-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-demo-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .toc {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .toc ul li {
+            margin: 0.5rem 0;
+        }
+        
+        .toc ul li a {
+            color: #3b82f6;
+            text-decoration: none;
+            padding: 0.25rem 0;
+            display: block;
+        }
+        
+        .toc ul li a:hover {
+            color: #1e40af;
+            text-decoration: underline;
+        }
+        
+        .status-badge-demo {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 500;
+            margin: 0 4px;
+        }
+        
+        .status-pending {
+            background: #fef3cd;
+            color: #856404;
+        }
+        
+        .status-partial {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-completed {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status-cancel {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="guide-container">
+        <!-- Header -->
+        <div class="guide-header">
+            <h1><i class="material-icons" style="font-size: 2.5rem; vertical-align: middle; margin-right: 1rem;">receipt_long</i>คู่มือการใช้งานระบบใบสั่งซื้อ</h1>
+            <p class="mb-0">Purchase Orders Management System - IchoicePMS</p>
+            <small>เวอร์ชัน 1.0 | อัพเดท: ตุลาคม 2025</small>
+        </div>
+        
+        <!-- Table of Contents -->
+        <div class="guide-card">
+            <div class="toc">
+                <h3><i class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">list</i>สารบัญ</h3>
+                <ul>
+                    <li><a href="#overview">1. ภาพรวมของระบบ</a></li>
+                    <li><a href="#getting-started">2. การเริ่มต้นใช้งาน</a></li>
+                    <li><a href="#viewing-orders">3. การดูรายการใบสั่งซื้อ</a></li>
+                    <li><a href="#creating-orders">4. การสร้างใบสั่งซื้อใหม่</a></li>
+                    <li><a href="#viewing-details">5. การดูรายละเอียดใบสั่งซื้อ</a></li>
+                    <li><a href="#editing-orders">6. การแก้ไขใบสั่งซื้อ</a></li>
+                    <li><a href="#managing-items">7. การจัดการรายการสินค้า</a></li>
+                    <li><a href="#status-management">8. การจัดการสถานะใบสั่งซื้อ</a></li>
+                    <li><a href="#tips-tricks">9. เคล็ดลับและข้อแนะนำ</a></li>
+                    <li><a href="#troubleshooting">10. การแก้ไขปัญหาเบื้องต้น</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 1. ภาพรวมของระบบ -->
+        <div class="guide-card" id="overview">
+            <h2 class="section-title">1. ภาพรวมของระบบ</h2>
+            
+            <p>ระบบใบสั่งซื้อ (Purchase Orders) เป็นส่วนหนึ่งของระบบ IchoicePMS ที่ช่วยจัดการกระบวนการสั่งซื้อสินค้าจากผู้จำหน่าย</p>
+            
+            <h4>ฟีเจอร์หลัก:</h4>
+            <ul class="feature-list">
+                <li><i class="material-icons">check_circle</i>สร้างและจัดการใบสั่งซื้อ</li>
+                <li><i class="material-icons">check_circle</i>ติดตามสถานะการสั่งซื้อ</li>
+                <li><i class="material-icons">check_circle</i>จัดการรายการสินค้าในใบสั่งซื้อ</li>
+                <li><i class="material-icons">check_circle</i>คำนวณราคาและสกุลเงินอัตโนมัติ</li>
+                <li><i class="material-icons">check_circle</i>พิมพ์และส่งออกข้อมูล</li>
+                <li><i class="material-icons">check_circle</i>ค้นหาและกรองข้อมูล</li>
+            </ul>
+            
+            <h4>สถานะใบสั่งซื้อ:</h4>
+            <div style="margin: 1rem 0;">
+                <span class="status-badge-demo status-pending">รอดำเนินการ</span>
+                <span class="status-badge-demo status-partial">รับสินค้าบางส่วน</span>
+                <span class="status-badge-demo status-completed">เสร็จสิ้น</span>
+                <span class="status-badge-demo status-cancel">ยกเลิก</span>
+            </div>
+        </div>
+
+        <!-- 2. การเริ่มต้นใช้งาน -->
+        <div class="guide-card" id="getting-started">
+            <h2 class="section-title">2. การเริ่มต้นใช้งาน</h2>
+            
+            <div class="step-card">
+                <div class="d-flex align-items-center">
+                    <span class="step-number">1</span>
+                    <div>
+                        <strong>เข้าสู่ระบบ</strong>
+                        <p class="mb-0">เข้าสู่ระบบ IchoicePMS ด้วยชื่อผู้ใช้และรหัสผ่านของคุณ</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step-card">
+                <div class="d-flex align-items-center">
+                    <span class="step-number">2</span>
+                    <div>
+                        <strong>เข้าเมนูใบสั่งซื้อ</strong>
+                        <p class="mb-0">คลิกที่เมนู "ใบสั่งซื้อ" ในแถบเมนูด้านซ้าย</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step-card">
+                <div class="d-flex align-items-center">
+                    <span class="step-number">3</span>
+                    <div>
+                        <strong>ตรวจสอบสิทธิ์การใช้งาน</strong>
+                        <p class="mb-0">ตรวจสอบว่าคุณมีสิทธิ์ในการสร้าง แก้ไข หรือลบใบสั่งซื้อ</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tip-box">
+                <strong><i class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">lightbulb</i>เคล็ดลับ:</strong>
+                หากคุณใช้งานครั้งแรก ควรทำความคุ้นเคยกับส่วนต่างๆ ของหน้าจอก่อนเริ่มสร้างใบสั่งซื้อ
+            </div>
+        </div>
+
+        <!-- 3. การดูรายการใบสั่งซื้อ -->
+        <div class="guide-card" id="viewing-orders">
+            <h2 class="section-title">3. การดูรายการใบสั่งซื้อ</h2>
+            
+            <p>หน้าหลักจะแสดงตารางรายการใบสั่งซื้อทั้งหมด โดยจัดเรียงจากใหม่ไปเก่า</p>
+            
+            <h4>ข้อมูลที่แสดงในตาราง:</h4>
+            <table class="table table-guide table-striped">
+                <thead>
+                    <tr>
+                        <th>คอลัมน์</th>
+                        <th>รายละเอียด</th>
+                        <th>ตัวอย่าง</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>PO ID</td>
+                        <td>รหัสใบสั่งซื้อที่ระบบสร้างให้อัตโนมัติ</td>
+                        <td>1, 2, 3, ...</td>
+                    </tr>
+                    <tr>
+                        <td>เลข PO</td>
+                        <td>เลขที่ใบสั่งซื้อที่กำหนดเอง</td>
+                        <td>PO2025001, ORDER-001</td>
+                    </tr>
+                    <tr>
+                        <td>วันที่สั่งซื้อ</td>
+                        <td>วันที่ที่สร้างใบสั่งซื้อ</td>
+                        <td>14/10/2025</td>
+                    </tr>
+                    <tr>
+                        <td>ยอดรวม</td>
+                        <td>ยอดเงินรวมทั้งหมดของใบสั่งซื้อ</td>
+                        <td>15,500.00 บาท</td>
+                    </tr>
+                    <tr>
+                        <td>สถานะ</td>
+                        <td>สถานะปัจจุบันของใบสั่งซื้อ</td>
+                        <td>รอดำเนินการ, เสร็จสิ้น</td>
+                    </tr>
+                    <tr>
+                        <td>ผู้จำหน่าย</td>
+                        <td>ชื่อบริษัทหรือผู้จำหน่าย</td>
+                        <td>บริษัท ABC จำกัด</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>การใช้งานฟีเจอร์ค้นหา:</h4>
+            <div class="step-card">
+                <p><strong>ค้นหาอัตโนมัติ:</strong> พิมพ์คำที่ต้องการค้นหาในช่องค้นหา ระบบจะกรองข้อมูลทันที</p>
+                <p><strong>การเรียงลำดับ:</strong> คลิกที่หัวคอลัมน์เพื่อเรียงลำดับข้อมูล</p>
+                <p><strong>การแบ่งหน้า:</strong> เลือกจำนวนรายการต่อหน้าและใช้ปุ่มเปลี่ยนหน้า</p>
+            </div>
+        </div>
+
+        <!-- 4. การสร้างใบสั่งซื้อใหม่ -->
+        <div class="guide-card" id="creating-orders">
+            <h2 class="section-title">4. การสร้างใบสั่งซื้อใหม่</h2>
+            
+            <div class="step-card">
+                <div class="d-flex align-items-center">
+                    <span class="step-number">1</span>
+                    <div>
+                        <strong>คลิกปุ่มสร้างใบสั่งซื้อใหม่</strong>
+                        <p class="mb-0">
+                            <button class="button-demo btn-demo-primary">
+                                <i class="material-icons" style="font-size: 1rem;">add</i>
+                                สร้างใบสั่งซื้อใหม่
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step-card">
+                <div class="d-flex align-items-center">
+                    <span class="step-number">2</span>
+                    <div>
+                        <strong>กรอกข้อมูลพื้นฐาน</strong>
+                        <ul>
+                            <li>เลขที่ใบสั่งซื้อ (หรือใช้ที่ระบบสร้างให้)</li>
+                            <li>วันที่สั่งซื้อ</li>
+                            <li>เลือกผู้จำหน่าย</li>
+                            <li>เลือกสกุลเงินและอัตราแลกเปลี่ยน</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step-card">
+                <div class="d-flex align-items-center">
+                    <span class="step-number">3</span>
+                    <div>
+                        <strong>เพิ่มรายการสินค้า</strong>
+                        <ul>
+                            <li>ค้นหาและเลือกสินค้า</li>
+                            <li>กำหนดจำนวนและราคา</li>
+                            <li>ระบุหน่วยนับ</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step-card">
+                <div class="d-flex align-items-center">
+                    <span class="step-number">4</span>
+                    <div>
+                        <strong>ตรวจสอบและบันทึก</strong>
+                        <p class="mb-0">ตรวจสอบความถูกต้องของข้อมูลและคลิกปุ่มบันทึก</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="warning-box">
+                <strong><i class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">warning</i>ข้อควรระวัง:</strong>
+                ตรวจสอบข้อมูลให้ครบถ้วนก่อนบันทึก เพราะการแก้ไขภายหลังอาจมีข้อจำกัด
+            </div>
+        </div>
+
+        <!-- 5. การดูรายละเอียดใบสั่งซื้อ -->
+        <div class="guide-card" id="viewing-details">
+            <h2 class="section-title">5. การดูรายละเอียดใบสั่งซื้อ</h2>
+            
+            <div class="step-card">
+                <p><strong>การเปิดดูรายละเอียด:</strong></p>
+                <p>คลิกปุ่ม 
+                    <button class="button-demo btn-demo-primary">
+                        <i class="material-icons" style="font-size: 1rem;">visibility</i>
+                        ดู
+                    </button>
+                    ในแถวของใบสั่งซื้อที่ต้องการ
+                </p>
+            </div>
+            
+            <h4>ข้อมูลที่แสดงใน Popup รายละเอียด:</h4>
+            
+            <h5>1. ข้อมูลหัวใบสั่งซื้อ</h5>
+            <ul>
+                <li>เลขที่ใบสั่งซื้อ และวันที่</li>
+                <li>สถานะปัจจุบัน</li>
+                <li>สกุลเงินและอัตราแลกเปลี่ยน</li>
+            </ul>
+            
+            <h5>2. ข้อมูลผู้ทำรายการ</h5>
+            <ul>
+                <li>ชื่อผู้สร้างใบสั่งซื้อ</li>
+                <li>แผนกที่สังกัด</li>
+            </ul>
+            
+            <h5>3. ข้อมูลผู้จำหน่าย</h5>
+            <ul>
+                <li>ชื่อบริษัทผู้จำหน่าย</li>
+                <li>ข้อมูลติดต่อ (โทรศัพท์, อีเมล)</li>
+                <li>ที่อยู่</li>
+            </ul>
+            
+            <h5>4. รายการสินค้า</h5>
+            <ul>
+                <li>รายชื่อสินค้าพร้อมรูปภาพ</li>
+                <li>รหัสสินค้า (SKU)</li>
+                <li>จำนวนและหน่วยนับ</li>
+                <li>ราคาต่อหน่วยและยอดรวม</li>
+            </ul>
+            
+            <h5>5. หมายเหตุ และข้อมูลเพิ่มเติม</h5>
+            <ul>
+                <li>หมายเหตุของใบสั่งซื้อ</li>
+                <li>วันที่สร้างและแก้ไขล่าสุด</li>
+                <li>ยอดรวมทั้งหมด</li>
+            </ul>
+            
+            <div class="tip-box">
+                <strong><i class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">print</i>การพิมพ์:</strong>
+                คลิกปุ่ม "พิมพ์" เพื่อพิมพ์ใบสั่งซื้อในรูปแบบที่เหมาะสมกับกระดาษ A4
+            </div>
+        </div>
+
+        <!-- 6. การแก้ไขใบสั่งซื้อ -->
+        <div class="guide-card" id="editing-orders">
+            <h2 class="section-title">6. การแก้ไขใบสั่งซื้อ</h2>
+            
+            <div class="step-card">
+                <p><strong>การเข้าสู่โหมดแก้ไข:</strong></p>
+                <p>คลิกปุ่ม 
+                    <button class="button-demo btn-demo-success">
+                        <i class="material-icons" style="font-size: 1rem;">edit</i>
+                        แก้ไข
+                    </button>
+                    ในแถวของใบสั่งซื้อที่ต้องการ
+                </p>
+            </div>
+            
+            <h4>ข้อมูลที่สามารถแก้ไขได้:</h4>
+            
+            <h5>1. ข้อมูลพื้นฐาน</h5>
+            <ul>
+                <li>เลขที่ใบสั่งซื้อ</li>
+                <li>วันที่สั่งซื้อ</li>
+                <li>หมายเหตุ</li>
+            </ul>
+            
+            <h5>2. ผู้ทำรายการ</h5>
+            <div class="step-card">
+                <p>คลิกปุ่ม <button class="button-demo btn-demo-success" style="font-size: 0.75rem;">แก้ไข</button> ในส่วนข้อมูลผู้ทำรายการ</p>
+                <p>เลือกผู้ใช้งานใหม่จาก dropdown และคลิก "บันทึก"</p>
+            </div>
+            
+            <h5>3. ผู้จำหน่าย</h5>
+            <div class="step-card">
+                <p>คลิกปุ่ม <button class="button-demo btn-demo-success" style="font-size: 0.75rem;">แก้ไข</button> ในส่วนข้อมูลผู้จำหน่าย</p>
+                <p>เลือกผู้จำหน่ายใหม่จาก dropdown และคลิก "บันทึก"</p>
+            </div>
+            
+            <div class="warning-box">
+                <strong><i class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">info</i>หมายเหตุ:</strong>
+                การแก้ไขข้อมูลจะส่งผลต่อยอดรวมและการคำนวณอื่นๆ ในระบบ
+            </div>
+        </div>
+
+        <!-- 7. การจัดการรายการสินค้า -->
+        <div class="guide-card" id="managing-items">
+            <h2 class="section-title">7. การจัดการรายการสินค้า</h2>
+            
+            <h4>การแก้ไขรายการสินค้าแบบ Inline</h4>
+            
+            <div class="step-card">
+                <div class="d-flex align-items-center">
+                    <span class="step-number">1</span>
+                    <div>
+                        <strong>เข้าโหมดแก้ไขรายการ</strong>
+                        <p class="mb-0">คลิกปุ่ม <button class="button-demo btn-demo-success" style="font-size: 0.75rem;"><i class="material-icons" style="font-size: 0.8rem;">edit</i> แก้ไขรายการ</button></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step-card">
+                <div class="d-flex align-items-center">
+                    <span class="step-number">2</span>
+                    <div>
+                        <strong>แก้ไขข้อมูลสินค้า</strong>
+                        <ul>
+                            <li><strong>ชื่อสินค้า:</strong> พิมพ์เพื่อค้นหาสินค้าใหม่ (มี autocomplete)</li>
+                            <li><strong>จำนวน:</strong> เปลี่ยนจำนวนสินค้า</li>
+                            <li><strong>ราคา:</strong> ปรับราคาต่อหน่วย</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step-card">
+                <div class="d-flex align-items-center">
+                    <span class="step-number">3</span>
+                    <div>
+                        <strong>บันทึกหรือลบรายการ</strong>
+                        <p class="mb-0">
+                            <button class="button-demo btn-demo-success" style="font-size: 0.75rem;">บันทึก</button>
+                            <button class="button-demo btn-demo-danger" style="font-size: 0.75rem;">ลบ</button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step-card">
+                <div class="d-flex align-items-center">
+                    <span class="step-number">4</span>
+                    <div>
+                        <strong>เสร็จสิ้นการแก้ไข</strong>
+                        <p class="mb-0">คลิกปุ่ม <button class="button-demo btn-demo-secondary" style="font-size: 0.75rem;"><i class="material-icons" style="font-size: 0.8rem;">close</i> เสร็จสิ้น</button></p>
+                    </div>
+                </div>
+            </div>
+            
+            <h4>การเพิ่มสินค้าใหม่</h4>
+            
+            <div class="step-card">
+                <p>คลิกปุ่ม <button class="button-demo" style="background: #17a2b8; color: white; font-size: 0.75rem;"><i class="material-icons" style="font-size: 0.8rem;">add</i> เพิ่มสินค้า</button></p>
+                <p>กรอกข้อมูลในฟอร์ม popup:</p>
+                <ul>
+                    <li>ชื่อสินค้า (มี autocomplete)</li>
+                    <li>จำนวน</li>
+                    <li>ราคาต่อหน่วย</li>
+                    <li>หน่วยนับ</li>
+                    <li>สกุลเงิน (หากแตกต่างจากใบสั่งซื้อ)</li>
+                </ul>
+            </div>
+            
+            <div class="tip-box">
+                <strong><i class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">calculate</i>การคำนวณอัตโนมัติ:</strong>
+                ยอดรวมจะคำนวณและอัพเดทอัตโนมัติเมื่อมีการเปลี่ยนแปลงจำนวนหรือราคา
+            </div>
+        </div>
+
+        <!-- 8. การจัดการสถานะใบสั่งซื้อ -->
+        <div class="guide-card" id="status-management">
+            <h2 class="section-title">8. การจัดการสถานะใบสั่งซื้อ</h2>
+            
+            <h4>สถานะต่างๆ และความหมาย:</h4>
+            
+            <table class="table table-guide table-striped">
+                <thead>
+                    <tr>
+                        <th>สถานะ</th>
+                        <th>ความหมาย</th>
+                        <th>การดำเนินการที่เป็นไปได้</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="status-badge-demo status-pending">รอดำเนินการ</span></td>
+                        <td>ใบสั่งซื้อที่เพิ่งสร้างใหม่หรือยังไม่ได้รับสินค้า</td>
+                        <td>แก้ไข, ลบ, รับสินค้า</td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge-demo status-partial">รับสินค้าบางส่วน</span></td>
+                        <td>ได้รับสินค้าแล้วบางรายการ แต่ยังไม่ครบ</td>
+                        <td>รับสินค้าเพิ่ม, ปรับสถานะ</td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge-demo status-completed">เสร็จสิ้น</span></td>
+                        <td>ได้รับสินค้าครบถ้วนแล้ว</td>
+                        <td>ดูประวัติ, พิมพ์รายงาน</td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge-demo status-cancel">ยกเลิก</span></td>
+                        <td>ใบสั่งซื้อที่ถูกยกเลิก</td>
+                        <td>ดูประวัติเท่านั้น</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>การเปลี่ยนสถานะ:</h4>
+            <p>สถานะจะเปลี่ยนแปลงอัตโนมัติตามการดำเนินงาน:</p>
+            <ul>
+                <li>เมื่อรับสินค้าครั้งแรก → เปลี่ยนเป็น "รับสินค้าบางส่วน"</li>
+                <li>เมื่อรับสินค้าครบทุกรายการ → เปลี่ยนเป็น "เสร็จสิ้น"</li>
+                <li>เมื่อผู้ใช้ยกเลิกใบสั่งซื้อ → เปลี่ยนเป็น "ยกเลิก"</li>
+            </ul>
+        </div>
+
+        <!-- 9. เคล็ดลับและข้อแนะนำ -->
+        <div class="guide-card" id="tips-tricks">
+            <h2 class="section-title">9. เคล็ดลับและข้อแนะนำ</h2>
+            
+            <h4>การใช้งานที่มีประสิทธิภาพ:</h4>
+            
+            <div class="tip-box">
+                <h5><i class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">search</i>การค้นหาสินค้า</h5>
+                <ul>
+                    <li>พิมพ์เพียงบางส่วนของชื่อสินค้าหรือ SKU</li>
+                    <li>ใช้คีย์บอร์ดลูกศรขึ้น-ลงเพื่อเลือกจากรายการ autocomplete</li>
+                    <li>กด Enter เพื่อเลือกรายการที่ highlight</li>
+                </ul>
+            </div>
+            
+            <div class="tip-box">
+                <h5><i class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">speed</i>การทำงานที่รวดเร็ว</h5>
+                <ul>
+                    <li>ใช้ Tab เพื่อเปลี่ยนระหว่างช่องกรอกข้อมูล</li>
+                    <li>คลิกขวาที่ตารางเพื่อดูเมนูเพิ่มเติม (บางเบราว์เซอร์)</li>
+                    <li>ใช้ Ctrl+F เพื่อค้นหาในหน้าปัจจุบัน</li>
+                </ul>
+            </div>
+            
+            <div class="tip-box">
+                <h5><i class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">save</i>การบันทึกข้อมูล</h5>
+                <ul>
+                    <li>บันทึกข้อมูลบ่อยๆ เพื่อป้องกันการสูญหาย</li>
+                    <li>ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตก่อนบันทึก</li>
+                    <li>หากมีข้อผิดพลาด ให้รอสักครู่แล้วลองใหม่</li>
+                </ul>
+            </div>
+            
+            <h4>ข้อควรระวัง:</h4>
+            <div class="warning-box">
+                <ul class="mb-0">
+                    <li>ตรวจสอบข้อมูลให้ถูกต้องก่อนบันทึก</li>
+                    <li>อย่าปิดหน้าต่างขณะที่กำลังบันทึกข้อมูล</li>
+                    <li>สำรองข้อมูลสำคัญเป็นระยะ</li>
+                    <li>ใช้งานบนเบราว์เซอร์ที่รองรับ (Chrome, Firefox, Edge)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 10. การแก้ไขปัญหาเบื้องต้น -->
+        <div class="guide-card" id="troubleshooting">
+            <h2 class="section-title">10. การแก้ไขปัญหาเบื้องต้น</h2>
+            
+            <h4>ปัญหาที่พบบ่อยและวิธีแก้ไข:</h4>
+            
+            <div class="step-card">
+                <h5><i class="material-icons" style="color: #ef4444; vertical-align: middle; margin-right: 0.5rem;">error</i>หน้าจอโหลดช้าหรือไม่ตอบสนอง</h5>
+                <p><strong>วิธีแก้ไข:</strong></p>
+                <ul>
+                    <li>รีเฟรชหน้าเว็บ (F5 หรือ Ctrl+R)</li>
+                    <li>ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต</li>
+                    <li>ลองใช้เบราว์เซอร์อื่น</li>
+                    <li>ล้างแคชเบราว์เซอร์</li>
+                </ul>
+            </div>
+            
+            <div class="step-card">
+                <h5><i class="material-icons" style="color: #ef4444; vertical-align: middle; margin-right: 0.5rem;">error</i>ไม่สามารถบันทึกข้อมูลได้</h5>
+                <p><strong>วิธีแก้ไข:</strong></p>
+                <ul>
+                    <li>ตรวจสอบว่ากรอกข้อมูลครบถ้วน</li>
+                    <li>ตรวจสอบรูปแบบข้อมูล (วันที่, ตัวเลข)</li>
+                    <li>ลองบันทึกอีกครั้งหลังรอสักครู่</li>
+                    <li>ออกจากระบบแล้วเข้าใหม่</li>
+                </ul>
+            </div>
+            
+            <div class="step-card">
+                <h5><i class="material-icons" style="color: #ef4444; vertical-align: middle; margin-right: 0.5rem;">error</i>ข้อมูลไม่แสดงหรือแสดงผิด</h5>
+                <p><strong>วิธีแก้ไข:</strong></p>
+                <ul>
+                    <li>รีเฟรชหน้าเว็บ</li>
+                    <li>ตรวจสอบสิทธิ์การเข้าถึงข้อมูล</li>
+                    <li>ล้างแคชและคุกกี้ของเบราว์เซอร์</li>
+                </ul>
+            </div>
+            
+            <div class="step-card">
+                <h5><i class="material-icons" style="color: #ef4444; vertical-align: middle; margin-right: 0.5rem;">error</i>Popup ไม่เปิดหรือมีปัญหา</h5>
+                <p><strong>วิธีแก้ไข:</strong></p>
+                <ul>
+                    <li>ตรวจสอบว่าเบราว์เซอร์ไม่ได้บล็อค popup</li>
+                    <li>ปิดโปรแกรมป้องกันไวรัสที่อาจบล็อค JavaScript</li>
+                    <li>ใช้โหมด Incognito/Private browsing</li>
+                </ul>
+            </div>
+            
+            <h4>การติดต่อขอความช่วยเหลือ:</h4>
+            <div class="tip-box">
+                <p><strong>หากยังไม่สามารถแก้ไขปัญหาได้ กรุณาติดต่อ:</strong></p>
+                <ul class="mb-0">
+                    <li>ทีม IT Support ของบริษัท</li>
+                    <li>ผู้ดูแลระบบ IchoicePMS</li>
+                    <li>บันทึกหน้าจอปัญหาเพื่อประกอบการแก้ไข</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="guide-card" style="text-align: center; background: #f8fafc;">
+            <p class="mb-2"><strong>ขอบคุณที่ใช้งานระบบ IchoicePMS</strong></p>
+            <p class="mb-0" style="font-size: 0.9rem; color: #6b7280;">
+                คู่มือนี้จัดทำเพื่อให้ผู้ใช้งานสามารถใช้งานระบบได้อย่างมีประสิทธิภาพ<br>
+                หากมีข้อสงสัยหรือข้อเสนอแนะ กรุณาติดต่อทีมพัฒนาระบบ
+            </p>
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                <small style="color: #9ca3af;">© 2025 IchoicePMS - Purchase Orders Management System</small>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Add scroll-to-top functionality
+        window.addEventListener('scroll', function() {
+            const scrollBtn = document.getElementById('scrollTop');
+            if (window.pageYOffset > 300) {
+                if (!scrollBtn) {
+                    const btn = document.createElement('button');
+                    btn.id = 'scrollTop';
+                    btn.innerHTML = '<i class="material-icons">keyboard_arrow_up</i>';
+                    btn.style.cssText = `
+                        position: fixed;
+                        bottom: 20px;
+                        right: 20px;
+                        width: 50px;
+                        height: 50px;
+                        border-radius: 50%;
+                        background: #3b82f6;
+                        color: white;
+                        border: none;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        cursor: pointer;
+                        z-index: 1000;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    `;
+                    btn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+                    document.body.appendChild(btn);
+                }
+            } else {
+                const scrollBtn = document.getElementById('scrollTop');
+                if (scrollBtn) {
+                    scrollBtn.remove();
+                }
+            }
+        });
+
+        // Print functionality
+        function printGuide() {
+            window.print();
+        }
+
+        // Add print styles
+        const printStyles = document.createElement('style');
+        printStyles.textContent = `
+            @media print {
+                .guide-container { max-width: none; margin: 0; padding: 0; }
+                .guide-card { break-inside: avoid; margin-bottom: 1rem; }
+                .step-card { break-inside: avoid; }
+                .button-demo { border: 1px solid #ccc !important; }
+                #scrollTop { display: none !important; }
+            }
+        `;
+        document.head.appendChild(printStyles);
+
+        console.log('คู่มือการใช้งานระบบใบสั่งซื้อโหลดเสร็จสิ้น');
+    </script>
+</body>
+</html>
