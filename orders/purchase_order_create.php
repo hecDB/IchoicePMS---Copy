@@ -27,11 +27,16 @@ $products = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 // ดึงสกุลเงิน
 $stmt3 = $pdo->query("SELECT currency_id, code, name, symbol, exchange_rate FROM currencies WHERE is_active = 1 ORDER BY is_base DESC, code ASC");
 $currencies = $stmt3->fetchAll(PDO::FETCH_ASSOC);
+
+// ดึงประเภทสินค้า
+$stmt4 = $pdo->query("SELECT category_id, category_name FROM product_category ORDER BY category_name");
+$categories = $stmt4->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <script>
 window.allSuppliers = <?php echo json_encode($all_suppliers, JSON_UNESCAPED_UNICODE); ?>;
 window.products = <?php echo json_encode($products, JSON_UNESCAPED_UNICODE); ?>;
 window.currencies = <?php echo json_encode($currencies, JSON_UNESCAPED_UNICODE); ?>;
+window.productCategories = <?php echo json_encode($categories, JSON_UNESCAPED_UNICODE); ?>;
 </script>
 
 <!DOCTYPE html>
@@ -44,34 +49,41 @@ window.currencies = <?php echo json_encode($currencies, JSON_UNESCAPED_UNICODE);
 <link rel="stylesheet" href="../assets/purchase_order.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
-  .card {background:#fff; border-radius:14px; border:1px solid #eaeaea; margin-bottom:20px; padding:20px;}
-  .form-grid {display:grid; grid-template-columns:1fr 1fr; gap:15px;}
+  .container {max-width:1400px; margin:0 auto; padding:0 15px;}
+  .card {background:#fff; border-radius:14px; border:1px solid #eaeaea; margin-bottom:20px; padding:30px; max-width:100%;}
+  .form-grid {display:grid; grid-template-columns:1fr 1fr; gap:25px;}
   .submit-btn {background:#1976d2;color:#fff;border:none;border-radius:8px;padding:12px 27px;font-size:17px;font-weight:600;cursor:pointer;}
   .submit-btn:hover {background:#1257a5;}
   .add-row-btn {background:#1976d2;color:#fff;border-radius:6px;border:none;padding:9px 18px;font-size:16px;font-weight:600;cursor:pointer;}
   .remove-row-btn {color:#f23d3d;border:none;background:none;cursor:pointer;font-size:19px;}
-  .grid-row {display:grid;grid-template-columns:80px 2fr 90px 100px 130px 35px;gap:11px;}
-  .small-label {font-size:15px;margin-bottom:2px;color:#9ca2b6;}
-  input, select, textarea {font-size:16px;border-radius:6px;border:1px solid #d7d8e0;padding:8px 10px;width:100%;}
-  input:focus, textarea:focus {border:1.2px solid #226ecd;}
-  .product-item-card {background:#f9fafd;border:1px solid #e5e6ee;border-radius:11px;padding:18px;margin-bottom:18px;}
-  .autocomplete-list {border:1px solid #d0d4e1;background:#fff;max-height:200px;overflow-y:auto;position:absolute;z-index:10;width:100%;left:0;top:36px;box-shadow:0 2px 8px #9aa8d455;border-radius:5px;display:none;}
-  .autocomplete-list div {padding:7px 10px;cursor:pointer;border-bottom:1px solid #f0f0f0;}
-  .autocomplete-list div:hover {background:#f8f9ff;}
+  .grid-row {display:grid;grid-template-columns:1fr 2fr 1fr 1fr 1.5fr 0.5fr;gap:15px;}
+  .small-label {font-size:15px;margin-bottom:5px;color:#9ca2b6;font-weight:500;}
+  input, select, textarea {font-size:16px;border-radius:6px;border:1px solid #d7d8e0;padding:10px 12px;width:100%;}
+  input:focus, textarea:focus {border:1.2px solid #226ecd;box-shadow:0 0 0 3px rgba(41, 128, 185, 0.1);}
+  .product-item-card {background:#f9fafd;border:1px solid #e5e6ee;border-radius:11px;padding:20px;margin-bottom:18px;}
+  .autocomplete-list {border:1px solid #d0d4e1;background:#fff;max-height:250px;overflow-y:auto;position:absolute;z-index:10;width:100%;left:0;top:45px;box-shadow:0 4px 12px #9aa8d477;border-radius:6px;display:none;}
+  .autocomplete-list div {padding:10px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;}
+  .autocomplete-list div:hover {background:#f3f8fe;}
   .autocomplete-list div:last-child {border-bottom:none;}
   .product-image-container {transition:all 0.3s ease;}
   .product-image {transition:opacity 0.3s ease;}
   .product-image-container:hover {border-color:#1976d2;}
-  .autocomplete-list div {min-height:56px;align-items:center;}
+  .autocomplete-list div {min-height:60px;align-items:center;}
   .autocomplete-list img {flex-shrink:0;}
   .modal-backdrop {position:fixed;top:0;left:0;width:100%;height:100%;background:#00000077;z-index:99;}
-  .modal-popup {position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:20px;z-index:100;width:400px;max-width:90%;}
-  .modal-header {display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;}
+  .modal-popup {position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:25px;z-index:100;width:450px;max-width:90%;}
+  .modal-header {display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
   .modal-title {font-weight:600;font-size:18px;}
-  .modal-actions {display:flex;justify-content:flex-end;gap:10px;}
-  .icon-btn {cursor:pointer;padding:6px 12px;border:none;border-radius:6px;font-weight:600;background:#1976d2;color:#fff;}
+  .modal-actions {display:flex;justify-content:flex-end;gap:10px;margin-top:24px;}
+  .icon-btn {cursor:pointer;padding:8px 16px;border:none;border-radius:6px;font-weight:600;background:#1976d2;color:#fff;transition:all 0.3s;}
+  .icon-btn:hover {background:#1257a5;transform:translateY(-1px);}
   .create-btn {background:#43a047;}
-  .modal-close {background:none;border:none;font-size:22px;cursor:pointer;}
+  .create-btn:hover {background:#388e3c;}
+  .modal-close {background:none;border:none;font-size:22px;cursor:pointer;color:#999;}
+  label.label {display:block;margin-bottom:8px;font-weight:500;color:#2c3e50;font-size:14px;}
+  .form-control {font-size:16px;border-radius:6px;border:1px solid #d7d8e0;padding:10px 12px;width:100%;background:#fff;}
+  .form-control:focus {border-color:#226ecd;outline:none;box-shadow:0 0 0 3px rgba(41, 128, 185, 0.1);}
+  .product-list-title {font-size:16px;font-weight:600;color:#2c3e50;}
 </style>
 </head>
 <body>
@@ -88,8 +100,13 @@ window.currencies = <?php echo json_encode($currencies, JSON_UNESCAPED_UNICODE);
       <div class="form-grid">
         <div>
           <label class="label">เลขที่ใบสั่งซื้อ (PO Number) *</label>
-          <input type="text" name="po_number" placeholder="เช่น PO202410001" required>
-          <!-- <div class="small-label" style="color:#666; margin-top:2px;">รูปแบบแนะนำ: POYYYYMMnnn (เช่น PO202410001)</div> -->
+          <div style="display:flex;align-items:flex-end;gap:10px;">
+            <input type="text" id="po_number" name="po_number" placeholder="เช่น PO202410001" required style="flex:1;">
+            <button type="button" class="add-row-btn" style="padding:8px 15px;font-size:12px;white-space:nowrap;" onclick="generatePONumber()" title="สร้างเลข PO อัตโนมัติ">
+              <span class="material-icons" style="font-size:14px;vertical-align:middle;">refresh</span> สร้าง
+            </button>
+          </div>
+          <div id="poStatus" style="font-size:12px;margin-top:5px;font-weight:bold;color:#666;"></div>
         </div>
         <div>
           <label class="label">วันที่สั่งซื้อ *</label>
@@ -97,6 +114,21 @@ window.currencies = <?php echo json_encode($currencies, JSON_UNESCAPED_UNICODE);
         </div>
       </div>
       
+    <!-- ผู้ขาย -->
+    <div class="card">
+      <div class="card-title">ข้อมูลผู้ขาย</div>
+      <div style="display:flex;align-items:center;gap:7px;">
+        <select class="form-control" name="supplier_id" id="supplierSelect" required>
+          <option value="">เลือกผู้ขาย</option>
+          <?php foreach($suppliers as $s): ?>
+            <option value="<?=$s['supplier_id']?>"><?=htmlspecialchars($s['name'])?></option>
+          <?php endforeach; ?>
+        </select>
+        <button type="button" class="icon-btn add-btn" id="openSupplierModal">
+          <span class="material-icons">add</span> 
+        </button>
+      </div>
+
       <!-- สกุลเงิน -->
       <div class="form-grid" style="margin-top:15px;">
         <div>
@@ -117,29 +149,8 @@ window.currencies = <?php echo json_encode($currencies, JSON_UNESCAPED_UNICODE);
       </div>
     </div>
 
-    <!-- ผู้ขาย -->
-    <div class="card">
-      <div class="card-title">ข้อมูลผู้ขาย</div>
-      <div style="display:flex;align-items:center;gap:7px;">
-        <select class="form-control" name="supplier_id" id="supplierSelect" required>
-          <option value="">เลือกผู้ขาย</option>
-          <?php foreach($suppliers as $s): ?>
-            <option value="<?=$s['supplier_id']?>"><?=htmlspecialchars($s['name'])?></option>
-          <?php endforeach; ?>
-        </select>
-        <button type="button" class="icon-btn add-btn" id="openSupplierModal">
-          <span class="material-icons">add</span> 
-        </button>
-      </div>
-      <div class="form-section" style="margin-top:10px">
-        <label class="label">เบอร์ติดต่อ</label>
-        <input type="text" id="supplierPhone" readonly>
-        <label class="label">อีเมล</label>
-        <input type="text" id="supplierEmail" readonly>
-        <label class="label">ที่อยู่</label>
-        <textarea id="supplierAddress" readonly></textarea>
-      </div>
-    </div>
+
+
 
     <!-- รายการสินค้า -->
     <div class="card">
@@ -265,6 +276,31 @@ supplierSelect.addEventListener('change', function(){
     }
 });
 
+/* ==================== สร้างเลข PO อัตโนมัติ ==================== */
+async function generatePONumber() {
+    try {
+        const response = await fetch('../api/generate_po_number_api.php', {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            document.getElementById('po_number').value = result.po_number;
+            const statusDiv = document.getElementById('poStatus');
+            statusDiv.textContent = '✓ สร้าง PO Number สำเร็จ';
+            statusDiv.style.color = '#27ae60';
+            setTimeout(() => {
+                statusDiv.textContent = '';
+            }, 2000);
+        } else {
+            alert('เกิดข้อผิดพลาด: ' + (result.message || 'ไม่สามารถสร้างเลข PO ได้'));
+        }
+    } catch (error) {
+        alert('เกิดข้อผิดพลาด: ' + error.message);
+    }
+}
+
 /* ==================== จัดการสกุลเงิน ==================== */
 const currencySelect = document.getElementById('currencySelect');
 const exchangeRateInput = document.getElementById('exchangeRate');
@@ -306,6 +342,12 @@ function addProductRow(detail={}) {
     const selectedOption = currencySelect.options[currencySelect.selectedIndex];
     const currentSymbol = selectedOption.dataset.symbol || '฿';
     
+    // สร้าง option สำหรับประเภทสินค้า
+    let categoryOptions = '<option value="">-- เลือก --</option>';
+    window.productCategories.forEach(cat => {
+        categoryOptions += `<option value="${cat.category_name}">${cat.category_name}</option>`;
+    });
+    
     const row = document.createElement('div');
     row.className = "product-item-card";
     row.style.position = "relative";
@@ -327,6 +369,12 @@ function addProductRow(detail={}) {
                     <input type="text" class="product-name-input" placeholder="ค้นหาสินค้าด้วยชื่อ, SKU หรือหน่วย" autocomplete="off" required value="${detail.name||''}" style="width:100%;">
                     <div class="autocomplete-list"></div>
                 </div>
+            </div>
+            <div>
+                <div class="small-label">ประเภท</div>
+                <select class="category-input" style="width:100%;padding:8px 10px;border:1px solid #d7d8e0;border-radius:6px;">
+                    ${categoryOptions}
+                </select>
             </div>
             <div>
                 <div class="small-label">จำนวน *</div>

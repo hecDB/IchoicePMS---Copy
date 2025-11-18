@@ -19,13 +19,40 @@ try {
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
     if(!$order) throw new Exception("ไม่พบใบสั่งซื้อ");
 
-    // 2. ดึงรายการสินค้าพร้อมข้อมูลสกุลเงิน
-    $stmt = $pdo->prepare("SELECT poi.*, p.name AS product_name, p.sku, p.barcode, p.image, p.unit,
-                           c.code as item_currency_code, c.symbol as item_currency_symbol
+    // 2. ดึงรายการสินค้าพร้อมข้อมูลสกุลเงิน (รองรับทั้ง products และ temp_products)
+    $stmt = $pdo->prepare("SELECT 
+                           poi.item_id,
+                           poi.po_id,
+                           poi.product_id,
+                           poi.temp_product_id,
+                           COALESCE(poi.qty, poi.quantity, 0) as qty,
+                           COALESCE(poi.price_per_unit, poi.unit_price, 0) as price_per_unit,
+                           COALESCE(poi.total, poi.qty * poi.price_per_unit, poi.quantity * poi.unit_price, 0) as total,
+                           COALESCE(p.name, tp.product_name, 'ไม่ระบุ') AS product_name, 
+                           COALESCE(p.sku, '-') AS sku, 
+                           COALESCE(p.barcode, '') AS barcode, 
+                           COALESCE(p.image, tp.product_image) AS image, 
+                           COALESCE(p.unit, tp.unit, 'ชิ้น') AS unit,
+                           COALESCE(tp.product_category, p.category_name, '') AS product_category,
+                           CASE 
+                               WHEN poi.price_original > 0 THEN poi.price_original
+                               ELSE COALESCE(poi.price_per_unit, poi.unit_price, 0)
+                           END as price_original,
+                           CASE 
+                               WHEN poi.price_base > 0 THEN poi.price_base
+                               ELSE (COALESCE(poi.price_per_unit, poi.unit_price, 0) * COALESCE(po.exchange_rate, 1))
+                           END as price_base,
+                           c.code as item_currency_code, 
+                           c.symbol as item_currency_symbol,
+                           po.exchange_rate,
+                           po.currency_id
                            FROM purchase_order_items poi
                            LEFT JOIN products p ON poi.product_id = p.product_id
-                           LEFT JOIN currencies c ON poi.currency_id = c.currency_id
-                           WHERE poi.po_id = ?");
+                           LEFT JOIN temp_products tp ON poi.temp_product_id = tp.temp_product_id
+                           LEFT JOIN purchase_orders po ON poi.po_id = po.po_id
+                           LEFT JOIN currencies c ON po.currency_id = c.currency_id
+                           WHERE poi.po_id = ?
+                           ORDER BY poi.item_id ASC");
     $stmt->execute([$po_id]);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

@@ -127,6 +127,7 @@ if(isset($_POST['submit']) && !empty($_POST['items'])) {
             $barcode = $item['barcode'] ?? ''; 
             $name = $item['name'] ?? '';
             $unit = $item['unit'] ?? 'ชิ้น'; 
+            $category = $item['category'] ?? ''; 
             $row_code = $item['row_code'] ?? ''; 
             $bin = $item['bin'] ?? ''; 
             $shelf = $item['shelf'] ?? '';
@@ -135,7 +136,7 @@ if(isset($_POST['submit']) && !empty($_POST['items'])) {
             $currency = $item['currency'] ?? 'THB'; 
             $sale_price = floatval($item['sale_price'] ?? 0);
             
-            error_log("Parsed values: name=$name, qty=$qty, price=$price, location=$row_code-$bin-$shelf");
+            error_log("Parsed values: name=$name, category=$category, qty=$qty, price=$price, location=$row_code-$bin-$shelf");
             
             // ตรวจสอบข้อมูลที่จำเป็น
             if(empty($name)) {
@@ -165,6 +166,15 @@ if(isset($_POST['submit']) && !empty($_POST['items'])) {
                 }
             }
 
+            // ดึง category_id จากชื่อประเภท
+            $category_id = null;
+            if (!empty($category)) {
+                $stmt_cat = $pdo->prepare("SELECT category_id FROM product_category WHERE category_name = ?");
+                $stmt_cat->execute([$category]);
+                $category_id = $stmt_cat->fetchColumn();
+                error_log("Category lookup: $category => ID: " . ($category_id ?? 'NOT FOUND'));
+            }
+
             // ตรวจสอบ/เพิ่มสินค้า
             $product_id = null;
             if(!empty($sku) || !empty($barcode)) {
@@ -176,9 +186,9 @@ if(isset($_POST['submit']) && !empty($_POST['items'])) {
             
             if(!$product_id){
                 $image_path = !empty($imageFile) ? $imageFile : '';
-                error_log("Creating new product: name=$name, sku=$sku, barcode=$barcode, unit=$unit, image=$image_path");
-                $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, created_by, created_at) VALUES (?,?,?,?,?,?,NOW())");
-                $result = $stmt->execute([$name, $sku, $barcode, $unit, $image_path, $user_id]);
+                error_log("Creating new product: name=$name, sku=$sku, barcode=$barcode, unit=$unit, category_id=$category_id, image=$image_path");
+                $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, product_category_id, category_name, image, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,NOW())");
+                $result = $stmt->execute([$name, $sku, $barcode, $unit, $category_id, $category, $image_path, $user_id]);
                 if (!$result) {
                     $errorInfo = $stmt->errorInfo();
                     error_log("Product insert failed: " . print_r($errorInfo, true));
@@ -850,6 +860,7 @@ MESSAGE DEBUG:
               <th style="width: 9%;">รหัสสินค้า<br><small style="font-size: 0.75rem; opacity: 0.7;">SKU</small></th>
               <th style="width: 13%;">บาร์โค้ด<br><small style="font-size: 0.75rem; opacity: 0.7;">Barcode</small></th>
               <th style="width: 18%;">ชื่อสินค้า<br><small style="font-size: 0.75rem; opacity: 0.7;">Product Name</small></th>
+              <th style="width: 12%;">ประเภทสินค้า<br><small style="font-size: 0.75rem; opacity: 0.7;">Category</small></th>
               <th style="width: 8%;">รูปภาพ<br><small style="font-size: 0.75rem; opacity: 0.7;">Image</small></th>
               <th style="width: 6%;">หน่วย<br><small style="font-size: 0.75rem; opacity: 0.7;">Unit</small></th>
               <th style="width: 16%;">ที่เก็บสินค้า<br><small style="font-size: 0.75rem; opacity: 0.7;">Row-Bin-Shelf</small></th>
@@ -878,11 +889,17 @@ MESSAGE DEBUG:
                 <input class="form-control" type="text" name="items[0][name]" placeholder="ชื่อสินค้า" required>
               </td>
               <td>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: center;">
-                  <input class="form-control file-input" type="file" name="items[0][image]" accept="image/*" capture="environment">
-                  <img class="image-preview" id="preview-0" alt="ตัวอย่างรูป">
-                </div>
+                <select class="form-control" name="items[0][category]">
+                  <option value="">-- เลือกประเภท --</option>
+                  <option value="อาหารเสริม">อาหารเสริม</option>
+                  <option value="เครื่องใช้ไฟฟ้า">เครื่องใช้ไฟฟ้า</option>
+                  <option value="เครื่องสำอาง/ความงาม">เครื่องสำอาง/ความงาม</option>
+                  <option value="สำหรับแม่และเด็ก">สำหรับแม่และเด็ก</option>
+                  <option value="สัตว์เลี้ยง">สัตว์เลี้ยง</option>
+                  <option value="เครื่องใช้ในบ้าน/ออฟฟิศ">เครื่องใช้ในบ้าน/ออฟฟิศ</option>
+                </select>
               </td>
+              <td>
               <td>
                 <input class="form-control" type="text" name="items[0][unit]" placeholder="ชิ้น, กิโลกรัม">
               </td>

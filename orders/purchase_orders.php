@@ -242,10 +242,16 @@ $rows = $stmt->fetchAll();
         <div class="main">
             <div class="action-bar" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
                 <h2 style="margin: 0; color: #333;">รายการใบสั่งซื้อทั้งหมด</h2>
-                <a href="../orders/purchase_order_create.php" class="btn btn-primary" style="text-decoration: none;">
-                    <span class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:5px;">add</span>
-                    สร้างใบสั่งซื้อใหม่
-                </a>
+                <!-- <div style="display: flex; gap: 10px;">
+                    <a href="../orders/purchase_order_create.php" class="btn btn-primary" style="text-decoration: none;">
+                        <span class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:5px;">add</span>
+                        สร้าง PO - สินค้าเดิม
+                    </a>
+                    <a href="../orders/purchase_order_create_new_product.php" class="btn btn-primary" style="text-decoration: none; background-color: #27ae60;">
+                        <span class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:5px;">add_circle</span>
+                        สร้าง PO - สินค้าใหม่
+                    </a>
+                </div> -->
             </div>
 
             <div class="card table-card mt-3">
@@ -507,16 +513,35 @@ $rows = $stmt->fetchAll();
 
         let itemsHtml = data.items && data.items.length > 0 ? data.items.map((item, index) => {
             const qty = parseFloat(item.qty || 0);
-            const priceOriginal = parseFloat(item.price_original || item.price_per_unit || 0);
-            const priceBase = parseFloat(item.price_base || item.price_per_unit || 0);
+            // ใช้ price_original ถ้ามีค่า (รวมทั้ง 0) ถ้าไม่มี ใช้ price_per_unit
+            const priceOriginal = (item.price_original !== null && item.price_original !== undefined) ? parseFloat(item.price_original) : parseFloat(item.price_per_unit || 0);
+            const priceBase = (item.price_base !== null && item.price_base !== undefined) ? parseFloat(item.price_base) : parseFloat(item.price_per_unit || 0);
             const total = parseFloat(item.total || (qty * priceBase));
             const itemCurrencySymbol = item.item_currency_symbol || currencySymbol;
+            
+            // Debug: แสดงค่าที่ดึงมา
+            console.log(`Item ${index + 1}: qty=${qty}, price_original=${item.price_original}, priceOriginal=${priceOriginal}, price_base=${item.price_base}, priceBase=${priceBase}, total=${total}`);
+            
+            // Handle image display - check if it's Base64 (temp_products) or file path (regular products)
+            let imageHtml = '';
+            if (item.image) {
+                // Check if it's Base64 data (starts with base64 or is very long)
+                if (item.image.startsWith('data:') || item.image.length > 100) {
+                    // Base64 image from temp_products
+                    imageHtml = `<img src="data:image/jpeg;base64,${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;">`;
+                } else {
+                    // File path from regular products
+                    imageHtml = `<img src="../${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">`;
+                }
+            } else {
+                imageHtml = `<div style="width:50px;height:50px;background:#f8f9fa;border:1px solid #ddd;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:10px;">ไม่มี<br>รูป</div>`;
+            }
             
             return `
             <tr>
                 <td style="text-align:center;">${index + 1}</td>
                 <td style="text-align:center;">
-                    ${item.image ? `<img src="../${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">` : `<div style="width:50px;height:50px;background:#f8f9fa;border:1px solid #ddd;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:10px;">ไม่มี<br>รูป</div>`}
+                    ${imageHtml}
                 </td>
                 <td>
                     ${item.product_name || 'ไม่ระบุชื่อสินค้า'}
@@ -541,13 +566,13 @@ $rows = $stmt->fetchAll();
 
         const subtotalOriginal = data.items ? data.items.reduce((sum, item) => {
             const qty = parseFloat(item.qty || 0);
-            const priceOriginal = parseFloat(item.price_original || item.price_per_unit || 0);
+            const priceOriginal = (item.price_original !== null && item.price_original !== undefined) ? parseFloat(item.price_original) : parseFloat(item.price_per_unit || 0);
             return sum + (qty * priceOriginal);
         }, 0) : 0;
         
         const subtotalBase = data.items ? data.items.reduce((sum, item) => {
             const qty = parseFloat(item.qty || 0);
-            const priceBase = parseFloat(item.price_base || item.price_per_unit || 0);
+            const priceBase = (item.price_base !== null && item.price_base !== undefined) ? parseFloat(item.price_base) : parseFloat(item.price_per_unit || 0);
             const total = parseFloat(item.total || (qty * priceBase));
             return sum + total;
         }, 0) : 0;
@@ -665,8 +690,8 @@ $rows = $stmt->fetchAll();
                 .section-content { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 10px; }
                 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
                 .section-actions { display: flex; gap: 8px; }
-                .btn-edit-section { background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-                .btn-add-item { background: #17a2b8; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+                .btn-edit-section { background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+                .btn-add-item { background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
                 .btn-edit-section:hover, .btn-add-item:hover { opacity: 0.8; }
                 .edit-form { background: #fff; border: 1px solid #dee2e6; border-radius: 6px; padding: 15px; margin: 10px 0; }
                 .form-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
@@ -1304,18 +1329,26 @@ $rows = $stmt->fetchAll();
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                // Refresh the current view
+                // Refresh the entire view with all data
                 fetch('../api/purchase_order_api.php?id=' + poId)
-                    .then(res => res.json())
+                    .then(res => {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    })
                     .then(updatedData => {
+                        if (updatedData.error) throw new Error(updatedData.error);
                         currentPoData = updatedData;
-                        renderUserSection();
+                        renderPoView(updatedData);
                         Swal.fire({
                             title: 'บันทึกแล้ว!', 
                             text: 'ข้อมูลผู้สั่งซื้อถูกอัปเดตแล้ว', 
                             icon: 'success',
                             customClass: { container: 'swal2-top-z-index' }
                         });
+                    })
+                    .catch(err => {
+                        console.error('Error refreshing data:', err);
+                        Swal.fire('เตือน', 'ข้อมูลอาจไม่ปรากฏให้เห็นทั้งหมด กรุณาปิด popup และเปิดใหม่', 'warning');
                     });
             } else {
                 Swal.fire('เกิดข้อผิดพลาด!', data.message || 'ไม่สามารถบันทึกได้', 'error');
@@ -1399,18 +1432,26 @@ $rows = $stmt->fetchAll();
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                // Refresh the current view
+                // Refresh the entire view with all data
                 fetch('../api/purchase_order_api.php?id=' + poId)
-                    .then(res => res.json())
-                    .then(updatedData => {
-                        currentPoData = updatedData;
-                        renderSupplierSection();
+                    .then(res => {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    })
+                    .then(refreshedData => {
+                        if (refreshedData.error) throw new Error(refreshedData.error);
+                        currentPoData = refreshedData;
+                        renderPoView(refreshedData);
                         Swal.fire({
                             title: 'บันทึกแล้ว!', 
                             text: 'ข้อมูลผู้จำหน่ายถูกอัปเดตแล้ว', 
                             icon: 'success',
                             customClass: { container: 'swal2-top-z-index' }
                         });
+                    })
+                    .catch(err => {
+                        console.error('Error refreshing data:', err);
+                        Swal.fire('เตือน', 'ข้อมูลอาจไม่ปรากฏให้เห็นทั้งหมด กรุณาปิด popup และเปิดใหม่', 'warning');
                     });
             } else {
                 Swal.fire('เกิดข้อผิดพลาด!', data.message || 'ไม่สามารถบันทึกได้', 'error');
@@ -1617,47 +1658,31 @@ $rows = $stmt->fetchAll();
             console.log('Save response data:', data); // Debug log
             
             if (data.success) {
-                // Update the current data
-                const newQty = parseFloat(updateData.qty || 0);
-                const newPrice = parseFloat(updateData.price_per_unit || 0);
-                const newTotal = newQty * newPrice;
-                
-                currentPoData.items[index] = { 
-                    ...currentPoData.items[index], 
-                    product_id: updateData.product_id || currentPoData.items[index].product_id,
-                    product_name: updateData.product_name || currentPoData.items[index].product_name,
-                    qty: newQty,
-                    price_per_unit: newPrice,
-                    price_base: newPrice,
-                    price_original: newPrice,
-                    total: newTotal
-                };
-                
-                // Show success message
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: 'บันทึกแล้ว',
-                    showConfirmButton: false,
-                    timer: 1500
-                });
-                
-                // Re-render the entire table to show updated values
-                renderItemsTable();
-                
-                // Exit edit mode and refresh data
-                setTimeout(() => {
-                    exitItemEditMode();
-                    // Refresh the PO data from server
-                    fetch('../api/purchase_order_api.php?id=' + poId)
-                        .then(res => res.json())
-                        .then(refreshedData => {
-                            currentPoData = refreshedData;
-                            renderPoView(refreshedData);
-                        })
-                        .catch(err => console.error('Error refreshing data:', err));
-                }, 1000);
+                // Refresh the PO data from server immediately
+                fetch('../api/purchase_order_api.php?id=' + poId)
+                    .then(res => {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    })
+                    .then(refreshedData => {
+                        if (refreshedData.error) throw new Error(refreshedData.error);
+                        currentPoData = refreshedData;
+                        renderPoView(refreshedData);
+                        
+                        // Show success message after re-render
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'บันทึกแล้ว',
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    })
+                    .catch(err => {
+                        console.error('Error refreshing data:', err);
+                        Swal.fire('เตือน', 'ข้อมูลอาจไม่ปรากฏให้เห็นทั้งหมด กรุณาปิด popup และเปิดใหม่', 'warning');
+                    });
             } else {
                 Swal.fire({
                     title: 'เกิดข้อผิดพลาด!', 
@@ -1873,26 +1898,31 @@ $rows = $stmt->fetchAll();
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        // Show success message
-                        Swal.fire({
-                            title: 'เพิ่มแล้ว!', 
-                            text: 'รายการสินค้าใหม่ถูกเพิ่มเรียบร้อย', 
-                            icon: 'success',
-                            timer: 2000,
-                            showConfirmButton: false,
-                            customClass: { container: 'swal2-top-z-index' }
-                        });
-                        
-                        // Refresh the PO data from server
-                        setTimeout(() => {
-                            fetch('../api/purchase_order_api.php?id=' + poId)
-                                .then(res => res.json())
-                                .then(refreshedData => {
-                                    currentPoData = refreshedData;
-                                    renderPoView(refreshedData);
-                                })
-                                .catch(err => console.error('Error refreshing data:', err));
-                        }, 500);
+                        // Refresh the PO data from server immediately, then show success
+                        fetch('../api/purchase_order_api.php?id=' + poId)
+                            .then(res => {
+                                if (!res.ok) throw new Error('HTTP ' + res.status);
+                                return res.json();
+                            })
+                            .then(refreshedData => {
+                                if (refreshedData.error) throw new Error(refreshedData.error);
+                                currentPoData = refreshedData;
+                                renderPoView(refreshedData);
+                                
+                                // Show success message after data is rendered
+                                Swal.fire({
+                                    title: 'เพิ่มแล้ว!', 
+                                    text: 'รายการสินค้าใหม่ถูกเพิ่มเรียบร้อย', 
+                                    icon: 'success',
+                                    timer: 2000,
+                                    showConfirmButton: false,
+                                    customClass: { container: 'swal2-top-z-index' }
+                                });
+                            })
+                            .catch(err => {
+                                console.error('Error refreshing data:', err);
+                                Swal.fire('เตือน', 'ข้อมูลอาจไม่ปรากฏให้เห็นทั้งหมด กรุณาปิด popup และเปิดใหม่', 'warning');
+                            });
                     } else {
                         Swal.fire('เกิดข้อผิดพลาด!', data.message || 'ไม่สามารถเพิ่มได้', 'error');
                     }
@@ -1919,11 +1949,26 @@ $rows = $stmt->fetchAll();
             
             console.log(`Item ${index + 1}:`, { qty, price, total }); // Debug log
             
+            // Handle image display - check if it's Base64 (temp_products) or file path (regular products)
+            let imageHtml = '';
+            if (item.image) {
+                // Check if it's Base64 data (starts with base64 or is very long)
+                if (item.image.startsWith('data:') || item.image.length > 100) {
+                    // Base64 image from temp_products
+                    imageHtml = `<img src="data:image/jpeg;base64,${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;">`;
+                } else {
+                    // File path from regular products
+                    imageHtml = `<img src="../${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">`;
+                }
+            } else {
+                imageHtml = `<div style="width:50px;height:50px;background:#f8f9fa;border:1px solid #ddd;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:10px;">ไม่มี<br>รูป</div>`;
+            }
+            
             return `
             <tr>
                 <td style="text-align:center;">${index + 1}</td>
                 <td style="text-align:center;">
-                    ${item.image ? `<img src="../${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">` : `<div style="width:50px;height:50px;background:#f8f9fa;border:1px solid #ddd;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:10px;">ไม่มี<br>รูป</div>`}
+                    ${imageHtml}
                 </td>
                 <td>
                     ${item.product_name || 'ไม่ระบุชื่อสินค้า'}

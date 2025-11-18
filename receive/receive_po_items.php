@@ -8,7 +8,7 @@ if (!$user_id) {
     exit;
 }
 
-// Get Purchase Orders that are ready for receiving
+// Get Purchase Orders that are ready for receiving (including both regular and new product POs)
 $sql_pos = "
     SELECT 
         po.po_id,
@@ -23,7 +23,12 @@ $sql_pos = "
         COUNT(poi.item_id) as total_items,
         COALESCE(SUM(
             CASE WHEN COALESCE(received_summary.total_received, 0) >= poi.qty THEN 1 ELSE 0 END
-        ), 0) as received_items
+        ), 0) as fully_received_items,
+        COALESCE(SUM(
+            CASE WHEN COALESCE(received_summary.total_received, 0) > 0 AND COALESCE(received_summary.total_received, 0) < poi.qty THEN 1 ELSE 0 END
+        ), 0) as partially_received_items,
+        COALESCE(SUM(poi.qty), 0) as total_ordered_qty,
+        COALESCE(SUM(COALESCE(received_summary.total_received, 0)), 0) as total_received_qty
     FROM purchase_orders po
     LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
     LEFT JOIN currencies c ON po.currency_id = c.currency_id
@@ -35,14 +40,20 @@ $sql_pos = "
     ) received_summary ON poi.item_id = received_summary.item_id
     WHERE po.status IN ('pending', 'partial')
     GROUP BY po.po_id, po.po_number, s.name, po.order_date, po.total_amount, c.code, po.remark, po.status
-    HAVING COALESCE(SUM(
-        CASE WHEN COALESCE(received_summary.total_received, 0) >= poi.qty THEN 1 ELSE 0 END
-    ), 0) < COUNT(poi.item_id)
     ORDER BY po.order_date DESC, po.po_number DESC
 ";
 
 $stmt = $pdo->query($sql_pos);
-$purchase_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$all_purchase_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Separate regular and new product POs
+$purchase_orders = array_filter($all_purchase_orders, function($po) {
+    return !$po['remark'] || stripos($po['remark'], 'New Product Purchase') === false;
+});
+
+$new_product_orders = array_filter($all_purchase_orders, function($po) {
+    return $po['remark'] && stripos($po['remark'], 'New Product Purchase') !== false;
+});
 
 // Calculate statistics for all POs (including completed ones)
 $sql_stats = "
@@ -51,7 +62,12 @@ $sql_stats = "
         COUNT(poi.item_id) as total_items,
         COALESCE(SUM(
             CASE WHEN COALESCE(received_summary.total_received, 0) >= poi.qty THEN 1 ELSE 0 END
-        ), 0) as received_items
+        ), 0) as fully_received_items,
+        COALESCE(SUM(
+            CASE WHEN COALESCE(received_summary.total_received, 0) > 0 AND COALESCE(received_summary.total_received, 0) < poi.qty THEN 1 ELSE 0 END
+        ), 0) as partially_received_items,
+        COALESCE(SUM(poi.qty), 0) as total_ordered_qty,
+        COALESCE(SUM(COALESCE(received_summary.total_received, 0)), 0) as total_received_qty
     FROM purchase_orders po
     LEFT JOIN purchase_order_items poi ON po.po_id = poi.po_id
     LEFT JOIN (
@@ -67,17 +83,21 @@ $stmt_stats = $pdo->query($sql_stats);
 $all_pos = $stmt_stats->fetchAll(PDO::FETCH_ASSOC);
 
 // Calculate statistics
-$total_pos = count($purchase_orders); // Only incomplete POs shown
+$total_pos = count($purchase_orders); // Only incomplete regular POs shown
+$total_new_product_pos = count($new_product_orders); // Incomplete new product POs
 $total_all_pos = count($all_pos); // All POs for statistics
 
+// สถานะใหม่: ตรวจสอบจากจำนวนที่รับจริง เทียบกับจำนวนที่สั่ง
 $ready_to_receive = count(array_filter($all_pos, function($po) {
-    return $po['received_items'] == 0;
+    return $po['total_received_qty'] == 0; // ยังไม่ได้รับเลย
 }));
+
 $partially_received = count(array_filter($all_pos, function($po) {
-    return $po['received_items'] > 0 && $po['received_items'] < $po['total_items'];
+    return $po['total_received_qty'] > 0 && $po['total_received_qty'] < $po['total_ordered_qty']; // รับบางส่วน (น้อยกว่าที่สั่ง)
 }));
+
 $fully_received = count(array_filter($all_pos, function($po) {
-    return $po['received_items'] > 0 && $po['received_items'] >= $po['total_items'];
+    return $po['total_received_qty'] > 0 && $po['total_received_qty'] >= $po['total_ordered_qty']; // รับครบหรือเกิน
 }));
 
 ?>
@@ -303,7 +323,7 @@ $fully_received = count(array_filter($all_pos, function($po) {
                     <span class="material-icons align-middle me-2" style="font-size: 2rem; color: #3b82f6;">input</span>
                     รับเข้าสินค้า
                 </h1>
-                <p class="text-muted mb-0">รับสินค้าเข้าคลังจากใบสั่งซื้อ (ซ่อนรายการที่รับครบ 100% แล้ว)</p>
+                <p class="text-muted mb-0">จัดการรับเข้าสินค้าจากสินค้าปกติและสินค้าใหม่</p>
             </div>
             <div class="d-flex gap-2">
                 <a href="quick_receive.php" class="btn btn-outline-primary">
@@ -397,8 +417,8 @@ $fully_received = count(array_filter($all_pos, function($po) {
             <div class="table-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="table-title mb-0">
-                        <span class="material-icons">table_view</span>
-                        รายการใบสั่งซื้อที่ต้องรับสินค้า (<?= $total_pos ?> ใบ)
+                        <span class="material-icons">inventory_2</span>
+                        ใบสั่งซื้อปกติ (<?= count($purchase_orders) ?> ใบ)
                     </h5>
                     <div class="table-actions">
                         <button class="btn-modern btn-modern-secondary btn-sm refresh-table me-2" onclick="location.reload()">
@@ -413,18 +433,14 @@ $fully_received = count(array_filter($all_pos, function($po) {
                 <div class="text-center py-5">
                     <span class="material-icons mb-3" style="font-size: 4rem; color: #34d399;">done_all</span>
                     <h5 class="text-success">รับสินค้าครบถ้วนแล้ว</h5>
-                    <p class="text-muted mb-0">
-                        ไม่มีใบสั่งซื้อที่ต้องรับสินค้า (รายการที่รับครบ 100% จะไม่แสดงที่นี่)
-                        <?php if ($total_all_pos > 0): ?>
-                        <br><small>รวมทั้งหมด: <?= $total_all_pos ?> ใบ | รับครบแล้ว: <?= $fully_received ?> ใบ | รับบางส่วน: <?= $partially_received ?> ใบ | ยังไม่รับ: <?= $ready_to_receive ?> ใบ</small>
-                        <?php endif; ?>
-                    </p>
+                    <p class="text-muted mb-0">ไม่มีใบสั่งซื้อปกติที่ต้องรับสินค้า</p>
                 </div>
                 <?php else: ?>
                 <div class="row">
                     <?php foreach ($purchase_orders as $po): ?>
                     <?php
-                    $completion_rate = $po['total_items'] > 0 ? ($po['received_items'] / $po['total_items']) * 100 : 0;
+                    // คำนวณเปอร์เซ็นต์จากจำนวนที่รับจริง เทียบกับจำนวนที่สั่ง
+                    $completion_rate = $po['total_ordered_qty'] > 0 ? ($po['total_received_qty'] / $po['total_ordered_qty']) * 100 : 0;
                     $status_class = '';
                     $status_text = '';
                     $progress_class = '';
@@ -466,20 +482,25 @@ $fully_received = count(array_filter($all_pos, function($po) {
                             </div>
                             
                             <div class="card-body">
-                                <div class="row g-3 mb-3">
+                                <div class="row g-2 mb-3">
                                     <div class="col-6">
-                                        <div class="small text-muted">จำนวนรายการ</div>
-                                        <div class="fw-bold"><?= $po['total_items'] ?> รายการ</div>
+                                        <div class="small text-muted">&nbsp;&nbsp;&nbsp;จำนวนสั่ง</div>
+                                        <div class="fw-bold">&nbsp;&nbsp;&nbsp;<?= number_format($po['total_ordered_qty'], 0) ?> ชิ้น</div>
                                     </div>
-                                    <div class="col-6">
-                                        <div class="small text-muted">รับแล้ว</div>
-                                        <div class="fw-bold text-success"><?= $po['received_items'] ?> รายการ</div>
+                                    <div class="col-6 text-end">
+                                        <div class="small text-muted">รับแล้ว&nbsp;&nbsp;&nbsp;</div>
+                                        <div class="fw-bold text-success">&nbsp;&nbsp;&nbsp;<?= number_format($po['total_received_qty'], 0) ?> ชิ้น&nbsp;&nbsp;&nbsp;</div>
                                     </div>
                                 </div>
                                 
                                 <div class="mb-3">
-                                    <div class="small text-muted">มูลค่ารวม</div>
-                                    <div class="fw-bold text-primary"><?= number_format($po['total_amount'], 2) ?> <?= htmlspecialchars($po['currency_code']) ?></div>
+                                    <div class="small text-muted">&nbsp;&nbsp;&nbsp;รายการสินค้า</div>
+                                    <div class="fw-semibold">&nbsp;&nbsp;&nbsp;<?= $po['total_items'] ?> รายการ (รับครบ: <?= $po['fully_received_items'] ?>, รับบางส่วน: <?= $po['partially_received_items'] ?>)</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="small text-muted">&nbsp;&nbsp;&nbsp; มูลค่ารวม</div>
+                                    <div class="fw-bold text-primary" style="word-break: break-word;">&nbsp;&nbsp;&nbsp;<?= number_format($po['total_amount'], 2) ?> <?= htmlspecialchars($po['currency_code']) ?></div>
                                 </div>
                                 
                                 <?php if ($po['expected_delivery_date']): ?>
@@ -494,7 +515,8 @@ $fully_received = count(array_filter($all_pos, function($po) {
                                             class="receive-btn flex-fill receive-po-btn"
                                             data-po-id="<?= $po['po_id'] ?>"
                                             data-po-number="<?= htmlspecialchars($po['po_number']) ?>"
-                                            data-supplier="<?= htmlspecialchars($po['supplier_name']) ?>">
+                                            data-supplier="<?= htmlspecialchars($po['supplier_name']) ?>"
+                                            data-remark="">
                                         <span class="material-icons" style="font-size: 1.1rem;">input</span>
                                         รับสินค้า
                                     </button>
@@ -502,7 +524,8 @@ $fully_received = count(array_filter($all_pos, function($po) {
                                             class="btn btn-outline-secondary btn-sm view-po-btn"
                                             data-po-id="<?= $po['po_id'] ?>"
                                             data-po-number="<?= htmlspecialchars($po['po_number']) ?>"
-                                            data-supplier="<?= htmlspecialchars($po['supplier_name']) ?>">
+                                            data-supplier="<?= htmlspecialchars($po['supplier_name']) ?>"
+                                            data-remark="">
                                         <span class="material-icons" style="font-size: 1rem;">visibility</span>
                                     </button>
                                 </div>
@@ -514,6 +537,128 @@ $fully_received = count(array_filter($all_pos, function($po) {
                 <?php endif; ?>
             </div>
         </div>
+
+        <!-- New Product Purchase Orders List -->
+        <?php if (!empty($new_product_orders)): ?>
+        <div class="table-card mt-5">
+            <div class="table-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="table-title mb-0">
+                        <span class="material-icons">new_releases</span>
+                        ใบสั่งซื้อสินค้าใหม่ (<?= count($new_product_orders) ?> ใบ)
+                    </h5>
+                    <div class="table-actions">
+                        <button class="btn-modern btn-modern-secondary btn-sm refresh-table me-2" onclick="location.reload()">
+                            <span class="material-icons">refresh</span>
+                            รีเฟรช
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="table-body">
+                <div class="row">
+                    <?php foreach ($new_product_orders as $po): ?>
+                    <?php
+                    // คำนวณเปอร์เซ็นต์จากจำนวนที่รับจริง เทียบกับจำนวนที่สั่ง
+                    $completion_rate = $po['total_ordered_qty'] > 0 ? ($po['total_received_qty'] / $po['total_ordered_qty']) * 100 : 0;
+                    $status_class = '';
+                    $status_text = '';
+                    $progress_class = '';
+                    
+                    if ($completion_rate == 0) {
+                        $status_class = 'status-approved';
+                        $status_text = 'พร้อมรับสินค้า';
+                        $progress_class = 'progress-0';
+                    } elseif ($completion_rate < 100) {
+                        $status_class = 'status-partially-received';
+                        $status_text = 'รับบางส่วน';
+                        $progress_class = 'progress-partial';
+                    } else {
+                        $status_class = 'status-received';
+                        $status_text = 'รับครบแล้ว';
+                        $progress_class = 'progress-complete';
+                    }
+                    ?>
+                    <div class="col-lg-6 col-xl-4 mb-4">
+                        <div class="po-card" style="border-left: 4px solid #f59e0b;">
+                            <div class="po-card-header" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="mb-1 fw-bold"><?= htmlspecialchars($po['po_number']) ?></h6>
+                                        <p class="text-muted mb-0 small"><?= htmlspecialchars($po['supplier_name']) ?></p>
+                                        <span class="badge bg-warning text-dark" style="font-size: 0.7rem; margin-top: 3px;">สินค้าใหม่</span>
+                                    </div>
+                                    <span class="po-status-badge <?= $status_class ?>"><?= $status_text ?></span>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="small text-muted">วันที่สั่งซื้อ</div>
+                                        <div class="fw-semibold"><?= date('d/m/Y', strtotime($po['po_date'])) ?></div>
+                                    </div>
+                                    <div class="progress-circle <?= $progress_class ?>">
+                                        <?= round($completion_rate) ?>%
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card-body">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <div class="small text-muted">&nbsp;&nbsp;&nbsp;จำนวนสั่ง</div>
+                                        <div class="fw-bold">&nbsp;&nbsp;&nbsp;<?= number_format($po['total_ordered_qty'], 0) ?> ชิ้น</div>
+                                    </div>
+                                    <div class="col-6 text-end">
+                                        <div class="small text-muted">รับแล้ว&nbsp;&nbsp;&nbsp;</div>
+                                        <div class="fw-bold text-success"><?= number_format($po['total_received_qty'], 0) ?> ชิ้น&nbsp;&nbsp;&nbsp;</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="small text-muted">&nbsp;&nbsp;&nbsp;รายการสินค้า</div>
+                                    <div class="fw-semibold">&nbsp;&nbsp;&nbsp;<?= $po['total_items'] ?> รายการ (รับครบ: <?= $po['fully_received_items'] ?>, รับบางส่วน: <?= $po['partially_received_items'] ?>)</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="small text-muted">&nbsp;&nbsp;&nbsp;มูลค่ารวม</div>
+                                    <div class="fw-bold text-primary" style="word-break: break-word;">&nbsp;&nbsp;&nbsp;<?= number_format($po['total_amount'], 2) ?> <?= htmlspecialchars($po['currency_code']) ?></div>
+                                </div>
+                                
+                                <?php if ($po['expected_delivery_date']): ?>
+                                <div class="mb-3">
+                                    <div class="small text-muted">กำหนดส่ง</div>
+                                    <div class="fw-semibold"><?= date('d/m/Y', strtotime($po['expected_delivery_date'])) ?></div>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <div class="d-flex gap-2 mt-3">
+                                    <button type="button" 
+                                            class="receive-btn flex-fill receive-po-btn"
+                                            style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);"
+                                            data-po-id="<?= $po['po_id'] ?>"
+                                            data-po-number="<?= htmlspecialchars($po['po_number']) ?>"
+                                            data-supplier="<?= htmlspecialchars($po['supplier_name']) ?>"
+                                            data-remark="<?= htmlspecialchars($po['remark']) ?>">
+                                        <span class="material-icons" style="font-size: 1.1rem;">input</span>
+                                        รับสินค้า
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-outline-warning btn-sm view-po-btn"
+                                            data-po-id="<?= $po['po_id'] ?>"
+                                            data-po-number="<?= htmlspecialchars($po['po_number']) ?>"
+                                            data-supplier="<?= htmlspecialchars($po['supplier_name']) ?>"
+                                            data-remark="<?= htmlspecialchars($po['remark']) ?>">
+                                        <span class="material-icons" style="font-size: 1rem;">visibility</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -662,9 +807,10 @@ $(document).ready(function() {
         const poId = $(this).data('po-id');
         const poNumber = $(this).data('po-number');
         const supplier = $(this).data('supplier');
+        const remark = $(this).data('remark') || '';
         
-        console.log('Receive button clicked:', { poId, poNumber, supplier });
-        loadPoItems(poId, poNumber, supplier, 'receive');
+        console.log('Receive button clicked:', { poId, poNumber, supplier, remark });
+        loadPoItems(poId, poNumber, supplier, 'receive', remark);
     });
     
     // View PO button click
@@ -672,14 +818,15 @@ $(document).ready(function() {
         const poId = $(this).data('po-id');
         const poNumber = $(this).data('po-number');
         const supplier = $(this).data('supplier');
+        const remark = $(this).data('remark') || '';
         
-        loadPoItems(poId, poNumber, supplier, 'view');
+        loadPoItems(poId, poNumber, supplier, 'view', remark);
     });
     
     // Load PO items
-    function loadPoItems(poId, poNumber, supplier, mode) {
-        console.log('loadPoItems called with:', { poId, poNumber, supplier, mode });
-        currentPoData = { poId, poNumber, supplier, mode };
+    function loadPoItems(poId, poNumber, supplier, mode, remark) {
+        console.log('loadPoItems called with:', { poId, poNumber, supplier, mode, remark });
+        currentPoData = { poId, poNumber, supplier, mode, remark };
         
         $('#modalPoNumber').text(poNumber);
         $('#modalSupplier').text(supplier);
@@ -698,9 +845,13 @@ $(document).ready(function() {
         
         $('#poItemsModal').modal('show');
         
+        // Determine which API to use based on remark
+        const isNewProduct = remark && remark.toLowerCase().includes('new product');
+        const apiUrl = isNewProduct ? '../api/get_po_items_new_product.php' : '../api/get_po_items.php';
+        
         // Load data via AJAX
         $.ajax({
-            url: '../api/get_po_items.php',
+            url: apiUrl,
             method: 'GET',
             data: { po_id: poId },
             dataType: 'json',
@@ -952,7 +1103,7 @@ $(document).ready(function() {
                     }).then(() => {
                         $('#quickReceiveModal').modal('hide');
                         // Reload PO items
-                        loadPoItems(currentPoData.poId, currentPoData.poNumber, currentPoData.supplier, currentPoData.mode);
+                        loadPoItems(currentPoData.poId, currentPoData.poNumber, currentPoData.supplier, currentPoData.mode, currentPoData.remark);
                         // Refresh page to update statistics
                         setTimeout(() => location.reload(), 1000);
                     });
@@ -1149,8 +1300,9 @@ function displayCompletedPOs(completedPOs) {
         const poId = $(this).data('po-id');
         const poNumber = $(this).data('po-number');
         const supplier = $(this).data('supplier');
+        const remark = $(this).data('remark') || '';
         
-        loadPoItems(poId, poNumber, supplier, 'view');
+        loadPoItems(poId, poNumber, supplier, 'view', remark);
     });
 }
 

@@ -46,3 +46,9 @@
 [14-Oct-2025 20:05:55 Asia/Bangkok] Created sale_order_id: 5
 [14-Oct-2025 20:05:55 Asia/Bangkok] Successfully issued: Product ID 15, Qty 5, Receive ID 19, Sale Order ID 5
 [14-Oct-2025 20:05:55 Asia/Bangkok] Issue completed: 1 successful, 0 errors
+[16-Nov-2025 05:59:26 Europe/Berlin] update_po_section.php called with: {"po_id":"10","item_id":"21","product_id":"7","product_name":"\u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35 Stress B-Complex 60 Capsules (Thorne Research\u00ae) \u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35\u0e23\u0e27\u0e21","qty":"40","price_per_unit":"975.00","currency_id":"2","price_original":"975","exchange_rate":"39","update_type":"item"}
+[16-Nov-2025 05:59:26 Europe/Berlin] Processing update: po_id=10, type=item
+[16-Nov-2025 05:59:41 Europe/Berlin] update_po_section.php called with: {"po_id":"10","ordered_by":"1","update_type":"user"}
+[16-Nov-2025 05:59:41 Europe/Berlin] Processing update: po_id=10, type=user
+[16-Nov-2025 05:59:48 Europe/Berlin] update_po_section.php called with: {"po_id":"10","supplier_id":"1","update_type":"supplier"}
+[16-Nov-2025 05:59:48 Europe/Berlin] Processing update: po_id=10, type=supplier

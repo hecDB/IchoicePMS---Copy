@@ -79,6 +79,7 @@ if(isset($_POST['submit'])) {
                 $barcode = $item['barcode'];
                 $name = $item['name'];
                 $unit = $item['unit'];
+                $category = $item['category'] ?? '';
                 $row_code = $item['row_code'];
                 $bin = $item['bin'];
                 $shelf = $item['shelf'];
@@ -104,14 +105,22 @@ if(isset($_POST['submit'])) {
                     }
                 }
     
+                // ดึง category_id จากชื่อประเภท
+                $category_id = null;
+                if (!empty($category)) {
+                    $stmt_cat = $pdo->prepare("SELECT category_id FROM product_category WHERE category_name = ?");
+                    $stmt_cat->execute([$category]);
+                    $category_id = $stmt_cat->fetchColumn();
+                }
+    
                 // ===== ตรวจสอบ/เพิ่มสินค้า
                 $stmt = $pdo->prepare("SELECT product_id FROM products WHERE sku=? OR barcode=?");
                 $stmt->execute([$sku, $barcode]);
                 $product_id = $stmt->fetchColumn();
     
                 if(!$product_id){
-                    $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, created_at) VALUES (?,?,?,?,?,NOW())");
-                    $stmt->execute([$name, $sku, $barcode, $unit, 'images/'.$imageFile]);
+                    $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, product_category_id, category_name, image, created_at) VALUES (?,?,?,?,?,?,?,NOW())");
+                    $stmt->execute([$name, $sku, $barcode, $unit, $category_id, $category, 'images/'.$imageFile]);
                     $product_id = $pdo->lastInsertId();
                 }
     
@@ -266,7 +275,7 @@ if(isset($_POST['submit'])) {
     <table class="table-product" id="items-table">
       <thead>
         <tr>
-          <th>SKU</th><th>Barcode</th><th>ชื่อสินค้า</th><th>รูปภาพ<br><span style="font-size:0.8em;color:#3a945e;">(ไฟล์รูป)</span></th>
+          <th>SKU</th><th>Barcode</th><th>ชื่อสินค้า</th><th>ประเภท</th><th>รูปภาพ<br><span style="font-size:0.8em;color:#3a945e;">(ไฟล์รูป)</span></th>
           <th>หน่วย</th><th>Row</th><th>Bin</th><th>Shelf</th>
           <th>จำนวน</th><th>ราคา/หน่วย</th><th>ลบ</th>
         </tr>
@@ -276,6 +285,17 @@ if(isset($_POST['submit'])) {
           <td><input class="form-control" type="text" name="items[0][sku]"></td>
           <td><input class="form-control" type="text" name="items[0][barcode]"></td>
           <td><input class="form-control" type="text" name="items[0][name]" required></td>
+          <td>
+            <select class="form-control" name="items[0][category]">
+              <option value="">-- เลือก --</option>
+              <option value="อาหารเสริม">อาหารเสริม</option>
+              <option value="เครื่องใช้ไฟฟ้า">เครื่องใช้ไฟฟ้า</option>
+              <option value="เครื่องสำอาง/ความงาม">เครื่องสำอาง</option>
+              <option value="สำหรับแม่และเด็ก">แม่และเด็ก</option>
+              <option value="สัตว์เลี้ยง">สัตว์เลี้ยง</option>
+              <option value="เครื่องใช้ในบ้าน/ออฟฟิศ">บ้าน/ออฟฟิศ</option>
+            </select>
+          </td>
           <td><input type="file" name="image" accept="image/*" capture="camera"></td>
           <td><input class="form-control" type="text" name="items[0][unit]"></td>
           <td>

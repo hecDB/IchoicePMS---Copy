@@ -3,7 +3,7 @@
 
 // ข้อมูลการเชื่อมต่อ
 $host = 'localhost';
-$port = '3307';
+$port = '3306';
 $db   = 'ichoice_'; // <--- แก้ไขจาก 'ichoiceth' เป็น 'ichoice_pms'
 $user = 'root';        // กรณีใช้งาน xampp/lampp มักใช้ root (หรือชื่อ user ของคุณ)
 $pass = '';            // รหัสผ่าน (ใส่ให้ตรง)

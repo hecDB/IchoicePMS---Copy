@@ -2,10 +2,10 @@
 header('Content-Type: application/json');
 include '../config/db_connect.php';
 
-$name = trim($_POST['name']??'');
-$phone = trim($_POST['phone']??'');
-$email = trim($_POST['email']??'');
-$address = trim($_POST['address']??'');
+$name = trim($_POST['supplier_name']??'');
+$phone = trim($_POST['supplier_phone']??'');
+$email = trim($_POST['supplier_email']??'');
+$address = trim($_POST['supplier_address']??'');
 
 if(!$name) {
   echo json_encode(['success'=>false,'error'=>'กรุณากรอกชื่อผู้ขาย']);
