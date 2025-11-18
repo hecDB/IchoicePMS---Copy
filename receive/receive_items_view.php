@@ -182,39 +182,36 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     #receive-table {
-        min-width: 1500px; /* กำหนดความกว้างขั้นต่ำของตาราง */
+        min-width: 2400px; /* เพิ่มความกว้างให้มากขึ้น */
         white-space: nowrap;
     }
     
     #receive-table th,
     #receive-table td {
-        padding: 0.5rem 0.25rem; /* ลดขนาด padding */
-        font-size: 0.85rem; /* ลดขนาดตัวอักษร */
+        padding: 0.85rem 0.65rem; /* เพิ่ม padding เพิ่มเติม */
+        font-size: 0.95rem; /* เพิ่มขนาดตัวอักษร */
         vertical-align: middle;
     }
     
-    /* กำหนดความกว้างคอลัมน์ */
-    #receive-table th:nth-child(1) { width: 60px; min-width: 60px; } /* รูปภาพ */
-    #receive-table th:nth-child(2) { width: 100px; min-width: 100px; } /* SKU */
-    #receive-table th:nth-child(3) { width: 150px; min-width: 150px; } /* ชื่อสินค้า */
-    #receive-table th:nth-child(4) { width: 120px; min-width: 120px; } /* บาร์โค้ด */
-    #receive-table th:nth-child(5) { width: 100px; min-width: 100px; } /* ผู้เพิ่มรายการ */
-    #receive-table th:nth-child(6) { width: 110px; min-width: 110px; } /* วันที่เพิ่ม */
-    #receive-table th:nth-child(7) { width: 80px; min-width: 80px; } /* จำนวนก่อน */
-    #receive-table th:nth-child(8) { width: 80px; min-width: 80px; } /* เพิ่ม/ลด */
-    #receive-table th:nth-child(9) { width: 80px; min-width: 80px; } /* จำนวนล่าสุด */
-    #receive-table th:nth-child(10) { width: 140px; min-width: 140px; } /* PO/แท็ค/Lot */
-    #receive-table th:nth-child(11) { width: 100px; min-width: 100px; } /* ตำแหน่ง */
-    #receive-table th:nth-child(12) { width: 90px; min-width: 90px; } /* ราคาขาย */
-    #receive-table th:nth-child(13) { width: 100px; min-width: 100px; } /* PO */
-    #receive-table th:nth-child(14) { width: 80px; min-width: 80px; } /* ประเภท */
-    #receive-table th:nth-child(15) { width: 120px; min-width: 120px; } /* หมายเหตุ */
-    #receive-table th:nth-child(16) { width: 100px; min-width: 100px; } /* จัดการ */
+    /* กำหนดความกว้างคอลัมน์ - เพิ่มความกว้างทุกคอลัมน์ */
+    #receive-table th:nth-child(1) { width: 90px; min-width: 90px; } /* รูปภาพ */
+    #receive-table th:nth-child(2) { width: 140px; min-width: 140px; } /* SKU */
+    #receive-table th:nth-child(3) { width: 240px; min-width: 240px; } /* ชื่อสินค้า */
+    #receive-table th:nth-child(4) { width: 160px; min-width: 160px; } /* บาร์โค้ด */
+    #receive-table th:nth-child(5) { width: 140px; min-width: 140px; } /* ผู้เพิ่มรายการ */
+    #receive-table th:nth-child(6) { width: 160px; min-width: 160px; } /* วันที่เพิ่ม */
+    #receive-table th:nth-child(7) { width: 120px; min-width: 120px; } /* จำนวนก่อน */
+    #receive-table th:nth-child(8) { width: 120px; min-width: 120px; } /* เพิ่ม/ลด */
+    #receive-table th:nth-child(9) { width: 120px; min-width: 120px; } /* จำนวนล่าสุด */
+    #receive-table th:nth-child(10) { width: 200px; min-width: 200px; } /* PO/แท็ค/Lot */
+    #receive-table th:nth-child(11) { width: 160px; min-width: 160px; } /* ตำแหน่ง */
+    #receive-table th:nth-child(12) { width: 140px; min-width: 140px; } /* วันหมดอายุ */
+    #receive-table th:nth-child(13) { width: 150px; min-width: 150px; } /* จัดการ */
     
     /* ปรับ text overflow สำหรับข้อความยาว */
     #receive-table td:nth-child(3), /* ชื่อสินค้า */
     #receive-table td:nth-child(15) { /* หมายเหตุ */
-        max-width: 150px;
+        max-width: 200px; /* เพิ่มจาก 150px */
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -227,26 +224,26 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     /* ปรับขนาดรูปภาพให้เล็กลง */
     .product-image {
-        width: 32px !important; 
-        height: 32px !important;
-        max-width: 32px !important; 
-        max-height: 32px !important;
+        width: 48px !important; 
+        height: 48px !important;
+        max-width: 48px !important; 
+        max-height: 48px !important;
     }
     
     /* ปรับขนาด badge */
     .badge {
-        font-size: 0.7rem !important;
-        padding: 0.25rem 0.5rem !important;
+        font-size: 0.8rem !important;
+        padding: 0.35rem 0.65rem !important;
     }
     
     /* ปรับปุ่มจัดการ */
     .action-btn {
-        padding: 0.25rem;
-        font-size: 0.8rem;
+        padding: 0.375rem 0.5rem;
+        font-size: 0.9rem;
     }
     
     .action-btn .material-icons {
-        font-size: 1rem;
+        font-size: 1.2rem;
     }
     
     /* Mobile responsive adjustments */
@@ -757,10 +754,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
             <div class="table-body">
-                <!-- Batch Actions Bar - Removed for security -->
-                <!-- <div class="batch-actions mb-3" style="display: none;"> -->
-                    <!-- Batch delete functionality removed -->
-                <!-- </div> -->
+             
 
                 <div class="table-responsive">
                     <table id="receive-table" class="table modern-table table-striped table-hover">

@@ -216,14 +216,13 @@ body {
         <div class="menu-category">
             <div class="category-header" onclick="toggleCategory('products')">
                 <span class="material-icons">inventory_2</span>
-                <span class="category-text">จัดการสินค้า</span>
+                <span class="category-text">
+                    อัปโหลดสินค้า
+                </span>
                 <span class="material-icons category-arrow">keyboard_arrow_down</span>
             </div>
             <div class="submenu" id="products-submenu">
-                <a href="<?= getPath('products/import_product.php') ?>" class="submenu-item<?=isActive('import_product.php')?>">
-                    <span class="material-icons">add</span>
-                    <span class="submenu-text">เพิ่มสินค้าใหม่</span>
-                </a>
+                
                 <a href="<?= getPath('imports/import_excel.php') ?>" class="submenu-item<?=isActive('import_excel.php')?>">
                     <span class="material-icons">upload_file</span>
                     <span class="submenu-text">อัปโหลด Excel</span>
@@ -246,13 +245,14 @@ body {
                         <span class="pending-badge"><?= $pending_product_count ?></span>
                     <?php endif; ?>
                 </a>
-                <a href="<?= getPath('stock/all_stock.php') ?>" class="submenu-item<?=isActive('all_stock.php')?>">
-                    <span class="material-icons">inventory</span>
-                    <span class="submenu-text">รายการสินค้าทั้งหมด</span>
-                </a>
+               
                 <a href="<?= getPath('stock/low_stock.php') ?>" class="submenu-item<?=isActive('low_stock.php')?>">
                     <span class="material-icons">warning</span>
                     <span class="submenu-text">สินค้าใกล้หมด</span>
+                </a>
+                <a href="<?= getPath('stock/product_management.php') ?>" class="submenu-item<?=isActive('product_management.php')?>">
+                    <span class="material-icons">inventory_2</span>
+                    <span class="submenu-text">จัดการสินค้า</span>
                 </a>
                 <a href="<?= getPath('stock/expiring_soon.php') ?>" class="submenu-item<?=isActive('expiring_soon.php')?>">
                     <span class="material-icons">schedule</span>

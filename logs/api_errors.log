@@ -52,3 +52,5 @@
 [16-Nov-2025 05:59:41 Europe/Berlin] Processing update: po_id=10, type=user
 [16-Nov-2025 05:59:48 Europe/Berlin] update_po_section.php called with: {"po_id":"10","supplier_id":"1","update_type":"supplier"}
 [16-Nov-2025 05:59:48 Europe/Berlin] Processing update: po_id=10, type=supplier
+[18-Nov-2025 15:57:27 Europe/Berlin] update_po_section.php called with: {"po_id":"31","item_id":"44","product_id":"9","product_name":"[Thorne Research] Creatine \u0e04\u0e23\u0e35\u0e40\u0e2d\u0e17\u0e35\u0e19 \u0e41\u0e1a\u0e1a\u0e1c\u0e07 \u0e1c\u0e25\u0e34\u0e15\u0e1e\u0e25\u0e31\u0e07\u0e07\u0e32\u0e19\u0e23\u0e30\u0e14\u0e31\u0e1a\u0e40\u0e0b\u0e25\u0e25\u0e4c\u0e02\u0e2d\u0e07\u0e23\u0e48\u0e32\u0e07\u0e01\u0e32\u0e22 \u0e40\u0e1e\u0e34\u0e48\u0e21\u0e21\u0e27\u0e25\u0e01\u0e32\u0e22","qty":"5","price_per_unit":"15.00","currency_id":"1","price_original":"15","exchange_rate":"1","update_type":"item"}
+[18-Nov-2025 15:57:27 Europe/Berlin] Processing update: po_id=31, type=item

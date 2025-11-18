@@ -509,6 +509,102 @@ function addProductRow(detail={}) {
 // ปุ่มเพิ่มแถวสินค้า
 document.getElementById('addProductRowBtn').onclick = ()=>addProductRow();
 
+// ตรวจสอบว่ามาจากหน้า Low Stock หรือไม่
+(function loadLowStockProducts() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromLowStock = urlParams.get('from_low_stock');
+    
+    if (fromLowStock === '1') {
+        const lowStockProducts = sessionStorage.getItem('lowStockProducts');
+        
+        if (lowStockProducts) {
+            try {
+                const products = JSON.parse(lowStockProducts);
+                
+                if (products.length > 0) {
+                    // แสดงการแจ้งเตือน
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'นำเข้าสินค้าจากรายการสต็อกต่ำ',
+                        html: `กำลังเพิ่มสินค้า <strong>${products.length}</strong> รายการลงในใบสั่งซื้อ`,
+                        timer: 2500,
+                        timerProgressBar: true,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            // ลบแถวเริ่มต้นทั้งหมด
+                            productRows.innerHTML = '';
+
+                            // เพิ่มสินค้าแต่ละรายการ
+                            products.forEach((product, index) => {
+                                setTimeout(() => {
+                                    // แนะนำจำนวนที่ควรสั่ง
+                                    const currentQty = parseInt(product.current_qty) || 0;
+                                    let suggestedQty = 50;
+                                    
+                                    if (currentQty === 0) {
+                                        suggestedQty = 100; // หมดสต็อก
+                                    } else if (currentQty <= 5) {
+                                        suggestedQty = 50; // วิกฤต
+                                    } else if (currentQty <= 20) {
+                                        suggestedQty = 30; // ต่ำ
+                                    }
+                                    
+                                    // สร้างแถวใหม่
+                                    addProductRow();
+                                    
+                                    // ดึงแถวล่าสุดที่สร้าง
+                                    const rows = productRows.querySelectorAll('.product-item-card');
+                                    const lastRow = rows[rows.length - 1];
+                                    
+                                    if (lastRow) {
+                                        lastRow.dataset.productId = product.product_id;
+                                        
+                                        const nameInput = lastRow.querySelector('.product-name-input');
+                                        const skuInput = lastRow.querySelector('.sku-input');
+                                        const unitInput = lastRow.querySelector('.unit-input');
+                                        const qtyInput = lastRow.querySelector('.qty-input');
+                                        const productImage = lastRow.querySelector('.product-image');
+                                        const noImageText = lastRow.querySelector('.no-image-text');
+                                        
+                                        if (nameInput) nameInput.value = product.name || '';
+                                        if (skuInput) skuInput.value = product.sku || '';
+                                        if (unitInput) unitInput.value = product.unit || '';
+                                        if (qtyInput) qtyInput.value = suggestedQty;
+                                        
+                                        // ค้นหาและแสดงรูปภาพ
+                                        const foundProduct = window.products.find(p => p.product_id == product.product_id);
+                                        if (foundProduct && foundProduct.image && productImage && noImageText) {
+                                            const imagePath = foundProduct.image.startsWith('images/') 
+                                                ? '../' + foundProduct.image 
+                                                : '../images/' + foundProduct.image;
+                                            productImage.src = imagePath;
+                                            productImage.style.display = 'block';
+                                            noImageText.style.display = 'none';
+                                        }
+                                    }
+                                }, index * 150);
+                            });
+                        }
+                    });
+
+                    // ล้างข้อมูลใน sessionStorage หลังโหลด
+                    setTimeout(() => {
+                        sessionStorage.removeItem('lowStockProducts');
+                    }, 3000);
+                }
+            } catch (error) {
+                console.error('Error loading low stock products:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถโหลดข้อมูลสินค้าสต็อกต่ำได้',
+                    confirmButtonText: 'ตกลง'
+                });
+            }
+        }
+    }
+})();
+
 // อัปเดตการแสดงราคาในสกุลเงินฐาน
 function updatePriceBaseDisplay(priceInput) {
     const row = priceInput.closest('.product-item-card');
