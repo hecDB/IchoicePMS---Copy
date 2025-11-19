@@ -689,15 +689,16 @@ $fully_received = count(array_filter($all_pos, function($po) {
                     <table class="table table-striped" id="poItemsTable">
                         <thead class="table-dark">
                             <tr>
-                                <th width="5%">#</th>
-                                <th width="30%">สินค้า</th>
-                                <th width="10%">SKU</th>
-                                <th width="8%">หน่วย</th>
-                                <th width="10%">จำนวนสั่ง</th>
-                                <th width="10%">ราคา/หน่วย</th>
-                                <th width="10%">รับแล้ว</th>
-                                <th width="10%">คงเหลือ</th>
-                                <th width="12%">รับเข้า</th>
+                                <th width="4%">#</th>
+                                <th width="25%">สินค้า</th>
+                                <th width="8%">SKU</th>
+                                <th width="7%">หน่วย</th>
+                                <th width="8%">จำนวนสั่ง</th>
+                                <th width="8%">ราคา/หน่วย</th>
+                                <th width="8%">รับแล้ว</th>
+                                <th width="8%">คงเหลือ</th>
+                                <th width="10%">วันหมดอายุ</th>
+                                <th width="10%">รับเข้า</th>
                             </tr>
                         </thead>
                         <tbody id="poItemsTableBody">
@@ -766,6 +767,11 @@ $fully_received = count(array_filter($all_pos, function($po) {
                     <div class="mb-3">
                         <label for="quickNotes" class="form-label">หมายเหตุ</label>
                         <textarea class="form-control" id="quickNotes" name="notes" rows="2" placeholder="หมายเหตุการรับเข้าสินค้า..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="quickExpiryDate" class="form-label">วันหมดอายุ (ถ้ามี)</label>
+                        <input type="date" class="form-control" id="quickExpiryDate" name="expiry_date">
                     </div>
                 </form>
             </div>
@@ -919,6 +925,24 @@ $(document).ready(function() {
                         <td>${parseFloat(item.unit_price).toLocaleString()} ${escapeHtml(item.currency_code || '')}</td>
                         <td class="fw-bold text-success">${parseFloat(item.received_qty || 0).toLocaleString()}</td>
                         <td class="fw-bold ${canReceive ? 'text-warning' : 'text-muted'}">${remainingQty.toLocaleString()}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="expiry-display" data-item-id="${item.item_id}">
+                                    ${item.expiry_date ? 
+                                        `<span class="badge ${isExpired(item.expiry_date) ? 'bg-danger' : 'bg-info'}">${formatThaiDate(item.expiry_date)}</span>` 
+                                        : '<span class="text-muted">-</span>'}
+                                </span>
+                                ${item.expiry_date ? 
+                                    `<button type="button" class="btn btn-sm btn-outline-warning edit-expiry-btn" data-item-id="${item.item_id}" title="แก้ไขวันหมดอายุ">
+                                        <span class="material-icons" style="font-size: 0.9rem;">edit</span>
+                                    </button>` 
+                                    : `<input type="date" 
+                                       class="form-control expiry-date-input" 
+                                       data-item-id="${item.item_id}"
+                                       value="${item.expiry_date || ''}"
+                                       style="width: 120px; height: 32px; font-size: 0.75rem;">`}
+                            </div>
+                        </td>
                         <td>`;
                 
                 if (mode === 'receive' && canReceive) {
@@ -977,6 +1001,202 @@ $(document).ready(function() {
             
             showQuickReceiveModal(itemId, productName, orderedQty, remainingQty, unit);
         });
+        
+        // Edit expiry date button for existing dates
+        $('.edit-expiry-btn').on('click', function(e) {
+            e.stopPropagation();
+            const itemId = $(this).data('item-id');
+            const currentDate = $(this).closest('td').find('.expiry-display .badge').text();
+            
+            // Show inline date picker
+            const btn = $(this);
+            btn.replaceWith(`
+                <input type="date" 
+                       class="form-control expiry-date-input-edit" 
+                       data-item-id="${itemId}"
+                       style="width: 120px; height: 32px; font-size: 0.75rem;">
+            `);
+            
+            // Set current date in ISO format
+            const display = $(this).closest('td').find('.expiry-display');
+            const badge = display.find('.badge');
+            if (badge.length > 0) {
+                const badgeText = badge.text().trim();
+                // Parse Thai date back to ISO format
+                const isoDate = parseDateFromDisplay(badgeText);
+                $(this).closest('td').find('.expiry-date-input-edit').val(isoDate).focus();
+            }
+            
+            // Setup save on change
+            $(this).closest('td').find('.expiry-date-input-edit').on('change', function() {
+                updateExpiryDate(itemId, $(this).val(), $(this).closest('td'));
+            }).on('blur', function() {
+                if (!$(this).val()) {
+                    // If empty, restore edit button
+                    restoreEditButton(itemId, $(this).closest('td'));
+                }
+            });
+        });
+    }
+    
+    // Parse date from Thai display format back to ISO format
+    function parseDateFromDisplay(dateString) {
+        // Expected format: "19 พ.ค. 2567" -> "2024-11-19"
+        const months = {
+            'ม.ค.': '01', 'ก.พ.': '02', 'มี.ค.': '03', 'เม.ย.': '04',
+            'พ.ค.': '05', 'มิ.ย.': '06', 'ก.ค.': '07', 'ส.ค.': '08',
+            'ก.ย.': '09', 'ต.ค.': '10', 'พ.ย.': '11', 'ธ.ค.': '12'
+        };
+        
+        const parts = dateString.split(' ');
+        if (parts.length === 3) {
+            const day = parts[0].padStart(2, '0');
+            const monthTh = parts[1];
+            const yearTh = parseInt(parts[2]);
+            const yearAd = yearTh - 543;
+            const month = months[monthTh] || '01';
+            return `${yearAd}-${month}-${day}`;
+        }
+        return '';
+    }
+    
+    // Update expiry date and restore display
+    function updateExpiryDate(itemId, newDate, tdElement) {
+        const display = tdElement.find('.expiry-display');
+        
+        if (newDate) {
+            // Validate date
+            const selectedDateObj = new Date(newDate + 'T00:00:00');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (selectedDateObj < today) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'วันที่ผ่านมาแล้ว',
+                    text: 'กรุณาเลือกวันที่ไม่เป็นอดีต',
+                    timer: 2000
+                });
+                restoreEditButton(itemId, tdElement);
+                return;
+            }
+            
+            // Update display
+            const expired = new Date(newDate + 'T23:59:59') < new Date();
+            display.html(`<span class="badge ${expired ? 'bg-danger' : 'bg-info'}">${formatThaiDate(newDate)}</span>`);
+        } else {
+            display.html('<span class="text-muted">-</span>');
+        }
+        
+        // Restore edit button
+        restoreEditButton(itemId, tdElement);
+        
+        // Update receiveItems - Always save, even if no quantity
+        const row = tdElement.closest('tr');
+        const qtyInput = row.find('.receive-qty-input');
+        const qty = parseFloat(qtyInput.val()) || 0;
+        
+        // Initialize if not exists
+        if (!receiveItems[itemId]) {
+            receiveItems[itemId] = {
+                quantity: qty > 0 ? qty : 0,
+                expiry_date: newDate || null
+            };
+        } else {
+            // Update existing
+            if (qty > 0) receiveItems[itemId].quantity = qty;
+            receiveItems[itemId].expiry_date = newDate || null;
+        }
+        
+        // Save expiry date immediately to database (even if no quantity)
+        if (newDate !== undefined && newDate !== null) {
+            saveExpiryDateOnly(itemId, newDate);
+        }
+    }
+    
+    // Save expiry date only (without quantity)
+    function saveExpiryDateOnly(itemId, expiryDate) {
+        $.ajax({
+            url: 'process_receive_po.php',
+            method: 'POST',
+            data: {
+                action: 'update_expiry_only',
+                item_id: itemId,
+                expiry_date: expiryDate
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกวันหมดอายุสำเร็จ',
+                        text: 'อัปเดตข้อมูลวันหมดอายุแล้ว',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: response.message || 'ไม่สามารถบันทึกข้อมูลได้'
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Save expiry error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง'
+                });
+            }
+        });
+    }
+    
+    // Restore edit button
+    function restoreEditButton(itemId, tdElement) {
+        const editBtn = tdElement.find('.expiry-date-input-edit');
+        if (editBtn.length > 0) {
+            editBtn.replaceWith(`
+                <button type="button" class="btn btn-sm btn-outline-warning edit-expiry-btn" data-item-id="${itemId}" title="แก้ไขวันหมดอายุ">
+                    <span class="material-icons" style="font-size: 0.9rem;">edit</span>
+                </button>
+            `);
+            
+            // Rebind click event
+            tdElement.find('.edit-expiry-btn').on('click', function(e) {
+                e.stopPropagation();
+                const itemId = $(this).data('item-id');
+                const currentDate = $(this).closest('td').find('.expiry-display .badge').text();
+                
+                // Show inline date picker
+                const btn = $(this);
+                btn.replaceWith(`
+                    <input type="date" 
+                           class="form-control expiry-date-input-edit" 
+                           data-item-id="${itemId}"
+                           style="width: 120px; height: 32px; font-size: 0.75rem;">
+                `);
+                
+                // Set current date in ISO format
+                const display = $(this).closest('td').find('.expiry-display');
+                const badge = display.find('.badge');
+                if (badge.length > 0) {
+                    const badgeText = badge.text().trim();
+                    const isoDate = parseDateFromDisplay(badgeText);
+                    $(this).closest('td').find('.expiry-date-input-edit').val(isoDate).focus();
+                }
+                
+                // Setup save on change
+                $(this).closest('td').find('.expiry-date-input-edit').on('change', function() {
+                    updateExpiryDate(itemId, $(this).val(), $(this).closest('td'));
+                }).on('blur', function() {
+                    if (!$(this).val()) {
+                        restoreEditButton(itemId, $(this).closest('td'));
+                    }
+                });
+            });
+        }
     }
     
     // Setup receive inputs
@@ -997,9 +1217,68 @@ $(document).ready(function() {
             }
             
             if (qty > 0) {
-                receiveItems[itemId] = qty;
+                // Get current expiry date if exists
+                const expiryInput = $(this).closest('tr').find('.expiry-date-input');
+                const expiryDate = expiryInput.val() || null;
+                
+                receiveItems[itemId] = {
+                    quantity: qty,
+                    expiry_date: expiryDate
+                };
             } else {
                 delete receiveItems[itemId];
+            }
+        });
+        
+        // Setup expiry date inputs
+        $('.expiry-date-input').on('change', function() {
+            const itemId = $(this).data('item-id');
+            const selectedDate = $(this).val();
+            const display = $(this).closest('td').find('.expiry-display');
+            
+            // Validate date
+            if (selectedDate) {
+                const selectedDateObj = new Date(selectedDate + 'T00:00:00');
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                if (selectedDateObj < today) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'วันที่ผ่านมาแล้ว',
+                        text: 'กรุณาเลือกวันที่ไม่เป็นอดีต',
+                        timer: 2000
+                    });
+                    $(this).val('');
+                    return;
+                }
+                
+                // Update display
+                const expired = new Date(selectedDate + 'T23:59:59') < new Date();
+                display.html(`<span class="badge ${expired ? 'bg-danger' : 'bg-info'}">${formatThaiDate(selectedDate)}</span>`);
+            } else {
+                display.html('<span class="text-muted">-</span>');
+            }
+            
+            // Update receiveItems with expiry date
+            const row = $(this).closest('tr');
+            const qtyInput = row.find('.receive-qty-input');
+            const qty = parseFloat(qtyInput.val()) || 0;
+            
+            if (qty > 0) {
+                if (!receiveItems[itemId]) {
+                    receiveItems[itemId] = {};
+                }
+                receiveItems[itemId].quantity = qty;
+                receiveItems[itemId].expiry_date = selectedDate || null;
+            } else {
+                // Even if no quantity yet, save expiry date for later
+                if (selectedDate) {
+                    if (!receiveItems[itemId]) {
+                        receiveItems[itemId] = {};
+                    }
+                    receiveItems[itemId].expiry_date = selectedDate;
+                }
             }
         });
     }
@@ -1014,6 +1293,7 @@ $(document).ready(function() {
         $('#quickUnit').text(unit);
         $('#quickReceiveQty').attr('max', remainingQty).val(remainingQty);
         $('#quickNotes').val('');
+        $('#quickExpiryDate').val('');
         
         $('#quickReceiveModal').modal('show');
         
@@ -1024,19 +1304,36 @@ $(document).ready(function() {
     
     // Save receive items (batch)
     $('#saveReceiveBtn').on('click', function() {
-        if (Object.keys(receiveItems).length === 0) {
+        // Check if receiveItems is empty
+        const itemCount = Object.keys(receiveItems).length;
+        if (itemCount === 0) {
             Swal.fire({
                 icon: 'warning',
                 title: 'ไม่พบรายการรับเข้า',
-                text: 'กรุณากรอกจำนวนสินค้าที่ต้องการรับเข้า'
+                text: 'กรุณากรอกจำนวนสินค้าหรือแก้ไขวันหมดอายุ'
             });
             return;
         }
         
-        const itemsToReceive = Object.keys(receiveItems).map(itemId => ({
-            item_id: itemId,
-            quantity: receiveItems[itemId]
-        }));
+        const itemsToReceive = Object.keys(receiveItems).map(itemId => {
+            const item = receiveItems[itemId];
+            
+            // Always return object format with quantity and expiry_date
+            return {
+                item_id: itemId,
+                quantity: typeof item === 'number' ? item : (item.quantity || 0),
+                expiry_date: (typeof item === 'object' ? item.expiry_date : null) || null
+            };
+        }).filter(item => item.quantity > 0 || item.expiry_date); // Allow items with expiry_date only (no quantity)
+        
+        if (itemsToReceive.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ไม่พบรายการที่มีจำนวน',
+                text: 'กรุณากรอกจำนวนสินค้าที่มากกว่า 0 หรือแก้ไขวันหมดอายุ'
+            });
+            return;
+        }
         
         Swal.fire({
             title: 'ยืนยันการรับเข้าสินค้า',
@@ -1080,6 +1377,8 @@ $(document).ready(function() {
     
     // Save single receive
     function saveSingleReceive(itemId, quantity, notes) {
+        const expiryDate = $('#quickExpiryDate').val();
+        
         $.ajax({
             url: 'process_receive_po.php',
             method: 'POST',
@@ -1089,6 +1388,7 @@ $(document).ready(function() {
                 item_id: itemId,
                 quantity: quantity,
                 notes: notes,
+                expiry_date: expiryDate,
                 po_number: currentPoData.poNumber
             },
             dataType: 'json',
@@ -1128,13 +1428,20 @@ $(document).ready(function() {
     
     // Save batch receive
     function saveBatchReceive(items) {
+        // Convert items array to proper format with expiry_date
+        const formattedItems = items.map(item => ({
+            item_id: item.item_id,
+            quantity: item.quantity || 0,
+            expiry_date: item.expiry_date || null
+        }));
+        
         $.ajax({
             url: 'process_receive_po.php',
             method: 'POST',
             data: {
                 action: 'receive_multiple',
                 po_id: currentPoData.poId,
-                items: JSON.stringify(items),
+                items: JSON.stringify(formattedItems),
                 po_number: currentPoData.poNumber
             },
             dataType: 'json',
@@ -1181,6 +1488,26 @@ $(document).ready(function() {
             "'": '&#039;'
         };
         return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+    
+    // Format date to Thai format
+    function formatThaiDate(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString + 'T00:00:00');
+        const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+        const day = date.getDate();
+        const month = months[date.getMonth()];
+        const year = date.getFullYear() + 543;
+        return `${day} ${month} ${year}`;
+    }
+    
+    // Check if date is expired
+    function isExpired(dateString) {
+        if (!dateString) return false;
+        const expiryDate = new Date(dateString + 'T23:59:59');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return expiryDate < today;
     }
     
     // Auto refresh every 5 minutes

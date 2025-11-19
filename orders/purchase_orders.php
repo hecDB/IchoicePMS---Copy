@@ -51,8 +51,8 @@ $rows = $stmt->fetchAll();
         .popup-inner {
             background: #fff;
             padding: 30px;
-            width: 80%;
-            max-width: 900px;
+            width: 95%;
+            max-width: 1400px;
             max-height: 90vh;
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
@@ -94,8 +94,8 @@ $rows = $stmt->fetchAll();
         #poEditPopup .popup-content {
             background: #fff;
             padding: 30px;
-            width: 85%;
-            max-width: 1000px;
+            width: 95%;
+            max-width: 1400px;
             max-height: 90vh;
             margin: 30px auto;
             border-radius: 12px;
@@ -488,6 +488,9 @@ $rows = $stmt->fetchAll();
             return;
         }
 
+        // Reset edit mode flag when rendering new view
+        isEditingItems = false;
+
         // Store current data globally for editing functions
         currentPoData = data;
 
@@ -740,6 +743,54 @@ $rows = $stmt->fetchAll();
                 }
                 .swal2-backdrop-show {
                     z-index: 99998 !important;
+                }
+                
+                /* Improved Add Item Popup Styles */
+                .swal2-popup-styled {
+                    border-radius: 12px !important;
+                    padding: 30px !important;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
+                }
+                
+                .swal2-popup-styled .swal2-title {
+                    font-size: 24px !important;
+                    color: #2c3e50 !important;
+                    margin-bottom: 25px !important;
+                    font-weight: 600 !important;
+                }
+                
+                .swal2-popup-styled .swal2-html-container {
+                    font-size: 14px !important;
+                    color: #555 !important;
+                    padding: 0 !important;
+                }
+                
+                .swal2-btn-success {
+                    background: linear-gradient(135deg, #27ae60 0%, #229954 100%) !important;
+                    border-radius: 6px !important;
+                    padding: 10px 24px !important;
+                    font-weight: 600 !important;
+                    min-width: 120px !important;
+                    transition: all 0.3s ease !important;
+                    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3) !important;
+                }
+                
+                .swal2-btn-success:hover {
+                    transform: translateY(-2px) !important;
+                    box-shadow: 0 6px 16px rgba(39, 174, 96, 0.4) !important;
+                }
+                
+                .swal2-btn-cancel {
+                    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%) !important;
+                    border-radius: 6px !important;
+                    padding: 10px 24px !important;
+                    font-weight: 600 !important;
+                    min-width: 120px !important;
+                    transition: all 0.3s ease !important;
+                }
+                
+                .swal2-btn-cancel:hover {
+                    transform: translateY(-2px) !important;
                 }
                 
                 @media print {
@@ -1606,6 +1657,9 @@ $rows = $stmt->fetchAll();
     }
 
     function saveItemRow(poId, itemId, index) {
+        // Reset edit mode to ensure proper state
+        isEditingItems = false;
+        
         const row = document.querySelectorAll('.po-items-table tbody tr')[index];
         const inputs = row.querySelectorAll('.item-edit-input, input[type="hidden"][data-field]');
         
@@ -1798,49 +1852,96 @@ $rows = $stmt->fetchAll();
         
         // Show a form to add new item with autocomplete
         Swal.fire({
-            title: 'เพิ่มสินค้าใหม่',
+            title: '➕ เพิ่มสินค้าใหม่',
             html: `
-                <div style="text-align: left;">
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px;">ชื่อสินค้า:</label>
+                <div style="text-align: left; max-width: 400px; margin: 0 auto;">
+                    <!-- Product Name Field -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 14px;">
+                            <i class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">inventory_2</i>ชื่อสินค้า
+                        </label>
                         <div class="autocomplete-container" style="position: relative;">
-                            <input type="text" id="new-product-name" class="autocomplete-input" placeholder="พิมพ์ชื่อสินค้าเพื่อค้นหา" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
+                            <input type="text" id="new-product-name" class="autocomplete-input" placeholder="🔍 พิมพ์ชื่อสินค้าเพื่อค้นหา" style="width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; transition: border-color 0.3s; box-sizing: border-box;">
                             <input type="hidden" id="new-product-id" value="">
                         </div>
                     </div>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px;">จำนวน:</label>
-                        <input type="number" id="new-qty" class="swal2-input" value="1" min="1">
+
+                    <!-- Quantity Field -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 14px;">
+                            <i class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">app_registration</i>จำนวน
+                        </label>
+                        <input type="number" id="new-qty" value="1" min="1" step="1" style="width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; box-sizing: border-box;" onchange="updateNewItemBasePrice()" oninput="updateNewItemBasePrice()">
                     </div>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px;">สกุลเงิน:</label>
-                        <select id="new-currency" class="swal2-input" onchange="updateNewItemCurrency()">
+
+                    <!-- Currency Field -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 14px;">
+                            <i class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">currency_exchange</i>สกุลเงิน
+                        </label>
+                        <select id="new-currency" style="width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; background-color: white; box-sizing: border-box; cursor: pointer;" onchange="updateNewItemCurrency()">
                             ${currentPoData.currencies ? currentPoData.currencies.map(c => 
                                 `<option value="${c.currency_id}" data-rate="${c.exchange_rate}" data-symbol="${c.symbol}" ${c.code === orderCurrency ? 'selected' : ''}>${c.symbol} ${c.name} (${c.code})</option>`
                             ).join('') : `<option value="1" data-rate="1" data-symbol="฿">฿ Thai Baht (THB)</option>`}
                         </select>
                     </div>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px;">ราคาต่อหน่วย:</label>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span id="new-currency-symbol" style="font-weight: bold; color: #1976d2; min-width: 20px;">${currencySymbol}</span>
-                            <input type="number" id="new-price" class="swal2-input" value="0" min="0" step="0.01" onchange="updateNewItemBasePrice()">
+
+                    <!-- Price Field -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 14px;">
+                            <i class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">local_offer</i>ราคาต่อหน่วย
+                        </label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="new-currency-symbol" style="font-weight: bold; color: #1976d2; font-size: 18px; min-width: 30px; text-align: center;">${currencySymbol}</span>
+                            <input type="number" id="new-price" value="0" min="0" step="0.01" style="flex: 1; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; box-sizing: border-box;" onchange="updateNewItemBasePrice()" oninput="updateNewItemBasePrice()">
                         </div>
-                        <div id="new-price-base" style="font-size: 12px; color: #666; margin-top: 5px;">≈ ฿0.00</div>
+                        <div id="new-price-base" style="font-size: 13px; color: #27ae60; margin-top: 6px; font-weight: 500;">≈ ฿0.00</div>
                     </div>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px;">หน่วย:</label>
-                        <input type="text" id="new-unit" class="swal2-input" value="ชิ้น" placeholder="หน่วยสินค้า">
+
+                    <!-- Unit Field -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 14px;">
+                            <i class="material-icons" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">straighten</i>หน่วย
+                        </label>
+                        <input type="text" id="new-unit" value="ชิ้น" placeholder="เช่น ชิ้น, กล่อง, ม้วน" style="width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+                    </div>
+
+                    <!-- Summary Box -->
+                    <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 15px; border-radius: 8px; margin-top: 25px;">
+                        <div style="font-size: 13px; color: #555; margin-bottom: 8px;">
+                            <strong>สรุป:</strong> <span id="summary-qty">1</span> × <span id="summary-unit">ชิ้น</span> @ <span id="summary-price">฿0.00</span>
+                        </div>
+                        <div style="font-size: 13px; color: #666;">
+                            รวม: <span id="summary-total">฿0.00</span>
+                        </div>
                     </div>
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: 'เพิ่ม',
-            cancelButtonText: 'ยกเลิก',
+            confirmButtonText: '✅ เพิ่มสินค้า',
+            cancelButtonText: '❌ ยกเลิก',
+            confirmButtonColor: '#27ae60',
+            cancelButtonColor: '#95a5a6',
             customClass: {
-                container: 'swal2-top-z-index'
+                container: 'swal2-top-z-index',
+                popup: 'swal2-popup-styled',
+                confirmButton: 'swal2-btn-success',
+                cancelButton: 'swal2-btn-cancel'
             },
             didOpen: () => {
+                // Add focus styling
+                const inputs = document.querySelectorAll('#new-product-name, #new-qty, #new-currency, #new-price, #new-unit');
+                inputs.forEach(input => {
+                    input.addEventListener('focus', function() {
+                        this.style.borderColor = '#3498db';
+                        this.style.boxShadow = '0 0 0 3px rgba(52, 152, 219, 0.1)';
+                    });
+                    input.addEventListener('blur', function() {
+                        this.style.borderColor = '#e0e0e0';
+                        this.style.boxShadow = 'none';
+                    });
+                });
+                
                 // Initialize autocomplete for the product input
                 const productInput = document.getElementById('new-product-name');
                 if (productInput) {
@@ -1851,12 +1952,50 @@ $rows = $stmt->fetchAll();
                             document.getElementById('new-price').value = product.price_per_unit || '0';
                             document.getElementById('new-unit').value = product.unit || 'ชิ้น';
                             updateNewItemBasePrice(); // Update base price when product is selected
+                            updateSummary();
                         }
                     });
                 }
                 
-                // Initialize base price display
+                // Initialize displays
                 updateNewItemBasePrice();
+                updateSummary();
+            },
+            didOpen: () => {
+                // Add focus styling
+                const inputs = document.querySelectorAll('#new-product-name, #new-qty, #new-currency, #new-price, #new-unit');
+                inputs.forEach(input => {
+                    input.addEventListener('focus', function() {
+                        this.style.borderColor = '#3498db';
+                        this.style.boxShadow = '0 0 0 3px rgba(52, 152, 219, 0.1)';
+                    });
+                    input.addEventListener('blur', function() {
+                        this.style.borderColor = '#e0e0e0';
+                        this.style.boxShadow = 'none';
+                    });
+                    // Update summary on input change
+                    input.addEventListener('change', updateSummary);
+                    input.addEventListener('input', updateSummary);
+                });
+                
+                // Initialize autocomplete for the product input
+                const productInput = document.getElementById('new-product-name');
+                if (productInput) {
+                    initProductAutocomplete(productInput, {
+                        onSelect: (product, inputElement) => {
+                            // Update hidden fields
+                            document.getElementById('new-product-id').value = product.product_id || '';
+                            document.getElementById('new-price').value = product.price_per_unit || '0';
+                            document.getElementById('new-unit').value = product.unit || 'ชิ้น';
+                            updateNewItemBasePrice(); // Update base price when product is selected
+                            updateSummary();
+                        }
+                    });
+                }
+                
+                // Initialize displays
+                updateNewItemBasePrice();
+                updateSummary();
             },
             preConfirm: () => {
                 const productName = document.getElementById('new-product-name').value;
@@ -1936,6 +2075,9 @@ $rows = $stmt->fetchAll();
     }
 
     function renderItemsTable() {
+        // Reset edit mode flag to prevent stuck state
+        isEditingItems = false;
+        
         const formatCurrency = (amount) => parseFloat(amount || 0).toLocaleString('th-TH', {
             minimumFractionDigits: 2, maximumFractionDigits: 2
         });
@@ -2069,6 +2211,23 @@ $rows = $stmt->fetchAll();
     }
     
     // Helper functions for currency handling in forms
+    function updateSummary() {
+        const qty = parseFloat(document.getElementById('new-qty')?.value || 1);
+        const price = parseFloat(document.getElementById('new-price')?.value || 0);
+        const unit = document.getElementById('new-unit')?.value || 'ชิ้น';
+        const currencySymbol = document.getElementById('new-currency-symbol')?.textContent || '฿';
+        const exchangeRate = parseFloat(document.getElementById('new-currency')?.options[document.getElementById('new-currency').selectedIndex]?.dataset.rate || 1);
+        
+        const basePrice = price * exchangeRate;
+        const total = qty * basePrice;
+        
+        // Update summary
+        document.getElementById('summary-qty').textContent = qty.toLocaleString();
+        document.getElementById('summary-unit').textContent = unit;
+        document.getElementById('summary-price').textContent = currencySymbol + price.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('summary-total').textContent = '฿' + total.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+    
     function updateNewItemCurrency() {
         const currencySelect = document.getElementById('new-currency');
         const symbolSpan = document.getElementById('new-currency-symbol');
@@ -2079,6 +2238,7 @@ $rows = $stmt->fetchAll();
         }
         
         updateNewItemBasePrice();
+        updateSummary();
     }
     
     function updateNewItemBasePrice() {
@@ -2094,7 +2254,9 @@ $rows = $stmt->fetchAll();
         const basePrice = price * rate;
         
         basePriceDiv.textContent = `≈ ฿${basePrice.toFixed(2)}`;
+        updateSummary();
     }
+    
     </script>
 </body>
 </html>

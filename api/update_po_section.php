@@ -118,7 +118,7 @@ try {
             
             // Insert new item with product_id if available, otherwise use 0 for manual entries
             $stmt = $pdo->prepare("INSERT INTO purchase_order_items (po_id, product_id, qty, price_per_unit, total, currency_id, price_original, price_base) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$po_id, $product_id, $qty, $price_base, $total, $currency_id, $price_original, $price_base]);
+            $stmt->execute([$po_id, $product_id, $qty, $price_original, $total, $currency_id, $price_original, $price_base]);
             
             $new_item_id = $pdo->lastInsertId();
             

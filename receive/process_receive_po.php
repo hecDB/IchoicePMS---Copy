@@ -10,6 +10,77 @@ if (!$user_id) {
     exit;
 }
 
+// Handle update expiry date only (without quantity)
+$action = $_POST['action'] ?? '';
+if ($action === 'update_expiry_only') {
+    try {
+        $item_id = $_POST['item_id'] ?? null;
+        $expiry_date = $_POST['expiry_date'] ?? null;
+        
+        if (!$item_id) {
+            throw new Exception('ไม่พบ item_id');
+        }
+        
+        // Validate expiry date format
+        if ($expiry_date && !empty($expiry_date)) {
+            $expiry_date_obj = DateTime::createFromFormat('Y-m-d', $expiry_date);
+            if (!$expiry_date_obj) {
+                throw new Exception('รูปแบบวันที่หมดอายุไม่ถูกต้อง');
+            }
+        } else {
+            $expiry_date = null;
+        }
+        
+        // Get the latest receive record for this item
+        $get_receive_sql = "SELECT receive_id, po_id FROM receive_items WHERE item_id = ? ORDER BY receive_id DESC LIMIT 1";
+        $get_receive_stmt = $pdo->prepare($get_receive_sql);
+        $get_receive_stmt->execute([$item_id]);
+        $receive_record = $get_receive_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$receive_record) {
+            // If no receive record exists, create one with just the expiry date
+            $get_po_sql = "SELECT po_id FROM purchase_order_items WHERE item_id = ? LIMIT 1";
+            $get_po_stmt = $pdo->prepare($get_po_sql);
+            $get_po_stmt->execute([$item_id]);
+            $po_info = $get_po_stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$po_info) {
+                throw new Exception('ไม่พบข้อมูลรายการสินค้า');
+            }
+            
+            $insert_sql = "INSERT INTO receive_items (item_id, po_id, receive_qty, created_by, created_at, remark, expiry_date) 
+                          VALUES (?, ?, 0, ?, NOW(), ?, ?)";
+            $insert_stmt = $pdo->prepare($insert_sql);
+            $insert_stmt->execute([
+                $item_id,
+                $po_info['po_id'],
+                $user_id,
+                'แก้ไขวันหมดอายุเท่านั้น',
+                $expiry_date
+            ]);
+        } else {
+            // Update the latest receive record
+            $update_sql = "UPDATE receive_items SET expiry_date = ? WHERE receive_id = ?";
+            $update_stmt = $pdo->prepare($update_sql);
+            $update_stmt->execute([$expiry_date, $receive_record['receive_id']]);
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'บันทึกวันหมดอายุสำเร็จ'
+        ]);
+        exit;
+        
+    } catch (Exception $e) {
+        error_log("Update expiry error: " . $e->getMessage());
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+        exit;
+    }
+}
+
 // รองรับทั้ง POST และ JSON input
 $input = json_decode(file_get_contents('php://input'), true);
 if ($input) {

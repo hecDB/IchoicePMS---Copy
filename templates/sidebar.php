@@ -245,7 +245,10 @@ body {
                         <span class="pending-badge"><?= $pending_product_count ?></span>
                     <?php endif; ?>
                 </a>
-               
+                <a href="<?= getPath('receive/transaction_view_separated.php') ?>" class="submenu-item<?=isActive('transaction_view_separated.php')?>">
+                    <span class="material-icons">new_releases</span>
+                    <span class="submenu-text">สินค้าซื้อใหม่</span>
+                </a>
                 <a href="<?= getPath('stock/low_stock.php') ?>" class="submenu-item<?=isActive('low_stock.php')?>">
                     <span class="material-icons">warning</span>
                     <span class="submenu-text">สินค้าใกล้หมด</span>
@@ -257,6 +260,21 @@ body {
                 <a href="<?= getPath('stock/expiring_soon.php') ?>" class="submenu-item<?=isActive('expiring_soon.php')?>">
                     <span class="material-icons">schedule</span>
                     <span class="submenu-text">สินค้าใกล้หมดอายุ</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- หมวดหมู่: ยืมสินค้า -->
+        <div class="menu-category">
+            <div class="category-header" onclick="toggleCategory('borrow')">
+                <span class="material-icons">card_giftcard</span>
+                <span class="category-text">ยืมสินค้า</span>
+                <span class="material-icons category-arrow">keyboard_arrow_down</span>
+            </div>
+            <div class="submenu" id="borrow-submenu">
+                <a href="<?= getPath('borrow/borrow_items.php') ?>" class="submenu-item<?=isActive('borrow_items.php')?>">
+                    <span class="material-icons">assignment</span>
+                    <span class="submenu-text">รายการยืมสินค้า</span>
                 </a>
             </div>
         </div>
@@ -349,7 +367,7 @@ document.addEventListener('DOMContentLoaded', function(){
 function toggleCategory(categoryName) {
     const header = document.querySelector(`[onclick="toggleCategory('${categoryName}')"]`);
     const submenu = document.getElementById(categoryName + '-submenu');
-    const categories = ['orders', 'products', 'stock', 'sales', 'admin'];
+    const categories = ['orders', 'products', 'stock', 'borrow', 'sales', 'admin'];
     
     if (submenu.classList.contains('expanded')) {
         // ปิดหมวดหมู่นี้

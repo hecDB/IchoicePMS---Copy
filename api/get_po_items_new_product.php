@@ -26,11 +26,12 @@ try {
             poi.price_per_unit as unit_price,
             c.code as currency_code,
             COALESCE(received_summary.total_received, 0) as received_qty,
-            (poi.qty - COALESCE(received_summary.total_received, 0)) as remaining_qty
+            (poi.qty - COALESCE(received_summary.total_received, 0)) as remaining_qty,
+            COALESCE(received_summary.expiry_date, NULL) as expiry_date
         FROM purchase_order_items poi
         LEFT JOIN temp_products tp ON poi.temp_product_id = tp.temp_product_id
         LEFT JOIN (
-            SELECT item_id, SUM(receive_qty) as total_received 
+            SELECT item_id, MAX(expiry_date) as expiry_date, SUM(receive_qty) as total_received 
             FROM receive_items 
             GROUP BY item_id
         ) received_summary ON poi.item_id = received_summary.item_id
@@ -60,7 +61,8 @@ try {
             'unit_price' => (float)$item['unit_price'],
             'currency_code' => $item['currency_code'] ?? 'THB',
             'received_qty' => (float)$item['received_qty'],
-            'remaining_qty' => (float)$item['remaining_qty']
+            'remaining_qty' => (float)$item['remaining_qty'],
+            'expiry_date' => $item['expiry_date'] ?? null
         ];
     }
 

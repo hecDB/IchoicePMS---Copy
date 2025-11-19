@@ -54,3 +54,333 @@
 [16-Nov-2025 05:59:48 Europe/Berlin] Processing update: po_id=10, type=supplier
 [18-Nov-2025 15:57:27 Europe/Berlin] update_po_section.php called with: {"po_id":"31","item_id":"44","product_id":"9","product_name":"[Thorne Research] Creatine \u0e04\u0e23\u0e35\u0e40\u0e2d\u0e17\u0e35\u0e19 \u0e41\u0e1a\u0e1a\u0e1c\u0e07 \u0e1c\u0e25\u0e34\u0e15\u0e1e\u0e25\u0e31\u0e07\u0e07\u0e32\u0e19\u0e23\u0e30\u0e14\u0e31\u0e1a\u0e40\u0e0b\u0e25\u0e25\u0e4c\u0e02\u0e2d\u0e07\u0e23\u0e48\u0e32\u0e07\u0e01\u0e32\u0e22 \u0e40\u0e1e\u0e34\u0e48\u0e21\u0e21\u0e27\u0e25\u0e01\u0e32\u0e22","qty":"5","price_per_unit":"15.00","currency_id":"1","price_original":"15","exchange_rate":"1","update_type":"item"}
 [18-Nov-2025 15:57:27 Europe/Berlin] Processing update: po_id=31, type=item
+[19-Nov-2025 13:41:01 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:41:01 Europe/Berlin] Request query: t
+[19-Nov-2025 13:41:01 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:41:01 Europe/Berlin] Request URI: /api/product_search_api.php?q=t&limit=10
+[19-Nov-2025 13:41:01 Europe/Berlin] Searching for: 't' with limit: 10
+[19-Nov-2025 13:41:01 Europe/Berlin] About to encode 5 results for type: default
+[19-Nov-2025 13:41:01 Europe/Berlin] Sent JSON response length: 4124
+[19-Nov-2025 13:41:01 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:43:30 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:43:30 Europe/Berlin] Request query: เา
+[19-Nov-2025 13:43:30 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:43:30 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B9%80%E0%B8%B2&limit=10
+[19-Nov-2025 13:43:30 Europe/Berlin] Searching for: 'เา' with limit: 10
+[19-Nov-2025 13:43:30 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 13:43:30 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 13:43:30 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:43:32 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:43:32 Europe/Berlin] Request query: ke
+[19-Nov-2025 13:43:32 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:43:32 Europe/Berlin] Request URI: /api/product_search_api.php?q=ke&limit=10
+[19-Nov-2025 13:43:32 Europe/Berlin] Searching for: 'ke' with limit: 10
+[19-Nov-2025 13:43:32 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 13:43:32 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 13:43:32 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:43:33 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:43:33 Europe/Berlin] Request query: kr
+[19-Nov-2025 13:43:33 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:43:33 Europe/Berlin] Request URI: /api/product_search_api.php?q=kr&limit=10
+[19-Nov-2025 13:43:33 Europe/Berlin] Searching for: 'kr' with limit: 10
+[19-Nov-2025 13:43:33 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 13:43:33 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 13:43:33 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:43:34 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:43:34 Europe/Berlin] Request query: ke
+[19-Nov-2025 13:43:34 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:43:34 Europe/Berlin] Request URI: /api/product_search_api.php?q=ke&limit=10
+[19-Nov-2025 13:43:34 Europe/Berlin] Searching for: 'ke' with limit: 10
+[19-Nov-2025 13:43:34 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 13:43:34 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 13:43:34 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:43:34 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:43:34 Europe/Berlin] Request query: k
+[19-Nov-2025 13:43:34 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:43:34 Europe/Berlin] Request URI: /api/product_search_api.php?q=k&limit=10
+[19-Nov-2025 13:43:34 Europe/Berlin] Searching for: 'k' with limit: 10
+[19-Nov-2025 13:43:34 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 13:43:34 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 13:43:34 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:43:36 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:43:36 Europe/Berlin] Request query: t
+[19-Nov-2025 13:43:36 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:43:36 Europe/Berlin] Request URI: /api/product_search_api.php?q=t&limit=10
+[19-Nov-2025 13:43:36 Europe/Berlin] Searching for: 't' with limit: 10
+[19-Nov-2025 13:43:36 Europe/Berlin] About to encode 5 results for type: default
+[19-Nov-2025 13:43:36 Europe/Berlin] Sent JSON response length: 4124
+[19-Nov-2025 13:43:36 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:43:44 Europe/Berlin] update_po_section.php called with: {"po_id":"31","item_id":"44","product_id":"10","product_name":"(REACH\u00ae) Waxed Dental Floss 50.2m or 182.8m \u0e23\u0e35\u0e0a \u0e44\u0e2b\u0e21\u0e02\u0e31\u0e14\u0e1f\u0e31\u0e19 \u0e40\u0e04\u0e25\u0e37\u0e2d\u0e1a\u0e41\u0e27\u0e47\u0e01\u0e0b\u0e4c","qty":"5.00","price_per_unit":"5","currency_id":"1","price_original":"5","exchange_rate":"1","update_type":"item"}
+[19-Nov-2025 13:43:44 Europe/Berlin] Processing update: po_id=31, type=item
+[19-Nov-2025 13:47:38 Europe/Berlin] update_po_section.php called with: {"po_id":"31","item_id":"44","product_id":"10","product_name":"(REACH\u00ae) Waxed Dental Floss 50.2m or 182.8m \u0e23\u0e35\u0e0a \u0e44\u0e2b\u0e21\u0e02\u0e31\u0e14\u0e1f\u0e31\u0e19 \u0e40\u0e04\u0e25\u0e37\u0e2d\u0e1a\u0e41\u0e27\u0e47\u0e01\u0e0b\u0e4c","qty":"5.00","price_per_unit":"8","currency_id":"1","price_original":"8","exchange_rate":"1","update_type":"item"}
+[19-Nov-2025 13:47:38 Europe/Berlin] Processing update: po_id=31, type=item
+[19-Nov-2025 13:47:53 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:47:53 Europe/Berlin] Request query: า
+[19-Nov-2025 13:47:53 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:47:53 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%B2&limit=10
+[19-Nov-2025 13:47:53 Europe/Berlin] Searching for: 'า' with limit: 10
+[19-Nov-2025 13:47:53 Europe/Berlin] About to encode 4 results for type: default
+[19-Nov-2025 13:47:53 Europe/Berlin] Sent JSON response length: 3070
+[19-Nov-2025 13:47:53 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:48:11 Europe/Berlin] update_po_section.php called with: {"po_id":"31","product_id":"5","product_name":"\u0e15\u0e31\u0e27\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32","qty":"10","price_per_unit":"10","unit":"\u0e0a\u0e34\u0e49\u0e19","currency_id":"2","price_original":"10","exchange_rate":"39","update_type":"add_item"}
+[19-Nov-2025 13:48:11 Europe/Berlin] Processing update: po_id=31, type=add_item
+[19-Nov-2025 13:48:31 Europe/Berlin] update_po_section.php called with: {"po_id":"31","item_id":"46","product_id":"5","product_name":"\u0e15\u0e31\u0e27\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32","qty":"10.00","price_per_unit":"20","currency_id":"1","price_original":"20","exchange_rate":"1","update_type":"item"}
+[19-Nov-2025 13:48:31 Europe/Berlin] Processing update: po_id=31, type=item
+[19-Nov-2025 13:48:37 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:48:37 Europe/Berlin] Request query: ตัวอย่างสินค้า
+[19-Nov-2025 13:48:37 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:48:37 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%95%E0%B8%B1%E0%B8%A7%E0%B8%AD%E0%B8%A2%E0%B9%88%E0%B8%B2%E0%B8%87%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%84%E0%B9%89%E0%B8%B2&limit=10
+[19-Nov-2025 13:48:37 Europe/Berlin] Searching for: 'ตัวอย่างสินค้า' with limit: 10
+[19-Nov-2025 13:48:37 Europe/Berlin] About to encode 1 results for type: default
+[19-Nov-2025 13:48:37 Europe/Berlin] Sent JSON response length: 543
+[19-Nov-2025 13:48:37 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:48:40 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:48:40 Europe/Berlin] Request query: ตัวอย่างสินค
+[19-Nov-2025 13:48:40 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:48:40 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%95%E0%B8%B1%E0%B8%A7%E0%B8%AD%E0%B8%A2%E0%B9%88%E0%B8%B2%E0%B8%87%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%84&limit=10
+[19-Nov-2025 13:48:40 Europe/Berlin] Searching for: 'ตัวอย่างสินค' with limit: 10
+[19-Nov-2025 13:48:40 Europe/Berlin] About to encode 1 results for type: default
+[19-Nov-2025 13:48:40 Europe/Berlin] Sent JSON response length: 543
+[19-Nov-2025 13:48:40 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:48:42 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:48:42 Europe/Berlin] Request query: า
+[19-Nov-2025 13:48:42 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:48:42 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%B2&limit=10
+[19-Nov-2025 13:48:42 Europe/Berlin] Searching for: 'า' with limit: 10
+[19-Nov-2025 13:48:42 Europe/Berlin] About to encode 4 results for type: default
+[19-Nov-2025 13:48:42 Europe/Berlin] Sent JSON response length: 3070
+[19-Nov-2025 13:48:42 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:48:42 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:48:42 Europe/Berlin] Request query: ส
+[19-Nov-2025 13:48:42 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:48:42 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA&limit=10
+[19-Nov-2025 13:48:42 Europe/Berlin] Searching for: 'ส' with limit: 10
+[19-Nov-2025 13:48:42 Europe/Berlin] About to encode 2 results for type: default
+[19-Nov-2025 13:48:42 Europe/Berlin] Sent JSON response length: 1429
+[19-Nov-2025 13:48:42 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:48:46 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:48:46 Europe/Berlin] Request query: o
+[19-Nov-2025 13:48:46 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:48:46 Europe/Berlin] Request URI: /api/product_search_api.php?q=o&limit=10
+[19-Nov-2025 13:48:46 Europe/Berlin] Searching for: 'o' with limit: 10
+[19-Nov-2025 13:48:46 Europe/Berlin] About to encode 5 results for type: default
+[19-Nov-2025 13:48:46 Europe/Berlin] Sent JSON response length: 4124
+[19-Nov-2025 13:48:46 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:49:03 Europe/Berlin] update_po_section.php called with: {"po_id":"31","product_id":"6","product_name":"\u0e0b\u0e34\u0e07\u0e04\u0e4c \u0e1e\u0e34\u0e42\u0e04\u0e25\u0e34\u0e40\u0e19\u0e15 Zinc Picolinate 15 mg 60 Capsules - Thorne Research","qty":"8","price_per_unit":"12","unit":"\u0e0a\u0e34\u0e49\u0e19","currency_id":"2","price_original":"12","exchange_rate":"39","update_type":"add_item"}
+[19-Nov-2025 13:49:03 Europe/Berlin] Processing update: po_id=31, type=add_item
+[19-Nov-2025 13:49:31 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:49:31 Europe/Berlin] Request query: h
+[19-Nov-2025 13:49:31 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:49:31 Europe/Berlin] Request URI: /api/product_search_api.php?q=h&limit=10
+[19-Nov-2025 13:49:31 Europe/Berlin] Searching for: 'h' with limit: 10
+[19-Nov-2025 13:49:31 Europe/Berlin] About to encode 5 results for type: default
+[19-Nov-2025 13:49:31 Europe/Berlin] Sent JSON response length: 4124
+[19-Nov-2025 13:49:31 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:49:50 Europe/Berlin] update_po_section.php called with: {"po_id":"31","product_id":"9","product_name":"[Thorne Research] Creatine \u0e04\u0e23\u0e35\u0e40\u0e2d\u0e17\u0e35\u0e19 \u0e41\u0e1a\u0e1a\u0e1c\u0e07 \u0e1c\u0e25\u0e34\u0e15\u0e1e\u0e25\u0e31\u0e07\u0e07\u0e32\u0e19\u0e23\u0e30\u0e14\u0e31\u0e1a\u0e40\u0e0b\u0e25\u0e25\u0e4c\u0e02\u0e2d\u0e07\u0e23\u0e48\u0e32\u0e07\u0e01\u0e32\u0e22 \u0e40\u0e1e\u0e34\u0e48\u0e21\u0e21\u0e27\u0e25\u0e01\u0e32\u0e22","qty":"8","price_per_unit":"12","unit":"\u0e02\u0e27\u0e14","currency_id":"2","price_original":"12","exchange_rate":"39","update_type":"add_item"}
+[19-Nov-2025 13:49:50 Europe/Berlin] Processing update: po_id=31, type=add_item
+[19-Nov-2025 13:53:09 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:53:09 Europe/Berlin] Request query: า
+[19-Nov-2025 13:53:09 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:53:09 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%B2&limit=10
+[19-Nov-2025 13:53:09 Europe/Berlin] Searching for: 'า' with limit: 10
+[19-Nov-2025 13:53:09 Europe/Berlin] About to encode 4 results for type: default
+[19-Nov-2025 13:53:09 Europe/Berlin] Sent JSON response length: 3070
+[19-Nov-2025 13:53:09 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:53:22 Europe/Berlin] update_po_section.php called with: {"po_id":"29","product_id":"5","product_name":"\u0e15\u0e31\u0e27\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32","qty":"10","price_per_unit":"5","unit":"\u0e0a\u0e34\u0e49\u0e19","currency_id":"2","price_original":"5","exchange_rate":"39","update_type":"add_item"}
+[19-Nov-2025 13:53:22 Europe/Berlin] Processing update: po_id=29, type=add_item
+[19-Nov-2025 13:56:56 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:56:56 Europe/Berlin] Request query: า
+[19-Nov-2025 13:56:56 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:56:56 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%B2&limit=10
+[19-Nov-2025 13:56:56 Europe/Berlin] Searching for: 'า' with limit: 10
+[19-Nov-2025 13:56:56 Europe/Berlin] About to encode 4 results for type: default
+[19-Nov-2025 13:56:56 Europe/Berlin] Sent JSON response length: 3070
+[19-Nov-2025 13:56:56 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:57:14 Europe/Berlin] update_po_section.php called with: {"po_id":"31","product_id":"7","product_name":"\u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35 Stress B-Complex 60 Capsules (Thorne Research\u00ae) \u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35\u0e23\u0e27\u0e21","qty":"5","price_per_unit":"18.9","unit":"\u0e02\u0e27\u0e14","currency_id":"1","price_original":"18.9","exchange_rate":"1","update_type":"add_item"}
+[19-Nov-2025 13:57:14 Europe/Berlin] Processing update: po_id=31, type=add_item
+[19-Nov-2025 13:57:34 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:57:34 Europe/Berlin] Request query: ส
+[19-Nov-2025 13:57:34 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:57:34 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA&limit=10
+[19-Nov-2025 13:57:34 Europe/Berlin] Searching for: 'ส' with limit: 10
+[19-Nov-2025 13:57:34 Europe/Berlin] About to encode 2 results for type: default
+[19-Nov-2025 13:57:34 Europe/Berlin] Sent JSON response length: 1429
+[19-Nov-2025 13:57:34 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:57:36 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 13:57:36 Europe/Berlin] Request query: ว
+[19-Nov-2025 13:57:36 Europe/Berlin] Request method: GET
+[19-Nov-2025 13:57:36 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A7&limit=10
+[19-Nov-2025 13:57:36 Europe/Berlin] Searching for: 'ว' with limit: 10
+[19-Nov-2025 13:57:36 Europe/Berlin] About to encode 4 results for type: default
+[19-Nov-2025 13:57:36 Europe/Berlin] Sent JSON response length: 3328
+[19-Nov-2025 13:57:36 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 13:57:50 Europe/Berlin] update_po_section.php called with: {"po_id":"29","product_id":"7","product_name":"\u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35 Stress B-Complex 60 Capsules (Thorne Research\u00ae) \u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35\u0e23\u0e27\u0e21","qty":"8","price_per_unit":"14.2","unit":"\u0e02\u0e27\u0e14","currency_id":"2","price_original":"14.2","exchange_rate":"39","update_type":"add_item"}
+[19-Nov-2025 13:57:50 Europe/Berlin] Processing update: po_id=29, type=add_item
+[19-Nov-2025 14:14:13 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:14:13 Europe/Berlin] Request query: ld
+[19-Nov-2025 14:14:13 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:14:13 Europe/Berlin] Request URI: /api/product_search_api.php?q=ld
+[19-Nov-2025 14:14:13 Europe/Berlin] Searching for: 'ld' with limit: 10
+[19-Nov-2025 14:14:13 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:14:13 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:14:13 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:14:13 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:14:13 Europe/Berlin] Request query: ldi
+[19-Nov-2025 14:14:13 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:14:13 Europe/Berlin] Request URI: /api/product_search_api.php?q=ldi
+[19-Nov-2025 14:14:13 Europe/Berlin] Searching for: 'ldi' with limit: 10
+[19-Nov-2025 14:14:13 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:14:13 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:14:13 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:14:13 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:14:13 Europe/Berlin] Request query: ld
+[19-Nov-2025 14:14:13 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:14:13 Europe/Berlin] Request URI: /api/product_search_api.php?q=ld
+[19-Nov-2025 14:14:13 Europe/Berlin] Searching for: 'ld' with limit: 10
+[19-Nov-2025 14:14:13 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:14:13 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:14:13 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:14:39 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:14:39 Europe/Berlin] Request query: lk
+[19-Nov-2025 14:14:39 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:14:39 Europe/Berlin] Request URI: /api/product_search_api.php?q=lk
+[19-Nov-2025 14:14:39 Europe/Berlin] Searching for: 'lk' with limit: 10
+[19-Nov-2025 14:14:39 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:14:39 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:14:39 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:14:40 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:14:40 Europe/Berlin] Request query: kl
+[19-Nov-2025 14:14:40 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:14:40 Europe/Berlin] Request URI: /api/product_search_api.php?q=kl
+[19-Nov-2025 14:14:40 Europe/Berlin] Searching for: 'kl' with limit: 10
+[19-Nov-2025 14:14:40 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:14:40 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:14:40 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:14:40 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:14:40 Europe/Berlin] Request query: kl
+[19-Nov-2025 14:14:40 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:14:40 Europe/Berlin] Request URI: /api/product_search_api.php?q=kl
+[19-Nov-2025 14:14:40 Europe/Berlin] Searching for: 'kl' with limit: 10
+[19-Nov-2025 14:14:40 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:14:40 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:14:40 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:18:11 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:18:11 Europe/Berlin] Request query: า
+[19-Nov-2025 14:18:11 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:18:11 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%B2
+[19-Nov-2025 14:18:11 Europe/Berlin] Searching for: 'า' with limit: 10
+[19-Nov-2025 14:18:11 Europe/Berlin] About to encode 4 results for type: default
+[19-Nov-2025 14:18:11 Europe/Berlin] Sent JSON response length: 3070
+[19-Nov-2025 14:18:11 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:18:13 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:18:13 Europe/Berlin] Request query: k
+[19-Nov-2025 14:18:13 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:18:13 Europe/Berlin] Request URI: /api/product_search_api.php?q=k
+[19-Nov-2025 14:18:13 Europe/Berlin] Searching for: 'k' with limit: 10
+[19-Nov-2025 14:18:13 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:18:13 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:18:13 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:18:14 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:18:14 Europe/Berlin] Request query: kf
+[19-Nov-2025 14:18:14 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:18:14 Europe/Berlin] Request URI: /api/product_search_api.php?q=kf
+[19-Nov-2025 14:18:14 Europe/Berlin] Searching for: 'kf' with limit: 10
+[19-Nov-2025 14:18:14 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:18:14 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:18:14 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:18:14 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:18:14 Europe/Berlin] Request query: kfi
+[19-Nov-2025 14:18:14 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:18:14 Europe/Berlin] Request URI: /api/product_search_api.php?q=kfi
+[19-Nov-2025 14:18:14 Europe/Berlin] Searching for: 'kfi' with limit: 10
+[19-Nov-2025 14:18:14 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:18:14 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:18:14 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:18:15 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:18:15 Europe/Berlin] Request query: kf
+[19-Nov-2025 14:18:15 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:18:15 Europe/Berlin] Request URI: /api/product_search_api.php?q=kf
+[19-Nov-2025 14:18:15 Europe/Berlin] Searching for: 'kf' with limit: 10
+[19-Nov-2025 14:18:15 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:18:15 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:18:15 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:18:15 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:18:15 Europe/Berlin] Request query: k
+[19-Nov-2025 14:18:15 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:18:15 Europe/Berlin] Request URI: /api/product_search_api.php?q=k
+[19-Nov-2025 14:18:15 Europe/Berlin] Searching for: 'k' with limit: 10
+[19-Nov-2025 14:18:15 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:18:15 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:18:15 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:21:25 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:21:25 Europe/Berlin] Request query: k
+[19-Nov-2025 14:21:25 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:21:25 Europe/Berlin] Request URI: /api/product_search_api.php?q=k&limit=20
+[19-Nov-2025 14:21:25 Europe/Berlin] Searching for: 'k' with limit: 20
+[19-Nov-2025 14:21:25 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:21:25 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:21:25 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:21:27 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:21:27 Europe/Berlin] Request query: l
+[19-Nov-2025 14:21:27 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:21:27 Europe/Berlin] Request URI: /api/product_search_api.php?q=l&limit=20
+[19-Nov-2025 14:21:27 Europe/Berlin] Searching for: 'l' with limit: 20
+[19-Nov-2025 14:21:27 Europe/Berlin] About to encode 4 results for type: default
+[19-Nov-2025 14:21:27 Europe/Berlin] Sent JSON response length: 2987
+[19-Nov-2025 14:21:27 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:21:28 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:21:28 Europe/Berlin] Request query: ;
+[19-Nov-2025 14:21:28 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:21:28 Europe/Berlin] Request URI: /api/product_search_api.php?q=%3B&limit=20
+[19-Nov-2025 14:21:28 Europe/Berlin] Searching for: ';' with limit: 20
+[19-Nov-2025 14:21:28 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:21:28 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:21:28 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:23:56 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:23:56 Europe/Berlin] Request query: า
+[19-Nov-2025 14:23:56 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:23:56 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%B2&limit=20
+[19-Nov-2025 14:23:56 Europe/Berlin] Searching for: 'า' with limit: 20
+[19-Nov-2025 14:23:56 Europe/Berlin] About to encode 4 results for type: default
+[19-Nov-2025 14:23:56 Europe/Berlin] Sent JSON response length: 3070
+[19-Nov-2025 14:23:56 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:26:27 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:26:27 Europe/Berlin] Request query: ส
+[19-Nov-2025 14:26:27 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:26:27 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA&limit=20
+[19-Nov-2025 14:26:27 Europe/Berlin] Searching for: 'ส' with limit: 20
+[19-Nov-2025 14:26:27 Europe/Berlin] About to encode 2 results for type: default
+[19-Nov-2025 14:26:27 Europe/Berlin] Sent JSON response length: 1429
+[19-Nov-2025 14:26:27 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:26:27 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:26:27 Europe/Berlin] Request query: สา
+[19-Nov-2025 14:26:27 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:26:27 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA%E0%B8%B2&limit=20
+[19-Nov-2025 14:26:27 Europe/Berlin] Searching for: 'สา' with limit: 20
+[19-Nov-2025 14:26:27 Europe/Berlin] About to encode 0 results for type: default
+[19-Nov-2025 14:26:27 Europe/Berlin] Sent JSON response length: 2
+[19-Nov-2025 14:26:27 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:26:27 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:26:27 Europe/Berlin] Request query: า
+[19-Nov-2025 14:26:27 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:26:27 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%B2&limit=20
+[19-Nov-2025 14:26:27 Europe/Berlin] Searching for: 'า' with limit: 20
+[19-Nov-2025 14:26:27 Europe/Berlin] About to encode 4 results for type: default
+[19-Nov-2025 14:26:27 Europe/Berlin] Sent JSON response length: 3070
+[19-Nov-2025 14:26:27 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:28:12 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:28:12 Europe/Berlin] Request query: ส
+[19-Nov-2025 14:28:12 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:28:12 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA&limit=20
+[19-Nov-2025 14:28:12 Europe/Berlin] Searching for: 'ส' with limit: 20
+[19-Nov-2025 14:28:12 Europe/Berlin] About to encode 2 results for type: default
+[19-Nov-2025 14:28:12 Europe/Berlin] Sent JSON response length: 1429
+[19-Nov-2025 14:28:12 Europe/Berlin] === product_search_api.php END ===
+[19-Nov-2025 14:28:16 Europe/Berlin] === product_search_api.php START ===
+[19-Nov-2025 14:28:16 Europe/Berlin] Request query: ะ
+[19-Nov-2025 14:28:16 Europe/Berlin] Request method: GET
+[19-Nov-2025 14:28:16 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%B0&limit=20
+[19-Nov-2025 14:28:16 Europe/Berlin] Searching for: 'ะ' with limit: 20
+[19-Nov-2025 14:28:16 Europe/Berlin] About to encode 1 results for type: default
+[19-Nov-2025 14:28:16 Europe/Berlin] Sent JSON response length: 1138
+[19-Nov-2025 14:28:16 Europe/Berlin] === product_search_api.php END ===
