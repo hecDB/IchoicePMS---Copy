@@ -788,7 +788,14 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </tr>
                     <?php else: ?>
                     <?php foreach($rows as $row): ?>
-                        <tr data-id="<?= $row['transaction_id'] ?>" class="<?= $row['transaction_type'] === 'issue' ? 'table-danger' : '' ?>">
+                        <tr data-id="<?= $row['transaction_id'] ?>" 
+                            data-quantity="<?= abs($row['quantity']) ?>"
+                            data-quantity-type="<?= ($row['transaction_type'] === 'issue') ? 'minus' : 'plus' ?>"
+                            data-location="<?= htmlspecialchars($row['location_desc'] ?? '') ?>"
+                            data-expiry="<?= isset($row['expiry_date']) && $row['expiry_date'] ? date('Y-m-d', strtotime($row['expiry_date'])) : '' ?>"
+                            data-po-number="<?= htmlspecialchars($row['po_number'] ?? '') ?>"
+                            data-transaction-type="<?= htmlspecialchars($row['transaction_type']) ?>"
+                            class="<?= $row['transaction_type'] === 'issue' ? 'table-danger' : '' ?>">
                             <td>
                                 <?php $image_path = getImagePath($row['image'] ?? ''); ?>
                                 <img src="<?= htmlspecialchars($image_path) ?>" 
@@ -1068,36 +1075,22 @@ $(document).ready(function() {
             return;
         }
         
-        // แมปคอลัมน์ที่ถูกต้องตามโครงสร้างตารางจริง:
-        // 0=รูปภาพ, 1=SKU, 2=ชื่อสินค้า, 3=บาร์โค้ด, 4=ผู้ทำรายการ, 5=วันที่ทำรายการ
-        // 6=จำนวนก่อน, 7=เพิ่ม/ลด, 8=จำนวนล่าสุด, 9=PO/แท็ค/Lot, 10=สถานที่จัดเก็บ, 11=วันหมดอายุ, 12=จัดการ
+        // ✅ FIX: Use data attributes instead of .eq() to avoid DataTables column hiding issues
+        let qty = row.data('quantity') || 0;
+        let qtyType = row.data('quantity-type') || 'plus';
+        let locationText = row.data('location') || '';
+        let expiry = row.data('expiry') || '';
+        let poNumber = row.data('po-number') || '';
         
-        let qtyText = row.find('td').eq(7).text().trim(); // เพิ่ม/ลด column
-        let qty = qtyText.replace(/[^\d]/g, '');
-        let qtyType = qtyText.indexOf('-') !== -1 ? 'minus' : 'plus';
-        let locationText = row.find('td').eq(10).text().trim(); // สถานที่จัดเก็บ
-        let expiryText = row.find('td').eq(11).text().trim(); // วันหมดอายุ
-        let poNumber = row.find('td').eq(9).find('.badge').text().trim() || ''; // PO/แท็ค/Lot column
-        
-        // แปลงวันที่หมดอายุเป็นรูปแบบ input date (YYYY-MM-DD)
-        let expiry = '';
-        if (expiryText && expiryText !== '-') {
-            // แปลงจาก dd/mm/yyyy เป็น yyyy-mm-dd
-            let parts = expiryText.split('/');
-            if (parts.length === 3) {
-                expiry = parts[2] + '-' + parts[1].padStart(2, '0') + '-' + parts[0].padStart(2, '0');
-            }
-        }
-        
-        console.log('Extracted data:', {
-            id, qtyText, qty, qtyType, expiry, poNumber, locationText, expiryText
+        console.log('Extracted data from data attributes:', {
+            id, qty, qtyType, expiry, poNumber, locationText
         });
         
         // ใส่ค่าเริ่มต้นใน modal ก่อน
         $('#edit-receive-id').val(id);
         $('#edit-qty-type').val(qtyType);
         $('#edit-receive-qty').val(qty);
-        $('#edit-expiry-date').val(expiry);
+        $('#edit-expiry-date').val(''); // ✅ ล้างวันหมดอายุเสมอ (ไม่นำข้อมูลเดิมมา)
         $('#edit-po-number').val(poNumber);
         // clear select และราคาก่อน
         $('#edit-row-code').val('');
@@ -1142,10 +1135,12 @@ $(document).ready(function() {
                 $('#edit-price-sale').val(priceSale);
                 $('#edit-remark').val(remarkFromAPI);
                 
-                // อัพเดทวันหมดอายุจาก API ถ้ามี
-                if (expiryFromAPI) {
-                    $('#edit-expiry-date').val(expiryFromAPI);
-                }
+                // ⚠️ ไม่อัพเดทวันหมดอายุจาก API
+                // เพื่อให้กรอกข้อมูลใหม่ทุกครั้งที่รับสินค้า (ต่างล็อต)
+                // ทำให้แต่ละล็อตมีวันหมดอายุเป็นของตัวเอง
+                // if (expiryFromAPI) {
+                //     $('#edit-expiry-date').val(expiryFromAPI);
+                // }
                 
                 console.log('Form values set:', {
                     priceCost: $('#edit-price-cost').val(),
@@ -1239,6 +1234,9 @@ $(document).ready(function() {
         var selectPOModal = bootstrap.Modal.getInstance(document.getElementById('selectPOModal'));
         selectPOModal.hide();
         
+        // เก็บจำนวนเดิมไว้ก่อนทำการแบ่ง (สำคัญ!)
+        window.originalQtyBeforeSplit = Math.abs(totalQty);
+        
         // เตรียมข้อมูลสำหรับ split modal
         $('#split-main-po-number').text(mainPoNumber);
         $('#split-available-qty').text(availableQty);
@@ -1307,9 +1305,17 @@ $(document).ready(function() {
 
             let formData = $('#edit-form').serialize();
             
+            // Debug: Log form data being sent
+            console.log('=== FORM DATA BEING SENT ===');
+            console.log('Form serialized data:', formData);
+            console.log('Expiry date field value:', $('#edit-expiry-date').val());
+            console.log('Expiry date field exists:', $('#edit-expiry-date').length > 0);
+            console.log('Expiry date field name attr:', $('#edit-expiry-date').attr('name'));
+            
             // เพิ่มข้อมูลการแบ่งจำนวน (ถ้ามี)
             if (window.currentSplitData) {
                 formData += '&split_data=' + encodeURIComponent(JSON.stringify(window.currentSplitData));
+                console.log('Split data added:', window.currentSplitData);
             }
             
             Swal.fire({
@@ -1579,6 +1585,8 @@ $(document).ready(function() {
     
     // เพิ่ม PO เข้าไปในรายการเพิ่มเติม
     function addAdditionalPO(poData) {
+        // เพิ่ม field expiry_date ให้ PO data
+        poData.expiry_date = '';
         window.additionalPOs.push(poData);
         renderAdditionalPOList();
         updateQuantitySummary();
@@ -1597,22 +1605,30 @@ $(document).ready(function() {
         
         let html = '';
         window.additionalPOs.forEach((po, index) => {
+            const expiryDate = po.expiry_date || '';
             html += `
-                <div class="row mb-3 additional-po-row" data-index="${index}">
-                    <div class="col-md-4">
-                        <strong>${po.poNumber}</strong>
-                        <br><small class="text-muted">เหลือ: ${po.remainingQty}</small>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">จำนวนที่จะรับ</label>
-                        <input type="number" class="form-control additional-qty-input" 
-                               data-index="${index}" min="0" max="${po.remainingQty}" value="0">
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button type="button" class="btn btn-sm btn-outline-danger remove-additional-po" data-index="${index}">
-                            <span class="material-icons" style="font-size: 1rem;">delete</span>
-                            ลบ
-                        </button>
+                <div class="card mb-2 additional-po-row" data-index="${index}">
+                    <div class="card-body">
+                        <div class="row align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label">PO</label>
+                                <div class="fw-bold">${po.poNumber}</div>
+                                <small class="text-muted">เหลือ: ${po.remainingQty} ชิ้น</small>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">จำนวน</label>
+                                <input type="number" class="form-control additional-qty-input" data-index="${index}" min="0" max="${po.remainingQty}" value="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">วันหมดอายุ</label>
+                                <input type="date" class="form-control additional-expiry-input" data-index="${index}" value="${expiryDate}">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-additional-po" data-index="${index}" style="width: 100%;">
+                                    <span class="material-icons" style="font-size: 1rem;">delete</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -1629,9 +1645,22 @@ $(document).ready(function() {
         updateQuantitySummary();
     });
     
-    // อัพเดทการคำนวณจำนวน
+    // อัพเดทการคำนวณจำนวน และเก็บ expiry_date
     $(document).on('input', '#split-main-qty, .additional-qty-input', function() {
         updateQuantitySummary();
+    });
+    
+    // เก็บ expiry_date เมื่อผู้ใช้เปลี่ยน
+    $(document).on('change', '#split-main-expiry', function() {
+        // จะเก็บค่านี้ใน split main PO data เมื่อยืนยัน
+    });
+    
+    $(document).on('change', '.additional-expiry-input', function() {
+        const index = $(this).data('index');
+        const expiryDate = $(this).val();
+        if (window.additionalPOs[index]) {
+            window.additionalPOs[index].expiry_date = expiryDate;
+        }
     });
     
     // ฟังก์ชันอัพเดทสรุปจำนวน
@@ -1673,13 +1702,17 @@ $(document).ready(function() {
         
         // เพิ่มข้อมูล PO หลัก
         const mainQty = parseInt($('#split-main-qty').val()) || 0;
+        const mainExpiryDate = $('#split-main-expiry').val();
+        console.log('Main split - qty:', mainQty, 'expiry:', mainExpiryDate);
+        
         if (mainQty > 0) {
             splits.push({
                 poId: window.splitMainPO.poId,
                 itemId: window.splitMainPO.itemId,
                 poNumber: window.splitMainPO.poNumber,
                 unitCost: window.splitMainPO.unitCost,
-                quantity: mainQty
+                quantity: mainQty,
+                expiry_date: mainExpiryDate
             });
         }
         
@@ -1687,6 +1720,10 @@ $(document).ready(function() {
         $('.additional-qty-input').each(function() {
             const index = $(this).data('index');
             const qty = parseInt($(this).val()) || 0;
+            const expiryInput = $(`.additional-expiry-input[data-index="${index}"]`);
+            const expiryDate = expiryInput.val();
+            console.log('Additional split', index, '- qty:', qty, 'expiry:', expiryDate);
+            
             if (qty > 0) {
                 const po = window.additionalPOs[index];
                 splits.push({
@@ -1694,10 +1731,14 @@ $(document).ready(function() {
                     itemId: po.itemId,
                     poNumber: po.poNumber,
                     unitCost: po.unitCost,
-                    quantity: qty
+                    quantity: qty,
+                    expiry_date: expiryDate
                 });
             }
         });
+        
+        console.log('Total splits collected:', splits.length);
+        console.log('All splits:', splits);
         
         if (splits.length === 0) {
             Swal.fire('ข้อผิดพลาด', 'กรุณาระบุจำนวนอย่างน้อย 1 PO', 'error');
@@ -1716,46 +1757,144 @@ $(document).ready(function() {
         const mainSplit = splits[0];
         const additionalSplits = splits.slice(1);
         
-        // อัพเดทฟอร์มหลักด้วยข้อมูล PO หลัก
-        $('#edit-po-id').val(mainSplit.poId);
-        $('#edit-item-id').val(mainSplit.itemId);
-        $('#edit-po-number').val(mainSplit.poNumber);
-        $('#edit-price-cost').val(mainSplit.unitCost);
-        $('#edit-receive-qty').val(mainSplit.quantity);
+        // คำนวณจำนวนรวมทั้งหมด
+        let totalQtyForSplit = mainSplit.quantity;
+        additionalSplits.forEach(split => {
+            totalQtyForSplit += split.quantity;
+        });
+        
+        // ตรวจสอบว่าจำนวนรวมตรงกับจำนวนเดิมที่บันทึกไว้ (ไม่ใช่จากฟอร์มที่อาจมีการแก้ไข)
+        if (totalQtyForSplit !== window.originalQtyBeforeSplit) {
+            Swal.fire('ข้อผิดพลาด', `จำนวนรวมไม่ตรงกัน (ต้องมี ${window.originalQtyBeforeSplit} ชิ้น แต่ระบุ ${totalQtyForSplit} ชิ้น)`, 'error');
+            console.log('Split quantity validation failed:', { original: window.originalQtyBeforeSplit, split: totalQtyForSplit });
+            return;
+        }
         
         // เตรียมข้อมูลการแบ่งสำหรับส่งไปยัง backend
         const splitData = {
             mainPoId: mainSplit.poId,
             mainItemId: mainSplit.itemId,
             mainQty: mainSplit.quantity,
+            mainExpiryDate: mainSplit.expiry_date,
             additionalPOs: additionalSplits.map(split => ({
                 poId: split.poId,
                 itemId: split.itemId,
                 poNumber: split.poNumber,
                 unitCost: split.unitCost,
-                qty: split.quantity
+                qty: split.quantity,
+                expiry_date: split.expiry_date
             }))
         };
         
-        // เก็บข้อมูลการแบ่งในรูปแบบที่ backend คาดหวัง
-        window.currentSplitData = splitData;
+        // เตรียม form data สำหรับส่ง
+        let formData = $('#edit-form').serialize();
+        formData += '&split_data=' + encodeURIComponent(JSON.stringify(splitData));
         
-        console.log('Split data prepared:', splitData);
+        // อัพเดทฟอร์มหลักด้วยข้อมูล PO หลัก (เพื่อให้ map ถูกต้อง)
+        $('#edit-po-id').val(mainSplit.poId);
+        $('#edit-item-id').val(mainSplit.itemId);
+        $('#edit-po-number').val(mainSplit.poNumber);
+        $('#edit-price-cost').val(mainSplit.unitCost);
+        // อัพเดท receive_qty ให้เป็นจำนวน main split เท่านั้น (backend จะสร้างรายการใหม่สำหรับ additional)
+        $('#edit-receive-qty').val(mainSplit.quantity);
         
-        // ปิด modal
+        // อัพเดทวันหมดอายุจาก split data
+        if (mainSplit.expiry_date) {
+            $('#edit-expiry-date').val(mainSplit.expiry_date);
+        }
+        
+        console.log('Sending split data:', { splitData, originalQty: window.originalQtyBeforeSplit, totalSplit: totalQtyForSplit });
+        
+        // ปิด modal ก่อน
         var splitModal = bootstrap.Modal.getInstance(document.getElementById('quantitySplitModal'));
         splitModal.hide();
         
-        // แสดงข้อความยืนยัน
+        // แสดง loading indicator
         Swal.fire({
-            icon: 'success',
-            title: 'แบ่งจำนวนสำเร็จ',
-            html: `แบ่งจำนวนไปยัง ${splits.length} PO:<br>` + 
-                  splits.map(s => `• ${s.poNumber}: ${s.quantity} ชิ้น`).join('<br>'),
-            timer: 3000,
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false
+            title: 'กำลังบันทึกการแบ่งจำนวน...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+        
+        // ตั้ง flag ว่าเป็นการส่งข้อมูลการแบ่ง
+        window.isSendingSplitData = true;
+        
+        // ส่งข้อมูลไปยัง backend ทันที
+        $.post('receive_edit.php', formData, function(resp) {
+            if (resp.success) {
+                // ปิด modal แก้ไข
+                var editModal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+                editModal.hide();
+                
+                // สร้าง HTML สำหรับแสดงรายละเอียดการแบ่ง
+                let htmlDetail = '';
+                
+                // ถ้าเป็นการแบ่งจำนวนแสดงรายละเอียดจาก backend
+                if (resp.is_split && resp.splits && resp.splits.length > 0) {
+                    htmlDetail = `<div style="text-align: left; max-height: 400px; overflow-y: auto; border-radius: 8px;">`;
+                    resp.splits.forEach((split, idx) => {
+                        const bgColor = idx === 0 ? '#dbeafe' : '#f0fdf4';
+                        const borderColor = idx === 0 ? '#0284c7' : '#16a34a';
+                        htmlDetail += `
+                            <div style="margin-bottom: 10px; padding: 12px; background: ${bgColor}; border-left: 4px solid ${borderColor}; border-radius: 4px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <strong style="font-size: 1rem;">PO ${idx + 1}</strong>
+                                    <span style="background: ${borderColor}; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.8rem;">
+                                        ${split.poNumber}
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.95rem; line-height: 1.6; color: #374151;">
+                                    <span>จำนวน: <strong>${split.quantity} ชิ้น</strong></span><br>
+                                    <span>หมดอายุ: <strong>${split.expiry_date}</strong></span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    htmlDetail += `</div>`;
+                } else {
+                    // แสดงจาก splits array เดิม
+                    htmlDetail = `<div style="text-align: left; max-height: 400px; overflow-y: auto;">` +
+                          splits.map((s, idx) => 
+                            `<div style="margin-bottom: 8px; padding: 8px; background: #f0f9ff; border-left: 3px solid #3b82f6; border-radius: 4px;">
+                                <strong>PO ${idx + 1}:</strong> ${s.poNumber}<br>
+                                <span style="font-size: 0.9rem;">จำนวน: <strong>${s.quantity}</strong> ชิ้น</span><br>
+                                <span style="font-size: 0.9rem;">หมดอายุ: <strong>${s.expiry_date || 'ไม่ระบุ'}</strong></span>
+                            </div>`
+                          ).join('') +
+                          `</div>`;
+                }
+                
+                // แสดงข้อความยืนยันการบันทึก
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกการแบ่งจำนวนสำเร็จ',
+                    html: `<div style="margin-bottom: 12px;">
+                              ✓ แบ่งจำนวนไปยัง <strong>${(resp.splits ? resp.splits.length : splits.length)} PO</strong>
+                           </div>` + htmlDetail,
+                    allowOutsideClick: false,
+                    confirmButtonText: 'ตกลง',
+                    width: '600px'
+                }).then(() => {
+                    // รีเฟรชข้อมูลตาราง
+                    refreshTableData();
+                });
+                
+                console.log('Split quantities saved successfully', resp);
+            } else {
+                Swal.fire('ข้อผิดพลาด', resp.message || 'ไม่สามารถบันทึกการแบ่งจำนวน', 'error');
+                console.error('Error saving split:', resp);
+                
+                // เปิด modal แก้ไขอีกครั้ง
+                var editModal = new bootstrap.Modal(document.getElementById('editModal'));
+                editModal.show();
+            }
+        }, 'json').fail(function(xhr, status, error) {
+            Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์: ' + error, 'error');
+            console.error('AJAX error:', xhr, status, error);
+            
+            // เปิด modal แก้ไขอีกครั้ง
+            var editModal = new bootstrap.Modal(document.getElementById('editModal'));
+            editModal.show();
         });
     }
     
@@ -1766,6 +1905,12 @@ $(document).ready(function() {
             $('#main-po-display').text(window.splitMainPO.poNumber);
             $('#main-po-remaining').text(window.splitMainPO.availableQty);
             $('#split-main-qty').attr('max', window.splitMainPO.availableQty);
+            
+            // เซ็ตวันหมดอายุเดิม (ถ้ามี) ให้ PO หลัก
+            const currentExpiry = $('#edit-expiry-date').val();
+            if (currentExpiry) {
+                $('#split-main-expiry').val(currentExpiry);
+            }
         }
         
         // รีเซ็ต additional POs
@@ -1940,16 +2085,21 @@ $(document).ready(function() {
                         <h6 class="mb-0">PO หลัก</h6>
                     </div>
                     <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-4">
+                        <div class="row align-items-end">
+                            <div class="col-md-3">
                                 <strong id="main-po-display"></strong>
+                                <small class="d-block text-muted mt-2">จำนวนที่เหลือใน PO: <span id="main-po-remaining"></span></small>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label">จำนวนที่จะรับ</label>
                                 <input type="number" class="form-control" id="split-main-qty" min="0">
                             </div>
-                            <div class="col-md-4">
-                                <small class="text-muted">จำนวนที่เหลือใน PO: <span id="main-po-remaining"></span></small>
+                            <div class="col-md-3">
+                                <label class="form-label">วันหมดอายุ</label>
+                                <input type="date" class="form-control" id="split-main-expiry">
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted d-block">ตั้งเฉพาะสำหรับ PO นี้</small>
                             </div>
                         </div>
                     </div>

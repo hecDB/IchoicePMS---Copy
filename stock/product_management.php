@@ -30,11 +30,6 @@ ORDER BY p.name ASC
 $stmt = $pdo->query($sql);
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// ดึงข้อมูลตำแหน่งที่จัดเก็บสินค้า
-$locations_sql = "SELECT location_id, row_code, bin, shelf, description FROM locations ORDER BY row_code, bin, shelf";
-$locations_stmt = $pdo->query($locations_sql);
-$locations = $locations_stmt->fetchAll(PDO::FETCH_ASSOC);
-
 // สถิติ
 $stats = [
     'total_products' => count($products),
@@ -654,9 +649,22 @@ $stats = [
 
 <script>
 let currentProductId = null;
+let locationsData = [];
 
-// Locations data from PHP
-const locationsData = <?php echo json_encode($locations); ?>;
+// Load locations from API
+$.ajax({
+    url: '../api/get_locations_list.php',
+    type: 'GET',
+    dataType: 'json',
+    success: function(response) {
+        if (response.success && response.data) {
+            locationsData = response.data;
+        }
+    },
+    error: function() {
+        console.log('Could not load locations data');
+    }
+});
 
 // Location search and autocomplete handler
 const locationSearchInput = document.getElementById('locationSearch');
@@ -677,7 +685,7 @@ if (locationSearchInput) {
         
         // Filter locations based on search text
         const filtered = locationsData.filter(loc => {
-            const searchableText = `${loc.row_code} ${loc.bin} ${loc.shelf} ${loc.description}`.toLowerCase();
+            const searchableText = `${loc.row_code} ${loc.bin} ${loc.shelf} ${loc.description || ''}`.toLowerCase();
             return searchableText.includes(searchText);
         }).slice(0, 15); // Limit to 15 suggestions
         
@@ -688,7 +696,7 @@ if (locationSearchInput) {
         
         // Display suggestions
         locationSuggestions.innerHTML = filtered.map(loc => `
-            <div style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; cursor: pointer; hover: background-color: #f3f4f6; transition: background-color 0.2s;" 
+            <div style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; cursor: pointer; transition: background-color 0.2s;" 
                  onmouseover="this.style.backgroundColor='#f3f4f6'" 
                  onmouseout="this.style.backgroundColor='white'"
                  onclick="selectLocation(${loc.location_id}, '${loc.row_code}', ${loc.bin}, ${loc.shelf})">
@@ -697,7 +705,7 @@ if (locationSearchInput) {
                     <span class="badge bg-info" style="margin-right: 0.5rem;">ล็อค: ${loc.bin}</span>
                     <span class="badge bg-success">ชั้น: ${loc.shelf}</span>
                 </div>
-                <small style="color: #6b7280; display: block; margin-top: 0.25rem;">${loc.description}</small>
+                <small style="color: #6b7280; display: block; margin-top: 0.25rem;">${loc.description || ''}</small>
             </div>
         `).join('');
         locationSuggestions.style.display = 'block';

@@ -21,7 +21,8 @@ $sql = "
     tp.product_category,
     tp.temp_product_id,
     tp.provisional_sku,
-    tp.provisional_barcode
+    tp.provisional_barcode,
+    tp.status as temp_product_status
 FROM receive_items r
 LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
 LEFT JOIN temp_products tp ON poi.temp_product_id = tp.temp_product_id
@@ -42,7 +43,8 @@ UNION ALL
     tp.product_category,
     tp.temp_product_id,
     tp.provisional_sku,
-    tp.provisional_barcode
+    tp.provisional_barcode,
+    tp.status as temp_product_status
 FROM issue_items ii
 LEFT JOIN receive_items ri ON ii.receive_id = ri.receive_id
 LEFT JOIN purchase_order_items poi ON ri.item_id = poi.item_id
@@ -89,6 +91,7 @@ try {
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 <link rel="stylesheet" href="../assets/base.css">
 <link rel="stylesheet" href="../assets/sidebar.css">
 <link rel="stylesheet" href="../assets/components.css">
@@ -281,6 +284,56 @@ try {
         font-size: 3rem;
         opacity: 0.2;
     }
+    
+    /* Location Section Styling */
+    .location-section {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        border-left: 4px solid #3b82f6;
+        margin-top: 1.5rem;
+    }
+    
+    .location-section h6 {
+        color: #1e40af;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .location-section .form-label {
+        color: #374151;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    
+    .location-section .form-control {
+        border: 2px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+    }
+    
+    .location-section .form-control:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .location-inputs {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .location-input-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6b7280;
+    }
 </style>
 
 </head>
@@ -391,13 +444,14 @@ try {
                             <th class="text-center">วันที่</th>
                             <th class="text-center no-sort">จำนวน</th>
                             <th class="text-center no-sort">วันหมดอายุ</th>
+                            <th class="text-center no-sort">สถานะ</th>
                             <th class="text-center no-sort">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php if (empty($rows)): ?>
                     <tr>
-                        <td colspan="11" class="text-center py-4">
+                        <td colspan="12" class="text-center py-4">
                             <div class="text-muted mb-2">
                                 <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">inbox</span>
                             </div>
@@ -483,9 +537,35 @@ try {
                                 <?php endif; ?>
                             </td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>">
-                                    <span class="material-icons" style="font-size: 1rem;">edit</span>
-                                </button>
+                                <?php
+                                $status = $row['temp_product_status'] ?? 'pending';
+                                if ($status === 'converted'):
+                                ?>
+                                    <span class="badge bg-success">
+                                        <span class="material-icons" style="font-size: 0.85rem; vertical-align: middle;">check_circle</span>
+                                        ย้ายไปคลังแล้ว
+                                    </span>
+                                <?php elseif ($status === 'approved'): ?>
+                                    <span class="badge bg-info">
+                                        <span class="material-icons" style="font-size: 0.85rem; vertical-align: middle;">pending_actions</span>
+                                        อนุมัติแล้ว
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge bg-warning text-dark">
+                                        <span class="material-icons" style="font-size: 0.85rem; vertical-align: middle;">schedule</span>
+                                        รอดำเนิน
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button class="btn btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" title="แก้ไข SKU/Barcode/รูปภาพ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
+                                        <span class="material-icons" style="font-size: 1rem;">edit</span>
+                                    </button>
+                                    <button class="btn btn-outline-success approve-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-name="<?= htmlspecialchars($row['product_name']) ?>" title="อนุมัติและย้ายไปคลังปกติ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
+                                        <span class="material-icons" style="font-size: 1rem;">check_circle</span>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -503,6 +583,7 @@ try {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 
 <script>
 let transactionTable;
@@ -594,8 +675,85 @@ $(document).ready(function() {
         $('#provisionalSkuInput').val(provisionalSku);
         $('#provisionalBarcodeInput').val(provisionalBarcode);
         
+        // ล้างฟิลด์ตำแหน่ง
+        $('#locationSearchEdit').val('');
+        $('#editRowCodeInput').val('');
+        $('#editBinInput').val('');
+        $('#editShelfInput').val('');
+        $('#editProductLocation').val('');
+        $('#locationSuggestionsEdit').hide();
+        
+        // ดึงข้อมูลตำแหน่งจาก API ถ้ามี receive_id
+        if (receiveId) {
+            $.get('../api/receive_position_api.php', { receive_id: receiveId }, function(resp){
+                if(resp && resp.success) {
+                    $('#editRowCodeInput').val(resp.row_code || '');
+                    $('#editBinInput').val(resp.bin || '');
+                    $('#editShelfInput').val(resp.shelf || '');
+                    if (resp.location_id) {
+                        $('#editProductLocation').val(resp.location_id);
+                    }
+                }
+            }, 'json').fail(function(){
+                console.log('Could not load location data');
+            });
+        }
+        
         const editModal = new bootstrap.Modal(document.getElementById('editModal'));
         editModal.show();
+    });
+    
+    // Handle image preview with compression
+    $('#productImageInput').on('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Create canvas for compression
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Calculate new dimensions (max 1200x1200)
+                    let width = img.width;
+                    let height = img.height;
+                    const maxSize = 1200;
+                    
+                    if (width > height) {
+                        if (width > maxSize) {
+                            height = Math.round(height * (maxSize / width));
+                            width = maxSize;
+                        }
+                    } else {
+                        if (height > maxSize) {
+                            width = Math.round(width * (maxSize / height));
+                            height = maxSize;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Convert to WebP with compression
+                    canvas.toBlob(function(blob) {
+                        // Preview original size
+                        $('#previewImg').attr('src', e.target.result);
+                        $('#imagePreview').show();
+                        
+                        // Show compression info
+                        const originalSize = (file.size / 1024).toFixed(2);
+                        const compressedSize = (blob.size / 1024).toFixed(2);
+                        console.log(`Image Compression: ${originalSize}KB → ${compressedSize}KB`);
+                    }, 'image/webp', 0.8);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            $('#imagePreview').hide();
+        }
     });
     
     // Handle save button click
@@ -604,34 +762,262 @@ $(document).ready(function() {
         const expiryDate = $('#expiryInput').val();
         const provisionalSku = $('#provisionalSkuInput').val();
         const provisionalBarcode = $('#provisionalBarcodeInput').val();
+        const rowCode = $('#editRowCodeInput').val().trim();
+        const bin = $('#editBinInput').val().trim();
+        const shelf = $('#editShelfInput').val().trim();
+        const imageFile = $('#productImageInput')[0].files[0];
         
         if (!tempId) {
-            alert('ข้อมูลไม่ถูกต้อง');
+            Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: 'ข้อมูลไม่ถูกต้อง'
+            });
             return;
+        }
+        
+        // Show loading state
+        Swal.fire({
+            title: 'กำลังบันทึก',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        // Process image compression if exists
+        if (imageFile) {
+            compressAndSendImage(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf);
+        } else {
+            sendFormData(null, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf);
+        }
+    });
+    
+    // Compress image and send
+    function compressAndSendImage(file, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                // Create canvas for compression
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Calculate new dimensions (max 1200x1200)
+                let width = img.width;
+                let height = img.height;
+                const maxSize = 1200;
+                
+                if (width > height) {
+                    if (width > maxSize) {
+                        height = Math.round(height * (maxSize / width));
+                        width = maxSize;
+                    }
+                } else {
+                    if (height > maxSize) {
+                        width = Math.round(width * (maxSize / height));
+                        height = maxSize;
+                    }
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Convert to Blob (canvas.toBlob will auto-convert to JPEG in this context)
+                canvas.toBlob(function(blob) {
+                    // Create new File object from compressed blob as JPEG
+                    const compressedFile = new File([blob], 'image.jpg', { type: 'image/jpeg' });
+                    const originalSize = (file.size / 1024).toFixed(2);
+                    const compressedSize = (compressedFile.size / 1024).toFixed(2);
+                    console.log(`Image Compressed: ${originalSize}KB → ${compressedSize}KB`);
+                    console.log('Sending file:', compressedFile.name, compressedFile.type, compressedFile.size);
+                    
+                    sendFormData(compressedFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf);
+                }, 'image/jpeg', 0.85);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    // Send form data to server
+    function sendFormData(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf) {
+        const formData = new FormData();
+        formData.append('temp_product_id', tempId);
+        formData.append('expiry_date', expiryDate);
+        formData.append('provisional_sku', provisionalSku);
+        formData.append('provisional_barcode', provisionalBarcode);
+        formData.append('row_code', rowCode);
+        formData.append('bin', bin);
+        formData.append('shelf', shelf);
+        if (imageFile) {
+            formData.append('product_image', imageFile);
+            console.log('FormData entries:');
+            for (let [key, value] of formData.entries()) {
+                if (value instanceof File) {
+                    console.log(`  ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+                } else {
+                    console.log(`  ${key}: ${value}`);
+                }
+            }
         }
         
         $.ajax({
             url: '../api/update_temp_product.php',
             type: 'POST',
-            data: {
-                temp_product_id: tempId,
-                expiry_date: expiryDate,
-                provisional_sku: provisionalSku,
-                provisional_barcode: provisionalBarcode
-            },
+            data: formData,
+            processData: false,
+            contentType: false,
             dataType: 'json',
             success: function(response) {
+                console.log('AJAX Success:', response);
                 if (response.success) {
-                    alert('บันทึกสำเร็จ');
                     bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
-                    location.reload();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกสำเร็จ',
+                        text: 'ข้อมูลสินค้าถูกบันทึก' + (response.compression_info ? '\n' + response.compression_info : ''),
+                        confirmButtonText: 'ตกลง'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            location.reload();
+                        }
+                    });
                 } else {
-                    alert('เกิดข้อผิดพลาด: ' + (response.message || 'ไม่ทราบสาเหตุ'));
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: response.message || 'ไม่ทราบสาเหตุ'
+                    });
                 }
             },
-            error: function(xhr) {
-                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
-                console.error(xhr);
+            error: function(xhr, status, error) {
+                console.error('AJAX Error Details:');
+                console.error('Status:', xhr.status);
+                console.error('Status Text:', xhr.statusText);
+                console.error('Response Text:', xhr.responseText);
+                console.error('Error:', error);
+                
+                let errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+                if (xhr.status === 0) {
+                    errorMessage = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
+                } else if (xhr.status === 400) {
+                    errorMessage = 'ข้อมูลไม่ถูกต้อง (400)';
+                } else if (xhr.status === 500) {
+                    errorMessage = 'เซิร์ฟเวอร์เกิดข้อผิดพลาด (500)';
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        if (errorResponse.message) {
+                            errorMessage += '\n' + errorResponse.message;
+                        }
+                    } catch (e) {
+                        // ถ้า parse ล้มเหลว ให้ใช้ response text แทน
+                        if (xhr.responseText) {
+                            errorMessage += '\n' + xhr.responseText.substring(0, 200);
+                        }
+                    }
+                }
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เชื่อมต่อล้มเหลว',
+                    text: errorMessage
+                });
+            }
+        });
+    }
+    
+    // Handle approve button click
+    $(document).on('click', '.approve-btn', function() {
+        const tempId = $(this).data('temp-id');
+        const productName = $(this).data('name');
+        
+        // Get the row element to check SKU and Barcode values
+        const $row = $(this).closest('tr');
+        const $skuCell = $row.find('td:eq(2)'); // SKU column (3rd column)
+        const $barcodeCell = $row.find('td:eq(3)'); // Barcode column (4th column)
+        
+        // Check if SKU and Barcode have the "ยังไม่มีข้อมูล" badge
+        const hasNoSku = $skuCell.find('.badge.bg-warning').length > 0;
+        const hasNoBarcode = $barcodeCell.find('.badge.bg-warning').length > 0;
+        
+        // If SKU or Barcode is missing, show warning
+        if (hasNoSku || hasNoBarcode) {
+            let missingFields = [];
+            if (hasNoSku) missingFields.push('SKU');
+            if (hasNoBarcode) missingFields.push('บาร์โค้ด');
+            
+            Swal.fire({
+                icon: 'warning',
+                title: 'ข้อมูลยังไม่ครบถ้วน',
+                html: 'กรุณากรอกข้อมูลต่อไปนี้ก่อนอนุมัติ:<br><br>' +
+                      '<strong style="color: #dc2626;">' + missingFields.join(' และ ') + '</strong><br><br>' +
+                      'คลิก "แก้ไข" เพื่ออัปเดตข้อมูล',
+                confirmButtonText: 'ตกลง',
+                confirmButtonColor: '#f97316'
+            });
+            return;
+        }
+        
+        Swal.fire({
+            title: 'ยืนยันการอนุมัติ',
+            text: 'ต้องการอนุมัติสินค้า "' + productName + '" และย้ายไปคลังสินค้าปกติใช่หรือไม่?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ใช่ อนุมัติ',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading state
+                Swal.fire({
+                    title: 'กำลังประมวลผล',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                $.ajax({
+                    url: '../api/approve_temp_product.php',
+                    type: 'POST',
+                    data: {
+                        temp_product_id: tempId
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'อนุมัติสำเร็จ!',
+                                text: 'สินค้าถูกย้ายไปยังคลังปกติแล้ว\nรหัสสินค้า: ' + response.product_id,
+                                confirmButtonText: 'ตกลง'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    location.reload();
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'เกิดข้อผิดพลาด',
+                                text: response.message || 'ไม่สามารถอนุมัติสินค้าได้'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เชื่อมต่อล้มเหลว',
+                            text: 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์'
+                        });
+                        console.error(xhr);
+                    }
+                });
             }
         });
     });
@@ -671,6 +1057,100 @@ function updateStats() {
     $('#issue-count').text('-' + issueCount);
     $('#row-count').text(newCount);
 }
+
+// Location search data from AJAX (load on page load)
+let locationsEditData = [];
+$.ajax({
+    url: '../api/get_locations_list.php',
+    type: 'GET',
+    dataType: 'json',
+    success: function(response) {
+        if (response.success && response.data) {
+            locationsEditData = response.data;
+            // Initialize location handlers after data is loaded
+            initializeLocationHandlers();
+        }
+    },
+    error: function() {
+        console.log('Could not load locations data');
+        // Still initialize handlers even if data load fails
+        initializeLocationHandlers();
+    }
+});
+
+// Initialize location handlers (called after AJAX or as fallback)
+function initializeLocationHandlers() {
+    const locationSearchEditInput = document.getElementById('locationSearchEdit');
+    const locationSuggestionsEdit = document.getElementById('locationSuggestionsEdit');
+    const editRowCodeInput = document.getElementById('editRowCodeInput');
+    const editBinInput = document.getElementById('editBinInput');
+    const editShelfInput = document.getElementById('editShelfInput');
+    const editProductLocation = document.getElementById('editProductLocation');
+
+    if (locationSearchEditInput && locationSuggestionsEdit) {
+        locationSearchEditInput.addEventListener('input', function() {
+            const searchText = this.value.toLowerCase().trim();
+            
+            if (searchText.length === 0) {
+                locationSuggestionsEdit.style.display = 'none';
+                return;
+            }
+            
+            // Filter locations based on search text
+            const filtered = locationsEditData.filter(loc => {
+                const searchableText = `${loc.row_code} ${loc.bin} ${loc.shelf} ${loc.description || ''}`.toLowerCase();
+                return searchableText.includes(searchText);
+            }).slice(0, 15); // Limit to 15 suggestions
+            
+            if (filtered.length === 0) {
+                locationSuggestionsEdit.style.display = 'none';
+                return;
+            }
+            
+            // Display suggestions
+            locationSuggestionsEdit.innerHTML = filtered.map(loc => `
+                <div style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; cursor: pointer; transition: background-color 0.2s;" 
+                     onmouseover="this.style.backgroundColor='#f3f4f6'" 
+                     onmouseout="this.style.backgroundColor='white'"
+                     onclick="selectLocationEdit(${loc.location_id}, '${loc.row_code}', ${loc.bin}, ${loc.shelf})">
+                    <div style="font-weight: 600; color: #1f2937;">
+                        <span class="badge bg-primary" style="margin-right: 0.5rem;">แถว: ${loc.row_code}</span>
+                        <span class="badge bg-info" style="margin-right: 0.5rem;">ล็อค: ${loc.bin}</span>
+                        <span class="badge bg-success">ชั้น: ${loc.shelf}</span>
+                    </div>
+                    <small style="color: #6b7280; display: block; margin-top: 0.25rem;">${loc.description || ''}</small>
+                </div>
+            `).join('');
+            locationSuggestionsEdit.style.display = 'block';
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target !== locationSearchEditInput && !locationSearchEditInput.contains(e.target) && !locationSuggestionsEdit.contains(e.target)) {
+                locationSuggestionsEdit.style.display = 'none';
+            }
+        });
+    }
+}
+
+// Select location from suggestions for edit modal
+function selectLocationEdit(locationId, rowCode, bin, shelf) {
+    const editProductLocation = document.getElementById('editProductLocation');
+    const editRowCodeInput = document.getElementById('editRowCodeInput');
+    const editBinInput = document.getElementById('editBinInput');
+    const editShelfInput = document.getElementById('editShelfInput');
+    const locationSearchEditInput = document.getElementById('locationSearchEdit');
+    const locationSuggestionsEdit = document.getElementById('locationSuggestionsEdit');
+    
+    if (editProductLocation && editRowCodeInput && editBinInput && editShelfInput && locationSearchEditInput) {
+        editProductLocation.value = locationId;
+        editRowCodeInput.value = rowCode;
+        editBinInput.value = bin;
+        editShelfInput.value = shelf;
+        locationSearchEditInput.value = `${rowCode} ${bin} ${shelf}`;
+        locationSuggestionsEdit.style.display = 'none';
+    }
+}
 </script>
 
 <!-- Edit Modal -->
@@ -687,6 +1167,14 @@ function updateStats() {
                     <input type="hidden" id="receiveId" name="receive_id">
                     
                     <div class="mb-3">
+                        <label for="productImageInput" class="form-label">รูปภาพสินค้า</label>
+                        <input type="file" class="form-control" id="productImageInput" name="product_image" accept="image/*">
+                        <div id="imagePreview" class="mt-2" style="display: none;">
+                            <img id="previewImg" src="" alt="Preview" style="max-width: 200px; max-height: 200px; border: 2px solid #e5e7eb; border-radius: 8px;">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
                         <label for="provisionalSkuInput" class="form-label">SKU สำรอง</label>
                         <input type="text" class="form-control" id="provisionalSkuInput" name="provisional_sku" placeholder="ใส่ SKU สำรอง">
                     </div>
@@ -699,6 +1187,46 @@ function updateStats() {
                     <div class="mb-3">
                         <label for="expiryInput" class="form-label">วันหมดอายุ</label>
                         <input type="date" class="form-control" id="expiryInput" name="expiry_date">
+                    </div>
+                    
+                    <!-- ส่วนตำแหน่งเก็บสินค้า -->
+                    <div class="form-group-custom">
+                        <label>ตำแหน่งที่จัดเก็บสินค้า</label>
+                        <div style="margin-bottom: 1rem; position: relative;">
+                            <input 
+                                type="text" 
+                                id="locationSearchEdit" 
+                                placeholder="ค้นหา หรือ พิมพ์ แถว/ล็อค/ชั้น (เช่น A 2 3)" 
+                                style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-family: 'Prompt', sans-serif; font-size: 0.95rem;"
+                                autocomplete="off"
+                            >
+                            <div id="locationSuggestionsEdit" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: white; border: 1px solid #d1d5db; border-top: 1px solid #d1d5db; border-radius: 0 0 6px 6px; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" class="location-suggestions"></div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; background: linear-gradient(135deg, #f0f9ff 0%, #f0fdf4 100%); padding: 1.25rem; border-radius: 10px; border: 2px solid #3b82f6; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);">
+                            <div style="background: white; padding: 0.875rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.3s ease;">
+                                <label style="font-size: 0.8rem; color: #1e40af; display: block; margin-bottom: 0.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    <span class="material-icons" style="font-size: 0.95rem; vertical-align: middle; margin-right: 0.25rem;">straight</span>
+                                    แถว
+                                </label>
+                                <input type="text" id="editRowCodeInput" name="row_code" placeholder="—" readonly style="font-size: 1.1rem; font-weight: 700; background: transparent; border: none; color: #1f2937; cursor: default; text-align: center; width: 100%;">
+                            </div>
+                            <div style="background: white; padding: 0.875rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.3s ease;">
+                                <label style="font-size: 0.8rem; color: #0891b2; display: block; margin-bottom: 0.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    <span class="material-icons" style="font-size: 0.95rem; vertical-align: middle; margin-right: 0.25rem;">inbox</span>
+                                    ล็อค
+                                </label>
+                                <input type="text" id="editBinInput" name="bin" placeholder="—" readonly style="font-size: 1.1rem; font-weight: 700; background: transparent; border: none; color: #1f2937; cursor: default; text-align: center; width: 100%;">
+                            </div>
+                            <div style="background: white; padding: 0.875rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.3s ease;">
+                                <label style="font-size: 0.8rem; color: #059669; display: block; margin-bottom: 0.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    <span class="material-icons" style="font-size: 0.95rem; vertical-align: middle; margin-right: 0.25rem;">layers</span>
+                                    ชั้น
+                                </label>
+                                <input type="text" id="editShelfInput" name="shelf" placeholder="—" readonly style="font-size: 1.1rem; font-weight: 700; background: transparent; border: none; color: #1f2937; cursor: default; text-align: center; width: 100%;">
+                            </div>
+                        </div>
+                        <input type="hidden" id="editProductLocation" name="location_id">
+                        <small style="color: #6b7280; display: block; margin-top: 0.5rem;">🔍 พิมพ์เพื่อค้นหาตำแหน่ง หรือเลือกจากรายการแนะนำ</small>
                     </div>
                 </form>
             </div>

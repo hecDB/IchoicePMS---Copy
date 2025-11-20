@@ -19,6 +19,19 @@ $row_code = isset($_POST['row_code']) ? trim($_POST['row_code']) : '';
 $bin = isset($_POST['bin']) ? trim($_POST['bin']) : '';
 $shelf = isset($_POST['shelf']) ? trim($_POST['shelf']) : '';
 
+// Debug logging - DETAILED
+error_log("=== RECEIVE_EDIT START ===");
+error_log("receive_id: " . $receive_id);
+error_log("expiry_date raw: " . var_export($expiry_date, true));
+error_log("expiry_date length: " . strlen($expiry_date ?? ''));
+error_log("expiry_date is_null: " . (is_null($expiry_date) ? 'yes' : 'no'));
+error_log("expiry_date is_empty_string: " . ($expiry_date === '' ? 'yes' : 'no'));
+error_log("receive_qty: " . $receive_qty);
+error_log("remark: " . $remark);
+error_log("POST keys: " . implode(', ', array_keys($_POST)));
+error_log("POST expiry_date key exists: " . (isset($_POST['expiry_date']) ? 'yes' : 'no'));
+error_log("FULL POST: " . json_encode($_POST));
+
 // เพิ่มตัวแปรสำหรับการเปลี่ยน PO
 $po_id = isset($_POST['po_id']) ? intval($_POST['po_id']) : 0;
 $item_id = isset($_POST['item_id']) ? intval($_POST['item_id']) : 0;
@@ -52,13 +65,20 @@ try {
     
     // ตรวจสอบว่ามีการแบ่งจำนวนหรือไม่
     if ($is_split && $split_data) {
+        error_log("Split data received (raw): " . var_export($split_data, true));
         $splitInfo = json_decode($split_data, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception('ข้อมูลการแบ่งจำนวนไม่ถูกต้อง');
+            error_log("JSON decode error: " . json_last_error_msg());
+            throw new Exception('ข้อมูลการแบ่งจำนวนไม่ถูกต้อง: ' . json_last_error_msg());
         }
         
-        // จัดการการแบ่งจำนวน
-        handleQuantitySplit($pdo, $receive_id, $originalData, $splitInfo, $remark, $expiry_date, $row_code, $bin, $shelf);
+        error_log("Split info parsed: " . json_encode($splitInfo));
+        error_log("Main expiry date: " . var_export($splitInfo['mainExpiryDate'] ?? null, true));
+        error_log("New receive_qty from form: $receive_qty");
+        
+        // จัดการการแบ่งจำนวน (ใช้ mainExpiryDate จาก splitInfo แทน $expiry_date)
+        // ส่ง $receive_qty (จำนวนใหม่) ไปด้วยเพื่อตรวจสอบการแบ่ง
+        handleQuantitySplit($pdo, $receive_id, $originalData, $splitInfo, $remark, $row_code, $bin, $shelf, $receive_qty);
         
     } else if ($po_id > 0 && $item_id > 0) {
         // อัปเดต receive_items พร้อมเปลี่ยน PO และ item_id (แบบปกติ)
@@ -70,7 +90,8 @@ try {
         // อัปเดต receive_items ปกติ
         $sql = "UPDATE receive_items SET remark=?, receive_qty=?, expiry_date=? WHERE receive_id=?";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$remark, $receive_qty, $expiry_date, $receive_id]);
+        $result = $stmt->execute([$remark, $receive_qty, $expiry_date, $receive_id]);
+        error_log("Normal update executed. Expiry_date: " . var_export($expiry_date, true) . ", Rows affected: " . $stmt->rowCount());
     }
 
     // อัปเดตตำแหน่ง (location_desc, row_code, bin, shelf) ในตาราง locations ถ้ามีข้อมูล
@@ -116,7 +137,41 @@ try {
     
     // Commit transaction
     $pdo->commit();
-    echo json_encode(['success' => true]);
+    
+    // เตรียมข้อมูล response
+    $response = [
+        'success' => true,
+        'message' => 'บันทึกสำเร็จ'
+    ];
+    
+    // ถ้าเป็นการแบ่งจำนวน ให้เพิ่มข้อมูลรายละเอียด
+    if ($is_split && $split_data) {
+        $splitInfo = json_decode($split_data, true);
+        if ($splitInfo) {
+            $response['is_split'] = true;
+            $response['splits'] = [];
+            
+            // เพิ่มข้อมูล PO หลัก
+            $response['splits'][] = [
+                'poNumber' => $splitInfo['mainPoId'] . ' (Main)',
+                'quantity' => $splitInfo['mainQty'],
+                'expiry_date' => $splitInfo['mainExpiryDate'] ?? 'ไม่ระบุ'
+            ];
+            
+            // เพิ่มข้อมูล PO เพิ่มเติม
+            if (isset($splitInfo['additionalPOs']) && is_array($splitInfo['additionalPOs'])) {
+                foreach ($splitInfo['additionalPOs'] as $addPO) {
+                    $response['splits'][] = [
+                        'poNumber' => $addPO['poNumber'],
+                        'quantity' => $addPO['qty'],
+                        'expiry_date' => $addPO['expiry_date'] ?? 'ไม่ระบุ'
+                    ];
+                }
+            }
+        }
+    }
+    
+    echo json_encode($response);
     
 } catch (Exception $e) {
     // Rollback transaction on error
@@ -129,47 +184,78 @@ try {
 /**
  * ฟังก์ชันจัดการการแบ่งจำนวนไปยัง PO หลายตัว
  */
-function handleQuantitySplit($pdo, $receive_id, $originalData, $splitInfo, $remark, $expiry_date, $row_code, $bin, $shelf) {
+function handleQuantitySplit($pdo, $receive_id, $originalData, $splitInfo, $remark, $row_code, $bin, $shelf, $newReceiveQty = null) {
     // Log การเริ่มต้นการแบ่งจำนวน
-    error_log("Starting quantity split for receive_id: $receive_id");
+    error_log("=== handleQuantitySplit START ===");
+    error_log("receive_id: $receive_id");
     
-    $originalQty = abs($originalData['receive_qty']);
-    $totalSplitQty = 0;
+    // ✅ FIX: ใช้จำนวนใหม่จากฟอร์ม (ถ้ามี) เพื่อตรวจสอบการแบ่ง
+    // หากไม่ระบุจำนวนใหม่ จะใช้จำนวนเดิมจากฐานข้อมูล (เพื่อความเข้ากันได้)
+    $expectedTotalQty = $newReceiveQty !== null ? abs($newReceiveQty) : abs($originalData['receive_qty']);
+    
+    error_log("Original receive_qty from DB: " . $originalData['receive_qty']);
+    error_log("New receive_qty from form: " . var_export($newReceiveQty, true));
+    error_log("Expected total for validation: $expectedTotalQty");
+    error_log("Split info JSON: " . json_encode($splitInfo));
     
     // ตรวจสอบความถูกต้องของข้อมูล
     if (!isset($splitInfo['mainQty']) || !isset($splitInfo['mainPoId']) || !isset($splitInfo['mainItemId'])) {
+        error_log("ERROR: Missing main PO data in splitInfo");
         throw new Exception('ข้อมูล PO หลักไม่สมบูรณ์');
     }
     
     // คำนวณจำนวนรวมที่แบ่ง
-    $totalSplitQty += intval($splitInfo['mainQty'] ?? 0);
+    $mainQtyFromSplit = intval($splitInfo['mainQty'] ?? 0);
+    $totalSplitQty = 0;
+    $totalSplitQty += $mainQtyFromSplit;
+    error_log("Main qty from split: $mainQtyFromSplit, Total so far: $totalSplitQty");
+    
     if (isset($splitInfo['additionalPOs']) && is_array($splitInfo['additionalPOs'])) {
-        foreach ($splitInfo['additionalPOs'] as $addPO) {
+        $addPoCount = count($splitInfo['additionalPOs']);
+        error_log("Additional POs count: $addPoCount");
+        
+        foreach ($splitInfo['additionalPOs'] as $idx => $addPO) {
+            error_log("Processing additional PO $idx: " . json_encode($addPO));
+            
             if (!isset($addPO['qty']) || !isset($addPO['poId']) || !isset($addPO['itemId'])) {
+                error_log("ERROR: Missing data in additional PO $idx");
                 throw new Exception('ข้อมูล PO เพิ่มเติมไม่สมบูรณ์');
             }
-            $totalSplitQty += intval($addPO['qty'] ?? 0);
+            $addQty = intval($addPO['qty'] ?? 0);
+            $totalSplitQty += $addQty;
+            error_log("Additional PO $idx qty: $addQty, Total so far: $totalSplitQty");
         }
+    } else {
+        error_log("No additional POs");
     }
     
-    // ตรวจสอบจำนวนรวม
-    if ($totalSplitQty != $originalQty) {
-        error_log("Quantity mismatch: original=$originalQty, split_total=$totalSplitQty");
-        throw new Exception("จำนวนรวมที่แบ่งไม่ตรงกับจำนวนเดิม (เดิม: $originalQty, แบ่ง: $totalSplitQty)");
+    error_log("Final totals - Expected: $expectedTotalQty, Split total: $totalSplitQty, Match: " . ($totalSplitQty == $expectedTotalQty ? 'YES' : 'NO'));
+    
+    // ✅ FIX: ตรวจสอบจำนวนรวม - ต้องเท่ากับจำนวนที่คาดหวัง (ใหม่ หรือ เดิม)
+    if ($totalSplitQty != $expectedTotalQty) {
+        error_log("VALIDATION FAILED: Quantity mismatch - expected=$expectedTotalQty, split_total=$totalSplitQty");
+        throw new Exception("จำนวนรวมที่แบ่งไม่ตรงกับจำนวน (คาดหวัง: $expectedTotalQty, แบ่ง: $totalSplitQty)");
     }
+    
+    error_log("Quantity validation PASSED");
     
     // อัปเดตรายการเดิมให้เป็น PO หลักด้วยจำนวนใหม่
     $mainQty = intval($splitInfo['mainQty'] ?? 0);
     $mainPoId = intval($splitInfo['mainPoId'] ?? 0);
     $mainItemId = intval($splitInfo['mainItemId'] ?? 0);
+    $mainExpiryDate = $splitInfo['mainExpiryDate'] ?? null;
+    
+    error_log("Split update - mainQty: $mainQty, mainPoId: $mainPoId, mainItemId: $mainItemId, mainExpiryDate: $mainExpiryDate");
     
     if ($originalData['receive_qty'] < 0) {
         $mainQty = -$mainQty; // ถ้าเดิมเป็นลบ ให้จำนวนใหม่เป็นลบด้วย
+        error_log("Original qty was negative, adjusting mainQty to: $mainQty");
     }
     
     $sqlUpdate = "UPDATE receive_items SET receive_qty=?, po_id=?, item_id=?, remark=?, expiry_date=? WHERE receive_id=?";
     $stmtUpdate = $pdo->prepare($sqlUpdate);
-    $stmtUpdate->execute([$mainQty, $mainPoId, $mainItemId, $remark, $expiry_date, $receive_id]);
+    $result = $stmtUpdate->execute([$mainQty, $mainPoId, $mainItemId, $remark, $mainExpiryDate, $receive_id]);
+    error_log("Split UPDATE main PO - Result: " . ($result ? 'SUCCESS' : 'FAILED') . ", Rows affected: " . $stmtUpdate->rowCount());
     
     // สร้างรายการใหม่สำหรับ PO เพิ่มเติม
     if (isset($splitInfo['additionalPOs']) && is_array($splitInfo['additionalPOs'])) {
@@ -177,31 +263,35 @@ function handleQuantitySplit($pdo, $receive_id, $originalData, $splitInfo, $rema
             $addQty = intval($addPO['qty'] ?? 0);
             $addPoId = intval($addPO['poId'] ?? 0);
             $addItemId = intval($addPO['itemId'] ?? 0);
+            $addExpiryDate = $addPO['expiry_date'] ?? null;
             
             if ($addQty > 0 && $addPoId > 0 && $addItemId > 0) {
                 if ($originalData['receive_qty'] < 0) {
                     $addQty = -$addQty; // ถ้าเดิมเป็นลบ ให้จำนวนใหม่เป็นลบด้วย
                 }
                 
-                // สร้างรายการความเคลื่อนไหวใหม่
+                // สร้างรายการความเคลื่อนไหวใหม่ด้วย expiry_date ที่ระบุไว้
                 $splitRemark = $remark . ' (แบ่งจาก PO เดิม)';
+                error_log("Additional PO insert - addExpiryDate: " . var_export($addExpiryDate, true) . ", addQty: $addQty");
                 $sqlInsert = "INSERT INTO receive_items (po_id, item_id, receive_qty, remark, expiry_date, created_by, created_at) 
                              VALUES (?, ?, ?, ?, ?, ?, NOW())";
                 $stmtInsert = $pdo->prepare($sqlInsert);
-                $stmtInsert->execute([
+                $execResult = $stmtInsert->execute([
                     $addPoId, 
                     $addItemId, 
                     $addQty, 
                     $splitRemark, 
-                    $expiry_date, 
+                    $addExpiryDate, 
                     $originalData['created_by']
                 ]);
+                
+                error_log("Additional PO INSERT result: " . var_export($execResult, true));
                 
                 // ดึง receive_id ใหม่ที่เพิ่งสร้าง
                 $newReceiveId = $pdo->lastInsertId();
                 
                 // Log การสร้างรายการใหม่
-                error_log("Created new receive item: ID=$newReceiveId, PO_ID=$addPoId, Qty=$addQty");
+                error_log("Created new receive item: ID=$newReceiveId, PO_ID=$addPoId, Qty=$addQty, Expiry=$addExpiryDate");
                 
                 // อัปเดตตำแหน่งสำหรับรายการใหม่ (ถ้ามี)
                 updateLocationForReceiveItem($pdo, $newReceiveId, $addItemId, $row_code, $bin, $shelf);

@@ -9,8 +9,20 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 $message = "";
 $user_id = $_SESSION['user_id'] ?? 0;
 
+// ตรวจสอบ ZipArchive extension
+if (!extension_loaded('zip')) {
+    $message = "❌ ระบบต้องการ ZipArchive PHP Extension\n\n";
+    $message .= "กรุณาติดต่อผู้ดูแลระบบเพื่อ enable extension นี้:\n";
+    $message .= "1. เปิดไฟล์ C:\\xampp\\php\\php.ini\n";
+    $message .= "2. ค้นหา ;extension=zip\n";
+    $message .= "3. ลบ semicolon หน้า (;) ออก\n";
+    $message .= "4. บันทึกไฟล์และ Restart Apache";
+}
+
 if(isset($_POST['submit'])) {
-    if(isset($_FILES['excel_file']) && $_FILES['excel_file']['error'] == 0) {
+    if (!extension_loaded('zip')) {
+        $message = "❌ ข้อผิดพลาด: ZipArchive extension ไม่ถูกติดตั้ง ระบบไม่สามารถอ่านไฟล์ Excel ได้";
+    } else if(isset($_FILES['excel_file']) && $_FILES['excel_file']['error'] == 0) {
 
         $pdo->beginTransaction();
         try {
@@ -52,19 +64,20 @@ if(isset($_POST['submit'])) {
 
                 $sanitize = fn($str) => trim(preg_replace('/\s+/', ' ', str_replace("\xC2\xA0", ' ', $str ?? '')));
 
-                $sku = substr(strtolower(trim($sanitize($row[0] ?? ''))), 0, 255); // varchar(50)
-                $barcode = substr(strtolower(trim($sanitize($row[1] ?? ''))), 0, 50); // varchar(50)
+                $sku = substr(strtolower(trim($sanitize($row[0] ?? ''))), 0, 255);
+                $barcode = substr(strtolower(trim($sanitize($row[1] ?? ''))), 0, 50);
                 $name         = $sanitize($row[2]);
-                $image        = $sanitize($row[3]);
-                $unit         = $sanitize($row[4]);
-                $row_code     = $sanitize($row[5]);
+                $category_name = $sanitize($row[3]); // ประเภท (Column D)
+                $image        = $sanitize($row[4]);
+                $unit         = $sanitize($row[5]);
+                $row_code     = $sanitize($row[6]);
                 
-                $bin          = $sanitize($row[6]);
-                $shelf        = $sanitize($row[7]);
-                $qty          = floatval($row[8] ?? 0);
-                $price        = floatval($row[9] ?? 0);
-                $sale_price   = floatval($row[10] ?? 0);
-                $currency_raw = strtoupper(trim($sanitize($row[11] ?? 'THB')));
+                $bin          = $sanitize($row[7]);
+                $shelf        = $sanitize($row[8]);
+                $qty          = floatval($row[9] ?? 0);
+                $price        = floatval($row[10] ?? 0);
+                $sale_price   = floatval($row[11] ?? 0);
+                $currency_raw = strtoupper(trim($sanitize($row[12] ?? 'THB')));
                 
                 // ตรวจสอบและทำความสะอาดสกุลเงิน
                 $allowed_currencies = ['THB', 'USD'];
@@ -74,12 +87,28 @@ if(isset($_POST['submit'])) {
                 if ($currency !== $currency_raw && !empty($currency_raw)) {
                     error_log("Row " . ($i + 1) . ": Invalid currency '{$currency_raw}' changed to 'THB'");
                 }
-                $expiry_date  = !empty($row[12]) ? date('Y-m-d', strtotime($row[12])) : null;
-                $remark_color = strtolower(trim($sanitize($row[13] ?? '')));
-                $remark_split = intval($row[14] ?? 0);
-                $remark       = $sanitize($row[15]);
+                $expiry_date  = !empty($row[13]) ? date('Y-m-d', strtotime($row[13])) : null;
+                $remark_color = strtolower(trim($sanitize($row[14] ?? '')));
+                $remark_split = intval($row[15] ?? 0);
+                $remark       = $sanitize($row[16]);
 
                 if($sku === '' && $barcode === '') continue;
+
+                // ====== ดึง category_id จาก category_name ======
+                $product_category_id = null;
+                if (!empty($category_name)) {
+                    $stmt = $pdo->prepare("SELECT category_id FROM product_category WHERE category_name = ?");
+                    $stmt->execute([$category_name]);
+                    $category = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($category) {
+                        $product_category_id = $category['category_id'];
+                    } else {
+                        error_log("Row " . ($i + 1) . ": Category '{$category_name}' not found in database");
+                        // ข้ามแถวนี้หรือสร้างประเภทใหม่ (ในที่นี้ข้ามแถว)
+                        continue;
+                    }
+                }
 
                 // ====== ตรวจสอบสินค้าเดิม ======
                 $stmt = $pdo->prepare("
@@ -117,8 +146,8 @@ if(isset($_POST['submit'])) {
                         $product_id = $product['product_id'];
                     } else {
                         try {
-                            $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, remark_color, remark_split, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,NOW())");
-                            $stmt->execute([$name, $sku === '' ? null : $sku, $barcode === '' ? null : $barcode, $unit, 'images/'.$image, $remark_color, $remark_split, $user_id]);
+                            $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, remark_color, remark_split, product_category_id, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())");
+                            $stmt->execute([$name, $sku === '' ? null : $sku, $barcode === '' ? null : $barcode, $unit, 'images/'.$image, $remark_color, $remark_split, $product_category_id, $user_id]);
                             $product_id = $pdo->lastInsertId();
                         } catch (PDOException $pe) {
                             if ($pe->getCode() === '23000') {
@@ -368,18 +397,19 @@ if(isset($_POST['submit'])) {
 
         <?php if($message): ?>
            <script>
+                const message = <?= json_encode($message) ?>;
+                const isSuccess = message.includes("สำเร็จ");
+                
                 Swal.fire({
-                    icon: '<?= strpos($message, "สำเร็จ") !== false ? "success" : "error" ?>',
-                    title: '<?= strpos($message, "สำเร็จ") !== false ? "สำเร็จ" : "เกิดข้อผิดพลาด" ?>',
-                    html: <?= json_encode($message) ?>,
-                    timer: 3000,
-                    showConfirmButton: false
+                    icon: isSuccess ? "success" : "error",
+                    title: isSuccess ? "สำเร็จ" : "เกิดข้อผิดพลาด",
+                    html: message.replace(/\n/g, '<br>'),
+                    timer: isSuccess ? 3000 : 0,
+                    showConfirmButton: !isSuccess
                 }).then(() => {
-                    <?php if(strpos($message, "สำเร็จ") !== false): ?>
+                    if (isSuccess) {
                         window.location.href = "../receive/receive_items_view.php";
-                    <?php else: ?>
-                        window.location.href = "import_excel.php";
-                    <?php endif; ?>
+                    }
                 });
             </script>
 

@@ -399,6 +399,11 @@ $rows = $stmt->fetchAll();
             document.removeEventListener('keydown', poViewKeyDownHandler);
             poViewKeyDownHandler = null;
         }
+        
+        // Refresh the page to show updated data
+        setTimeout(() => {
+            location.reload();
+        }, 300);
     }
 
     function closePoEdit(e) {
@@ -413,6 +418,11 @@ $rows = $stmt->fetchAll();
             document.removeEventListener('keydown', poEditKeyDownHandler);
             poEditKeyDownHandler = null;
         }
+        
+        // Refresh the page to show updated data
+        setTimeout(() => {
+            location.reload();
+        }, 300);
     }
 
     // ===================== View PO =====================

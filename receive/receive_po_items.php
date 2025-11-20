@@ -928,19 +928,13 @@ $(document).ready(function() {
                         <td>
                             <div class="d-flex align-items-center gap-1 flex-wrap">
                                 <span class="expiry-display" data-item-id="${item.item_id}">
-                                    ${item.expiry_date ? 
-                                        `<span class="badge ${isExpired(item.expiry_date) ? 'bg-danger' : 'bg-info'}">${formatThaiDate(item.expiry_date)}</span>` 
-                                        : '<span class="text-muted">-</span>'}
+                                    <span class="text-muted">-</span>
                                 </span>
-                                ${item.expiry_date ? 
-                                    `<button type="button" class="btn btn-sm btn-outline-warning edit-expiry-btn" data-item-id="${item.item_id}" title="แก้ไขวันหมดอายุ">
-                                        <span class="material-icons" style="font-size: 0.9rem;">edit</span>
-                                    </button>` 
-                                    : `<input type="date" 
-                                       class="form-control expiry-date-input" 
-                                       data-item-id="${item.item_id}"
-                                       value="${item.expiry_date || ''}"
-                                       style="width: 120px; height: 32px; font-size: 0.75rem;">`}
+                                <input type="date" 
+                                   class="form-control expiry-date-input" 
+                                   data-item-id="${item.item_id}"
+                                   value=""
+                                   style="width: 120px; height: 32px; font-size: 0.75rem;">
                             </div>
                         </td>
                         <td>`;

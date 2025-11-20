@@ -261,6 +261,14 @@ body {
                     <span class="material-icons">schedule</span>
                     <span class="submenu-text">สินค้าใกล้หมดอายุ</span>
                 </a>
+                <a href="<?= getPath('stock/missing_products.php') ?>" class="submenu-item<?=isActive('missing_products.php')?>">
+                    <span class="material-icons">inventory_2</span>
+                    <span class="submenu-text">บันทึกสินค้าสูญหาย</span>
+                </a>
+                <a href="<?= getPath('stock/missing_products_list.php') ?>" class="submenu-item<?=isActive('missing_products_list.php')?>">
+                    <span class="material-icons">warning</span>
+                    <span class="submenu-text">รายการสินค้าสูญหาย</span>
+                </a>
             </div>
         </div>
 

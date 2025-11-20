@@ -15,6 +15,7 @@ $po_id = $_GET['po_id'];
 
 try {
     // Get PO items with product details and received quantities
+    // Only show items with existing products (temp_product_id IS NULL)
     $sql = "
         SELECT 
             poi.item_id,
@@ -33,7 +34,7 @@ try {
         FROM purchase_order_items poi
         LEFT JOIN products p ON poi.product_id = p.product_id
         LEFT JOIN receive_items ri ON poi.item_id = ri.item_id
-        WHERE poi.po_id = :po_id
+        WHERE poi.po_id = :po_id AND poi.temp_product_id IS NULL
         GROUP BY poi.item_id, poi.product_id, p.name, p.sku, p.barcode, p.unit, poi.qty, poi.price_per_unit, poi.total, poi.currency
         ORDER BY p.name
     ";
