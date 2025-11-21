@@ -2,7 +2,7 @@
 session_start();
 require '../config/db_connect.php';
 
-// Query รวมข้อมูลรับเข้าและสินค้าออก
+// Query รวมข้อมูลรับเข้าและสินค้าออก (เฉพาะสินค้าที่มีอยู่แล้ว - temp_product_id IS NULL และ product_id IS NOT NULL)
 $sql = "
 (SELECT 
     'receive' as transaction_type,
@@ -28,7 +28,8 @@ LEFT JOIN locations l ON l.location_id = (
     SELECT pl.location_id FROM product_location pl WHERE pl.product_id = p.product_id LIMIT 1
 )
 LEFT JOIN users u ON r.created_by = u.user_id
-LEFT JOIN purchase_orders po ON r.po_id = po.po_id)
+LEFT JOIN purchase_orders po ON r.po_id = po.po_id
+WHERE poi.product_id IS NOT NULL )
 
 UNION ALL
 
@@ -59,7 +60,8 @@ LEFT JOIN locations l ON l.location_id = (
     SELECT pl.location_id FROM product_location pl WHERE pl.product_id = p.product_id LIMIT 1
 )
 LEFT JOIN users u ON ii.issued_by = u.user_id
-LEFT JOIN sales_orders so ON ii.sale_order_id = so.sale_order_id)
+LEFT JOIN sales_orders so ON ii.sale_order_id = so.sale_order_id
+WHERE poi.product_id IS NOT NULL )
 
 ORDER BY created_at DESC
 LIMIT 500
