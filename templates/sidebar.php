@@ -261,6 +261,10 @@ body {
                     <span class="material-icons">schedule</span>
                     <span class="submenu-text">สินค้าใกล้หมดอายุ</span>
                 </a>
+                <a href="<?= getPath('stock/product_holding.php') ?>" class="submenu-item<?=isActive('product_holding.php')?>">
+                    <span class="material-icons">pending_actions</span>
+                    <span class="submenu-text">สินค้ารอสร้างโปรโมชั่น</span>
+                </a>
                 <a href="<?= getPath('stock/missing_products.php') ?>" class="submenu-item<?=isActive('missing_products.php')?>">
                     <span class="material-icons">inventory_2</span>
                     <span class="submenu-text">บันทึกสินค้าสูญหาย</span>

@@ -258,6 +258,12 @@ $stats = [
                             <span class="material-icons">refresh</span>
                             รีเฟรช
                         </button>
+                        <?php if (!empty($products)): ?>
+                        <button class="btn-modern btn-modern-danger btn-sm" id="bulk-promotion-btn" style="display: none;">
+                            <span class="material-icons">local_offer</span>
+                            สร้างโปรโมชั่นขาย
+                        </button>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -265,6 +271,9 @@ $stats = [
                 <table id="expiring-soon-table" class="table modern-table table-striped table-hover">
                     <thead>
                         <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="select-all-products" class="form-check-input">
+                            </th>
                             <th style="width: 60px;">รูปภาพ</th>
                             <th>ชื่อสินค้า</th>
                             <th>SKU</th>
@@ -288,7 +297,10 @@ $stats = [
                         </tr>
                         <?php else: ?>
                         <?php foreach ($products as $product): ?>
-                            <tr data-id="<?= $product['product_id'] ?>">
+                            <tr data-id="<?= $product['product_id'] ?>" data-sku="<?= htmlspecialchars($product['sku']) ?>" data-name="<?= htmlspecialchars($product['name']) ?>" data-stock="<?= $product['stock_on_hand'] ?>" data-expiry="<?= $product['expiry_date'] ?>">
+                                <td>
+                                    <input type="checkbox" class="form-check-input product-checkbox" value="<?= $product['product_id'] ?>">
+                                </td>
                                 <td>
                                     <?php 
                                     $image_path = '../images/noimg.png'; // Default
@@ -377,13 +389,207 @@ $stats = [
 
 <script>
 $(document).ready(function() {
+    // ========== Checkbox Selection Functionality ==========
+    
+    // Prevent ModernTable from initializing if we have checkboxes
     // Initialize expiring products table with modern template
     const expiringTable = new ModernTable('expiring-soon-table', {
         pageLength: 25,
         language: 'th',
         exportButtons: true,
-        defaultOrder: [[6, 'asc']] // Sort by days to expire
+        batchOperations: false, // Disable auto checkboxes (using manual checkboxes)
+        defaultOrder: [[8, 'asc']], // Sort by days to expire (column index 8 - after checkbox)
+        columnDefs: [
+            { orderable: false, targets: 0 } // Disable sorting on checkbox column
+        ]
     });
+
+    // Select all checkbox - bind AFTER DataTable initialization
+    $(document).off('change', '#select-all-products').on('change', '#select-all-products', function() {
+        const isChecked = $(this).is(':checked');
+        $('.product-checkbox').prop('checked', isChecked);
+        updateBulkActionButton();
+    });
+    
+    // Individual product checkbox - use event delegation
+    $(document).off('change', '.product-checkbox').on('change', '.product-checkbox', function() {
+        updateBulkActionButton();
+        
+        // Update select all checkbox state
+        const totalCheckboxes = $('.product-checkbox').length;
+        const checkedCheckboxes = $('.product-checkbox:checked').length;
+        $('#select-all-products').prop('checked', totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes);
+    });
+    
+    // Update bulk action button visibility
+    function updateBulkActionButton() {
+        const selectedCount = $('.product-checkbox:checked').length;
+        if (selectedCount > 0) {
+            $('#bulk-promotion-btn').show();
+        } else {
+            $('#bulk-promotion-btn').hide();
+        }
+    }
+    
+    // Bulk promotion button click
+    $(document).off('click', '#bulk-promotion-btn').on('click', '#bulk-promotion-btn', function() {
+        const selectedProducts = [];
+        $('.product-checkbox:checked').each(function() {
+            const row = $(this).closest('tr');
+            selectedProducts.push({
+                product_id: row.data('id'),
+                sku: row.data('sku'),
+                name: row.data('name'),
+                stock: row.data('stock'),
+                expiry_date: row.data('expiry')
+            });
+        });
+        
+        if (selectedProducts.length === 0) {
+            Swal.fire('ข้อผิดพลาด', 'กรุณาเลือกสินค้าอย่างน้อย 1 รายการ', 'error');
+            return;
+        }
+        
+        showPromotionModal(selectedProducts);
+    });
+    
+    // Show promotion modal
+    function showPromotionModal(products) {
+        let productsList = '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem;">';
+        
+        let totalStock = 0;
+        products.forEach(product => {
+            totalStock += parseInt(product.stock) || 0;
+            productsList += `
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2" style="border-bottom: 1px solid #f0f0f0;">
+                    <div>
+                        <strong>${product.name}</strong><br>
+                        <small class="text-muted">SKU: ${product.sku} | จำนวน: ${product.stock} | หมดอายุ: ${new Date(product.expiry_date).toLocaleDateString('th-TH')}</small>
+                    </div>
+                </div>
+            `;
+        });
+        productsList += '</div>';
+        
+        Swal.fire({
+            title: '📦 สร้างโปรโมชั่นขายสินค้าใกล้หมดอายุ',
+            html: `
+                <div style="text-align: left;">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">สินค้าที่เลือก (${products.length} รายการ)</label>
+                        ${productsList}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="promotion_name" class="form-label">ชื่อโปรโมชั่น</label>
+                        <input type="text" class="form-control" id="promotion_name" placeholder="เช่น โปรขาย clearance" value="โปรโมชั่นสินค้าใกล้หมดอายุ">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="promo_discount" class="form-label">ส่วนลด (%)</label>
+                        <input type="number" class="form-control" id="promo_discount" min="0" max="100" value="20" placeholder="กรอกเปอร์เซ็นต์ส่วนลด">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="promo_reason" class="form-label">เหตุผลโปรโมชั่น</label>
+                        <textarea class="form-control" id="promo_reason" rows="2" placeholder="เช่น สินค้าใกล้หมดอายุต้องรีบขาย">ใกล้หมดอายุ - ต้องรีบขาย</textarea>
+                    </div>
+                    
+                    <div class="alert alert-info" role="alert">
+                        <small><strong>📌 หมายเหตุ:</strong> สินค้าจะถูกพักไว้ในตารางรอคอยการแก้ไข SKU เพื่อเตรียมขายใหม่</small>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '✅ สร้างโปรโมชั่นและพักสินค้า',
+            cancelButtonText: '❌ ยกเลิก',
+            confirmButtonColor: '#dc3545',
+            width: '600px',
+            preConfirm: () => {
+                const promoName = document.getElementById('promotion_name').value;
+                const promoDiscount = parseFloat(document.getElementById('promo_discount').value) || 0;
+                const promoReason = document.getElementById('promo_reason').value;
+                
+                if (!promoName) {
+                    Swal.showValidationMessage('กรุณากรอกชื่อโปรโมชั่น');
+                    return false;
+                }
+                
+                if (promoDiscount < 0 || promoDiscount > 100) {
+                    Swal.showValidationMessage('ส่วนลดต้องอยู่ระหว่าง 0-100%');
+                    return false;
+                }
+                
+                return { promoName, promoDiscount, promoReason };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                createPromotionAndIssue(products, result.value);
+            }
+        });
+    }
+    
+    // Create promotion and issue products
+    function createPromotionAndIssue(products, promoData) {
+        Swal.fire({
+            title: 'กำลังสร้างโปรโมชั่น...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+        
+        // Prepare data
+        const promotionData = {
+            promo_name: promoData.promoName,
+            promo_discount: promoData.promoDiscount,
+            promo_reason: promoData.promoReason,
+            products: products
+        };
+        
+        // Send to backend to create promotion and issue items
+        $.ajax({
+            url: '../api/create_promotion_clearance.php',
+            method: 'POST',
+            dataType: 'json',
+            data: JSON.stringify(promotionData),
+            contentType: 'application/json',
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'สร้างโปรโมชั่นสำเร็จ!',
+                        html: `
+                            <div style="text-align: left;">
+                                <p><strong>🏷️ ชื่อโปรโมชั่น:</strong> ${response.promo_name}</p>
+                                <p><strong>📦 จำนวนสินค้า:</strong> ${response.item_count} รายการ</p>
+                                <p><strong>💰 ส่วนลด:</strong> ${response.promo_discount}%</p>
+                                <p class="text-muted mb-0"><small>✅ สินค้าได้ถูกพักไว้ในตารางรอการแก้ไข SKU และนำกลับขายใหม่</small></p>
+                            </div>
+                        `,
+                        showConfirmButton: true,
+                        confirmButtonText: 'ปิด'
+                    }).then(() => {
+                        // Refresh page to update table
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('ข้อผิดพลาด', response.message || 'ไม่สามารถสร้างโปรโมชั่นได้', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+                console.error('Status:', xhr.status);
+                console.error('Response:', xhr.responseText);
+                let errorMsg = 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    errorMsg = response.message || errorMsg;
+                } catch (e) {
+                    // Use default message
+                }
+                Swal.fire('ข้อผิดพลาด', errorMsg, 'error');
+            }
+        });
+    }
 
     // Auto-filter to critical items if coming from dashboard notification
     const urlParams = new URLSearchParams(window.location.search);

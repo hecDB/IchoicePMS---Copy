@@ -460,3 +460,15 @@
 [21-Nov-2025 15:45:14 Europe/Berlin] === product_search_api.php END ===
 [21-Nov-2025 16:05:49 Europe/Berlin] update_po_section.php called with: {"po_id":"15","item_id":"27","product_id":"","product_name":"\u0e2b\u0e21\u0e39\u0e40\u0e14\u0e49\u0e07","qty":"10","price_per_unit":"10","currency_id":"2","price_original":"10","exchange_rate":"1","update_type":"item"}
 [21-Nov-2025 16:05:49 Europe/Berlin] Processing update: po_id=15, type=item
+[21-Nov-2025 17:42:18 Europe/Berlin] === product_search_api.php START ===
+[21-Nov-2025 17:42:18 Europe/Berlin] Request query: เงา
+[21-Nov-2025 17:42:18 Europe/Berlin] Request method: GET
+[21-Nov-2025 17:42:18 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B9%80%E0%B8%87%E0%B8%B2&type=issue&available_only=true
+[21-Nov-2025 17:42:18 Europe/Berlin] Searching for: 'เงา' with limit: 10
+[21-Nov-2025 17:42:18 Europe/Berlin] About to encode 2 results for type: issue
+[21-Nov-2025 17:42:18 Europe/Berlin] Sent JSON response length: 1274
+[21-Nov-2025 17:42:18 Europe/Berlin] === product_search_api.php END ===
+[21-Nov-2025 18:13:32 Europe/Berlin] update_po_section.php called with: {"po_id":"19","item_id":"31","product_id":"11","product_name":"\u0e40\u0e07\u0e32\u0e30","qty":"5","price_per_unit":"390","currency_id":"2","price_original":"10","exchange_rate":"39","update_type":"item"}
+[21-Nov-2025 18:13:32 Europe/Berlin] Processing update: po_id=19, type=item
+[21-Nov-2025 18:13:49 Europe/Berlin] update_po_section.php called with: {"po_id":"19","item_id":"31","product_id":"11","product_name":"\u0e40\u0e07\u0e32\u0e30","qty":"10","price_per_unit":"390","currency_id":"2","price_original":"10","exchange_rate":"39","update_type":"item"}
+[21-Nov-2025 18:13:49 Europe/Berlin] Processing update: po_id=19, type=item
