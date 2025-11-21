@@ -396,3 +396,65 @@
 [20-Nov-2025 16:44:32 Europe/Berlin] Processing update: po_id=34, type=item
 [20-Nov-2025 16:50:19 Europe/Berlin] update_po_section.php called with: {"po_id":"34","item_id":"56","product_id":"10","product_name":"(REACH\u00ae) Waxed Dental Floss 50.2m or 182.8m \u0e23\u0e35\u0e0a \u0e44\u0e2b\u0e21\u0e02\u0e31\u0e14\u0e1f\u0e31\u0e19 \u0e40\u0e04\u0e25\u0e37\u0e2d\u0e1a\u0e41\u0e27\u0e47\u0e01\u0e0b\u0e4c","qty":"60.00","price_per_unit":"25","currency_id":"1","price_original":"25","exchange_rate":"1","update_type":"item"}
 [20-Nov-2025 16:50:19 Europe/Berlin] Processing update: po_id=34, type=item
+[21-Nov-2025 14:47:51 Europe/Berlin] update_po_section.php called with: {"po_id":"10","supplier_id":"3","update_type":"supplier"}
+[21-Nov-2025 14:47:51 Europe/Berlin] Processing update: po_id=10, type=supplier
+[21-Nov-2025 14:49:20 Europe/Berlin] update_po_section.php called with: {"po_id":"10","item_id":"21","product_id":"7","product_name":"\u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35 Stress B-Complex 60 Capsules (Thorne Research\u00ae) \u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35\u0e23\u0e27\u0e21","qty":"40","price_per_unit":"975.00","currency_id":"2","price_original":"975","exchange_rate":"39","update_type":"item"}
+[21-Nov-2025 14:49:20 Europe/Berlin] Processing update: po_id=10, type=item
+[21-Nov-2025 14:49:44 Europe/Berlin] update_po_section.php called with: {"po_id":"10","item_id":"21","product_id":"7","product_name":"\u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35 Stress B-Complex 60 Capsules (Thorne Research\u00ae) \u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35\u0e23\u0e27\u0e21","qty":"40.00","price_per_unit":"15","currency_id":"2","price_original":"15","exchange_rate":"39","update_type":"item"}
+[21-Nov-2025 14:49:44 Europe/Berlin] Processing update: po_id=10, type=item
+[21-Nov-2025 14:50:16 Europe/Berlin] update_po_section.php called with: {"po_id":"4","item_id":"8","product_id":"7","product_name":"\u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35 Stress B-Complex 60 Capsules (Thorne Research\u00ae) \u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e1a\u0e35\u0e23\u0e27\u0e21","qty":"6.00","price_per_unit":"50","currency_id":"1","price_original":"50","exchange_rate":"1","update_type":"item"}
+[21-Nov-2025 14:50:16 Europe/Berlin] Processing update: po_id=4, type=item
+[21-Nov-2025 14:50:26 Europe/Berlin] update_po_section.php called with: {"po_id":"4","item_id":"9","product_id":"8","product_name":"\u0e18\u0e32\u0e15\u0e38\u0e40\u0e2b\u0e25\u0e47\u0e01 Iron Bisglycinate 25 mg 60 Capsules - Thorne Research","qty":"6.00","price_per_unit":"40","currency_id":"1","price_original":"40","exchange_rate":"1","update_type":"item"}
+[21-Nov-2025 14:50:26 Europe/Berlin] Processing update: po_id=4, type=item
+[21-Nov-2025 14:56:53 Europe/Berlin] update_po_section.php called with: {"po_id":"12","item_id":"24","product_id":"","product_name":"\u0e2b\u0e21\u0e39\u0e40\u0e14\u0e49\u0e07","qty":"15.00","price_per_unit":"15","currency_id":"2","price_original":"15","exchange_rate":"1","update_type":"item"}
+[21-Nov-2025 14:56:53 Europe/Berlin] Processing update: po_id=12, type=item
+[21-Nov-2025 15:01:01 Europe/Berlin] update_po_section.php called with: {"po_id":"12","supplier_id":"3","update_type":"supplier"}
+[21-Nov-2025 15:01:01 Europe/Berlin] Processing update: po_id=12, type=supplier
+[21-Nov-2025 15:01:26 Europe/Berlin] update_po_section.php called with: {"po_id":"12","item_id":"24","product_id":"","product_name":"\u0e2b\u0e21\u0e39\u0e40\u0e14\u0e49\u0e07","qty":"10","price_per_unit":"15.00","currency_id":"2","price_original":"15","exchange_rate":"1","update_type":"item"}
+[21-Nov-2025 15:01:26 Europe/Berlin] Processing update: po_id=12, type=item
+[21-Nov-2025 15:04:03 Europe/Berlin] update_po_section.php called with: {"po_id":"13","item_id":"25","product_id":"6","product_name":"\u0e0b\u0e34\u0e07\u0e04\u0e4c \u0e1e\u0e34\u0e42\u0e04\u0e25\u0e34\u0e40\u0e19\u0e15 Zinc Picolinate 15 mg 60 Capsules - Thorne Research","qty":"1.00","price_per_unit":"15","currency_id":"2","price_original":"15","exchange_rate":"35","update_type":"item"}
+[21-Nov-2025 15:04:03 Europe/Berlin] Processing update: po_id=13, type=item
+[21-Nov-2025 15:04:31 Europe/Berlin] update_po_section.php called with: {"po_id":"13","item_id":"25","product_id":"6","product_name":"\u0e0b\u0e34\u0e07\u0e04\u0e4c \u0e1e\u0e34\u0e42\u0e04\u0e25\u0e34\u0e40\u0e19\u0e15 Zinc Picolinate 15 mg 60 Capsules - Thorne Research","qty":"1.00","price_per_unit":"10","currency_id":"2","price_original":"10","exchange_rate":"35","update_type":"item"}
+[21-Nov-2025 15:04:31 Europe/Berlin] Processing update: po_id=13, type=item
+[21-Nov-2025 15:05:59 Europe/Berlin] update_po_section.php called with: {"po_id":"14","item_id":"26","product_id":"5","product_name":"\u0e15\u0e31\u0e27\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32","qty":"1.00","price_per_unit":"12","currency_id":"2","price_original":"12","exchange_rate":"35","update_type":"item"}
+[21-Nov-2025 15:05:59 Europe/Berlin] Processing update: po_id=14, type=item
+[21-Nov-2025 15:17:22 Europe/Berlin] update_po_section.php called with: {"po_id":"16","item_id":"28","product_id":"","product_name":"\u0e2b\u0e21\u0e39\u0e1b\u0e34\u0e07","qty":"2.00","price_per_unit":"11","currency_id":"2","price_original":"11","exchange_rate":"1","update_type":"item"}
+[21-Nov-2025 15:17:22 Europe/Berlin] Processing update: po_id=16, type=item
+[21-Nov-2025 15:32:11 Europe/Berlin] update_po_section.php called with: {"po_id":"18","item_id":"30","product_id":"","product_name":"\u0e40\u0e07\u0e32\u0e30","qty":"2.00","price_per_unit":"468","currency_id":"2","price_original":"12","exchange_rate":"39","update_type":"item"}
+[21-Nov-2025 15:32:11 Europe/Berlin] Processing update: po_id=18, type=item
+[21-Nov-2025 15:32:22 Europe/Berlin] update_po_section.php called with: {"po_id":"14","item_id":"26","product_id":"5","product_name":"\u0e15\u0e31\u0e27\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32","qty":"1.00","price_per_unit":"525","currency_id":"2","price_original":"15","exchange_rate":"35","update_type":"item"}
+[21-Nov-2025 15:32:22 Europe/Berlin] Processing update: po_id=14, type=item
+[21-Nov-2025 15:32:55 Europe/Berlin] update_po_section.php called with: {"po_id":"18","item_id":"30","product_id":"","product_name":"\u0e40\u0e07\u0e32\u0e30","qty":"10","price_per_unit":"468","currency_id":"2","price_original":"12","exchange_rate":"39","update_type":"item"}
+[21-Nov-2025 15:32:55 Europe/Berlin] Processing update: po_id=18, type=item
+[21-Nov-2025 15:45:11 Europe/Berlin] === product_search_api.php START ===
+[21-Nov-2025 15:45:11 Europe/Berlin] Request query: g
+[21-Nov-2025 15:45:11 Europe/Berlin] Request method: GET
+[21-Nov-2025 15:45:11 Europe/Berlin] Request URI: /api/product_search_api.php?q=g&limit=20
+[21-Nov-2025 15:45:11 Europe/Berlin] Searching for: 'g' with limit: 20
+[21-Nov-2025 15:45:11 Europe/Berlin] About to encode 3 results for type: default
+[21-Nov-2025 15:45:11 Europe/Berlin] Sent JSON response length: 2510
+[21-Nov-2025 15:45:11 Europe/Berlin] === product_search_api.php END ===
+[21-Nov-2025 15:45:11 Europe/Berlin] === product_search_api.php START ===
+[21-Nov-2025 15:45:11 Europe/Berlin] Request query: g'
+[21-Nov-2025 15:45:11 Europe/Berlin] Request method: GET
+[21-Nov-2025 15:45:11 Europe/Berlin] Request URI: /api/product_search_api.php?q=g%27&limit=20
+[21-Nov-2025 15:45:11 Europe/Berlin] Searching for: 'g'' with limit: 20
+[21-Nov-2025 15:45:11 Europe/Berlin] About to encode 0 results for type: default
+[21-Nov-2025 15:45:11 Europe/Berlin] Sent JSON response length: 2
+[21-Nov-2025 15:45:11 Europe/Berlin] === product_search_api.php END ===
+[21-Nov-2025 15:45:14 Europe/Berlin] === product_search_api.php START ===
+[21-Nov-2025 15:45:14 Europe/Berlin] Request query: เ
+[21-Nov-2025 15:45:14 Europe/Berlin] Request method: GET
+[21-Nov-2025 15:45:14 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B9%80&limit=20
+[21-Nov-2025 15:45:14 Europe/Berlin] Searching for: 'เ' with limit: 20
+[21-Nov-2025 15:45:14 Europe/Berlin] About to encode 5 results for type: default
+[21-Nov-2025 15:45:14 Europe/Berlin] Sent JSON response length: 3809
+[21-Nov-2025 15:45:14 Europe/Berlin] === product_search_api.php END ===
+[21-Nov-2025 15:45:14 Europe/Berlin] === product_search_api.php START ===
+[21-Nov-2025 15:45:14 Europe/Berlin] Request query: เง
+[21-Nov-2025 15:45:14 Europe/Berlin] Request method: GET
+[21-Nov-2025 15:45:14 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B9%80%E0%B8%87&limit=20
+[21-Nov-2025 15:45:14 Europe/Berlin] Searching for: 'เง' with limit: 20
+[21-Nov-2025 15:45:14 Europe/Berlin] About to encode 1 results for type: default
+[21-Nov-2025 15:45:14 Europe/Berlin] Sent JSON response length: 421
+[21-Nov-2025 15:45:14 Europe/Berlin] === product_search_api.php END ===

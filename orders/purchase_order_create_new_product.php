@@ -284,7 +284,7 @@ $categories = $stmt_categories->fetchAll(PDO::FETCH_ASSOC);
         // ===== PO Number Generation =====
         async function generatePONumber() {
             try {
-                const response = await fetch('../api/generate_po_number_api.php', {method: 'POST'});
+                const response = await fetch('../api/generate_po_new_number_api.php', {method: 'POST'});
                 const result = await response.json();
 
                 if (result.success) {

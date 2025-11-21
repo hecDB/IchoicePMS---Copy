@@ -5,7 +5,7 @@
  */
 
 session_start();
-require_once 'config/db_connect.php';
+include 'config/db_connect.php';
 
 // ตรวจสอบสิทธิ์ (admin เท่านั้น)
 if (empty($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {

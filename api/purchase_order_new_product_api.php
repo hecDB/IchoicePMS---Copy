@@ -81,6 +81,12 @@ try {
     $unit_prices = $_POST['unit_price'] ?? [];
     $product_images = $_FILES['product_image'] ?? [];
 
+    // ดึงข้อมูลอัตราแลกเปลี่ยน
+    $stmt = $pdo->prepare("SELECT exchange_rate FROM currencies WHERE currency_id = ?");
+    $stmt->execute([$currency_id]);
+    $currency_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    $exchange_rate = $currency_data['exchange_rate'] ?? 1;
+
     $total_amount = 0;
 
     for ($i = 0; $i < count($product_names); $i++) {
@@ -98,6 +104,21 @@ try {
         if ($quantity <= 0 || $unit_price < 0) {
             throw new Exception('จำนวนและราคาต้องมากกว่า 0 (ที่ ' . ($i + 1) . ')');
         }
+
+        // คำนวณราคา
+        // price_original: ราคาต่อหน่วยในสกุลเงินต้นฉบับ (จากที่ผู้ใช้ป้อน)
+        $price_original = $unit_price;
+        
+        // price_per_unit: ราคาต่อหน่วยในบาทไทย (price_original * exchange_rate)
+        $price_per_unit = $unit_price * $exchange_rate;
+        
+        // total: ราคารวม = price_per_unit * qty (ในบาทไทย)
+        $total = $price_per_unit * $quantity;
+        
+        // price_base: ยอดรวมทั้งหมดในบาทไทย (เท่ากับ total)
+        $price_base = $total;
+        
+        $total_amount += $total;
 
         // จัดการการอัปโหลดรูปภาพ
         $product_image_data = null;
@@ -129,10 +150,6 @@ try {
             }
         }
 
-        $item_total = $quantity * $unit_price;
-        $item_amount = $item_total;
-        $total_amount += $item_amount;
-
         // สร้าง temp product
         $temp_status = 'pending_approval';
         $stmt = $pdo->prepare("
@@ -144,18 +161,42 @@ try {
 
         $temp_product_id = $pdo->lastInsertId();
 
-        // บันทึก PO item
+        // บันทึก PO item พร้อมการคำนวณราคาใหม่
         $stmt = $pdo->prepare("
             INSERT INTO purchase_order_items 
-            (po_id, product_id, temp_product_id, qty, price_per_unit, sale_price, total, currency_id) 
-            VALUES (?, NULL, ?, ?, ?, 0, ?, ?)
+            (po_id, product_id, temp_product_id, qty, price_per_unit, price_original, price_base, total, currency_id, sale_price) 
+            VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, 0)
         ");
-        $stmt->execute([$po_id, $temp_product_id, $quantity, $unit_price, $item_amount, $currency_id]);
+        $stmt->execute([
+            $po_id, 
+            $temp_product_id, 
+            $quantity, 
+            $price_per_unit,      // price_per_unit: ราคาต่อหน่วยในบาทไทย
+            $price_original,      // price_original: ราคาต่อหน่วยในสกุลเงินต้นฉบับ
+            $price_base,          // price_base: ยอดรวมในบาทไทย
+            $total,               // total: ราคารวม (qty * price_per_unit)
+            $currency_id          // currency_id: สกุลเงินที่เลือก
+        ]);
     }
 
-    // อัปเดตยอดรวมใบ PO
-    $stmt = $pdo->prepare("UPDATE purchase_orders SET total_amount = ? WHERE po_id = ?");
-    $stmt->execute([$total_amount, $po_id]);
+    // คำนวณยอดรวมในสกุลเงินต้นฉบับ
+    $total_amount_original = 0;
+    for ($i = 0; $i < count($product_names); $i++) {
+        $quantity = (float)$quantities[$i];
+        $unit_price = (float)$unit_prices[$i];
+        $total_amount_original += $unit_price * $quantity;
+    }
+    
+    // total_amount_base คือ ยอดรวมทั้งหมดในบาทไทย (เท่ากับ total_amount)
+    $total_amount_base = $total_amount;
+
+    // อัปเดตยอดรวมใบ PO พร้อมกับ exchange_rate, total_amount_original, และ total_amount_base
+    $stmt = $pdo->prepare("
+        UPDATE purchase_orders 
+        SET total_amount = ?, exchange_rate = ?, total_amount_original = ?, total_amount_base = ? 
+        WHERE po_id = ?
+    ");
+    $stmt->execute([$total_amount, $exchange_rate, $total_amount_original, $total_amount_base, $po_id]);
 
     $pdo->commit();
 

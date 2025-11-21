@@ -1572,7 +1572,19 @@ $rows = $stmt->fetchAll();
                 cells[4].innerHTML = `<input type="number" class="item-edit-input" value="${item.qty || 0}" data-field="qty" min="1" step="1">`;
                 
                 // Price per unit - now index 6
-                cells[6].innerHTML = `<input type="number" class="item-edit-input" value="${item.price_per_unit || 0}" data-field="price_per_unit" min="0" step="0.01">`;
+                // Use price_original (ราคาต้นฉบับในสกุลเงินที่เลือก) instead of price_per_unit (ราคาเป็นบาท)
+                const displayPrice = (item.price_original !== null && item.price_original !== undefined) ? item.price_original : item.price_per_unit || 0;
+                const currencySymbol = currentPoData.order.currency_symbol || '฿';
+                const exchangeRate = parseFloat(currentPoData.order.exchange_rate || 1);
+                const convertedPrice = (displayPrice * exchangeRate).toFixed(2);
+                cells[6].innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <input type="number" class="item-edit-input" value="${displayPrice}" data-field="price_per_unit" min="0" step="0.01" style="font-weight: bold;">
+                        <div style="font-size: 11px; color: #666; padding: 2px 0;">
+                            ${currencySymbol}${displayPrice} ≈ ฿${convertedPrice}
+                        </div>
+                    </div>
+                `;
                 
                 // Add action buttons - now index 7
                 cells[7].innerHTML = `
@@ -1689,7 +1701,12 @@ $rows = $stmt->fetchAll();
         // Get currency information from current order
         const currencyId = currentPoData.order.currency_id || 1;
         const exchangeRate = parseFloat(currentPoData.order.exchange_rate || 1);
+        
+        // price_per_unit from form is the ORIGINAL CURRENCY price (ราคาต้นฉบับ)
         const priceOriginal = parseFloat(updateData.price_per_unit || 0);
+        
+        // Convert to Thai Baht for storage in price_per_unit
+        const pricePerUnitInBaht = priceOriginal * exchangeRate;
         
         const formData = new FormData();
         formData.append('po_id', poId);
@@ -1697,13 +1714,13 @@ $rows = $stmt->fetchAll();
         formData.append('product_id', updateData.product_id || '');
         formData.append('product_name', updateData.product_name || '');
         formData.append('qty', updateData.qty || 1);
-        formData.append('price_per_unit', updateData.price_per_unit || 0);
+        formData.append('price_per_unit', pricePerUnitInBaht);  // Store converted price in THB
         formData.append('currency_id', currencyId);
-        formData.append('price_original', priceOriginal);
+        formData.append('price_original', priceOriginal);  // Store original currency price
         formData.append('exchange_rate', exchangeRate);
         formData.append('update_type', 'item');
 
-        console.log('Saving item row:', { poId, itemId, index, updateData }); // Debug log
+        console.log('Saving item row:', { poId, itemId, index, priceOriginal, pricePerUnitInBaht, exchangeRate }); // Debug log
         
         fetch('../api/update_po_section.php', {
             method: 'POST',

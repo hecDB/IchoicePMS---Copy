@@ -1,4 +1,4 @@
 
 <?php
-echo password_hash('Saovaluk@0169', PASSWORD_BCRYPT);
+echo password_hash('admin01', PASSWORD_BCRYPT);
 ?>

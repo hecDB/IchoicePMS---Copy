@@ -141,12 +141,56 @@ $user_name = $_SESSION['user_name'] ?? 'User';
         .input-group {
             position: relative;
         }
+
+        /* Modal fixes for proper centering without scrolling */
+        .modal {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .modal-dialog {
+            max-height: none;
+            margin: 0;
+        }
+
+        .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* Ensure modal backdrop doesn't cause scroll */
+        .modal-backdrop {
+            position: fixed;
+        }
+
+        /* Prevent body scroll when modal is open */
+        body.modal-open {
+            overflow: hidden !important;
+            padding-right: 0 !important;
+            position: fixed !important;
+            width: 100% !important;
+            top: 0 !important;
+        }
+        
+        /* Override scrollbar padding that Bootstrap adds */
+        body.modal-open .mainwrap {
+            position: relative;
+        }
+
+        /* Full width layout */
+        .container-fluid {
+            padding-left: 15px;
+            padding-right: 15px;
+        }
     </style>
 </head>
 <body>
 
 <div class="mainwrap">
     <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -159,7 +203,7 @@ $user_name = $_SESSION['user_name'] ?? 'User';
         </div>
 
         <div class="row">
-            <div class="col-lg-8">
+            <div class="col-lg-12">
 
                 <!-- Step 1: Search Product -->
                 <div class="card mb-4">
@@ -256,8 +300,8 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                         รายการสินค้าสูญหายวันนี้
                     </div>
                     <div class="card-body p-0">
-                        <div id="missing-items-list" class="table-responsive" style="min-height: 200px;">
-                            <table class="table table-hover mb-0">
+                        <div id="missing-items-list" style="min-height: 200px; overflow-x: auto;">
+                            <table class="table table-hover mb-0" style="width: 100%; min-width: 100%;">
                                 <thead class="table-light">
                                     <tr>
                                         <th style="width: 50px;">ลำดับ</th>
@@ -265,7 +309,7 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                                         <th style="width: 80px;">จำนวน</th>
                                         <th>บันทึกโดย</th>
                                         <th style="width: 100px;">เวลา</th>
-                                        <th style="width: 80px;">จัดการ</th>
+                                        <th style="width: 120px;">จัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="missing-items-tbody">
@@ -294,17 +338,24 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">จำนวน</label>
+                        <label class="form-label">สินค้า</label>
+                        <div class="form-control-plaintext fw-bold" id="edit-product-name"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">จำนวนที่สูญหาย <span class="text-danger">*</span></label>
                         <input type="number" class="form-control" id="edit-quantity" min="1" step="0.01">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">หมายเหตุ</label>
-                        <textarea class="form-control" id="edit-remark" rows="3"></textarea>
+                        <textarea class="form-control" id="edit-remark" rows="3" placeholder="กรอกหมายเหตุ..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="button" class="btn btn-primary" id="save-edit-btn">บันทึก</button>
+                    <button type="button" class="btn btn-primary" id="save-edit-btn">
+                        <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">save</span>
+                        บันทึกการแก้ไข
+                    </button>
                 </div>
             </div>
         </div>
@@ -477,13 +528,84 @@ $user_name = $_SESSION['user_name'] ?? 'User';
         $(document).ready(function() {
             loadMissingItemsList();
             $('#barcode-search').focus();
+            
+            // Store scroll position before modal opens
+            let scrollPosition = 0;
+            
+            // Handle modal show event
+            const editModalElement = document.getElementById('editModal');
+            editModalElement.addEventListener('show.bs.modal', function() {
+                scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+                $('body').css('top', -scrollPosition + 'px');
+            });
+            
+            // Handle modal hide event
+            editModalElement.addEventListener('hide.bs.modal', function() {
+                $('body').css('top', '0px');
+                window.scrollTo(0, scrollPosition);
+            });
         });
 
         // Edit button handler
         $(document).on('click', '.edit-missing-btn', function() {
             currentEditingId = $(this).data('id');
-            // Load item details and show modal
-            // TODO: Implement edit functionality
+            const row = $(this).closest('tr');
+            const productName = row.find('td:eq(1) strong').text();
+            const quantity = row.find('td:eq(2)').text();
+            
+            // Set modal fields
+            $('#edit-product-name').text(productName);
+            $('#edit-quantity').val(quantity);
+            $('#edit-remark').val('');
+            
+            // Show modal
+            const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+            editModal.show();
+        });
+
+        // Save edit button handler
+        $('#save-edit-btn').click(function() {
+            if (!currentEditingId) {
+                Swal.fire('ข้อผิดพลาด', 'ไม่พบรายการที่จะแก้ไข', 'error');
+                return;
+            }
+
+            const quantity = parseFloat($('#edit-quantity').val()) || 0;
+            const remark = $('#edit-remark').val().trim();
+
+            if (quantity <= 0) {
+                Swal.fire('ข้อผิดพลาด', 'กรุณากรอกจำนวนที่มากกว่า 0', 'warning');
+                return;
+            }
+
+            $(this).prop('disabled', true);
+            
+            $.post('../api/update_missing_product_api.php', {
+                missing_id: currentEditingId,
+                quantity_missing: quantity,
+                remark: remark
+            }, function(resp) {
+                $('#save-edit-btn').prop('disabled', false);
+                
+                if (resp.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'อัปเดตสำเร็จ',
+                        text: 'บันทึกการแก้ไขเรียบร้อย',
+                        timer: 1500
+                    });
+                    
+                    // Close modal and reload list
+                    bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+                    loadMissingItemsList();
+                    currentEditingId = null;
+                } else {
+                    Swal.fire('ข้อผิดพลาด', resp.message || 'ไม่สามารถอัปเดตได้', 'error');
+                }
+            }).fail(function() {
+                $('#save-edit-btn').prop('disabled', false);
+                Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+            });
         });
 
         // Delete button handler
