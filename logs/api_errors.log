@@ -472,3 +472,29 @@
 [21-Nov-2025 18:13:32 Europe/Berlin] Processing update: po_id=19, type=item
 [21-Nov-2025 18:13:49 Europe/Berlin] update_po_section.php called with: {"po_id":"19","item_id":"31","product_id":"11","product_name":"\u0e40\u0e07\u0e32\u0e30","qty":"10","price_per_unit":"390","currency_id":"2","price_original":"10","exchange_rate":"39","update_type":"item"}
 [21-Nov-2025 18:13:49 Europe/Berlin] Processing update: po_id=19, type=item
+[23-Nov-2025 05:12:25 Europe/Berlin] === product_search_api.php START ===
+[23-Nov-2025 05:12:25 Europe/Berlin] Request query: ตัวอย่างสินค้า
+[23-Nov-2025 05:12:25 Europe/Berlin] Request method: GET
+[23-Nov-2025 05:12:25 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%95%E0%B8%B1%E0%B8%A7%E0%B8%AD%E0%B8%A2%E0%B9%88%E0%B8%B2%E0%B8%87%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%84%E0%B9%89%E0%B8%B2&limit=10
+[23-Nov-2025 05:12:25 Europe/Berlin] Searching for: 'ตัวอย่างสินค้า' with limit: 10
+[23-Nov-2025 05:12:25 Europe/Berlin] About to encode 1 results for type: default
+[23-Nov-2025 05:12:25 Europe/Berlin] Sent JSON response length: 543
+[23-Nov-2025 05:12:25 Europe/Berlin] === product_search_api.php END ===
+[23-Nov-2025 05:12:33 Europe/Berlin] update_po_section.php called with: {"po_id":"20","product_id":"5","product_name":"\u0e15\u0e31\u0e27\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32","qty":"2","price_per_unit":"10","unit":"\u0e0a\u0e34\u0e49\u0e19","currency_id":"2","price_original":"10","exchange_rate":"39","update_type":"add_item"}
+[23-Nov-2025 05:12:33 Europe/Berlin] Processing update: po_id=20, type=add_item
+[23-Nov-2025 05:20:59 Europe/Berlin] update_po_section.php called with: {"po_id":"20","item_id":"33","update_type":"delete_item"}
+[23-Nov-2025 05:20:59 Europe/Berlin] Processing update: po_id=20, type=delete_item
+[23-Nov-2025 05:26:22 Europe/Berlin] === product_search_api.php START ===
+[23-Nov-2025 05:26:22 Europe/Berlin] Request query: ตัวอย่างสินค้า
+[23-Nov-2025 05:26:22 Europe/Berlin] Request method: GET
+[23-Nov-2025 05:26:22 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%95%E0%B8%B1%E0%B8%A7%E0%B8%AD%E0%B8%A2%E0%B9%88%E0%B8%B2%E0%B8%87%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%84%E0%B9%89%E0%B8%B2&limit=10
+[23-Nov-2025 05:26:22 Europe/Berlin] Searching for: 'ตัวอย่างสินค้า' with limit: 10
+[23-Nov-2025 05:26:22 Europe/Berlin] About to encode 1 results for type: default
+[23-Nov-2025 05:26:22 Europe/Berlin] Sent JSON response length: 543
+[23-Nov-2025 05:26:22 Europe/Berlin] === product_search_api.php END ===
+[23-Nov-2025 05:26:35 Europe/Berlin] update_po_section.php called with: {"po_id":"20","product_id":"5","product_name":"\u0e15\u0e31\u0e27\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32","qty":"1","price_per_unit":"20","unit":"\u0e0a\u0e34\u0e49\u0e19","currency_id":"2","price_original":"20","exchange_rate":"39","update_type":"add_item"}
+[23-Nov-2025 05:26:35 Europe/Berlin] Processing update: po_id=20, type=add_item
+[23-Nov-2025 05:26:44 Europe/Berlin] update_po_section.php called with: {"po_id":"20","item_id":"34","update_type":"delete_item"}
+[23-Nov-2025 05:26:44 Europe/Berlin] Processing update: po_id=20, type=delete_item
+[26-Nov-2025 15:36:16 Europe/Berlin] update_po_section.php called with: {"po_id":"20","item_id":"32","product_id":"","product_name":"kkkk","qty":"15","price_per_unit":"468","currency_id":"2","price_original":"12","exchange_rate":"39","update_type":"item"}
+[26-Nov-2025 15:36:16 Europe/Berlin] Processing update: po_id=20, type=item

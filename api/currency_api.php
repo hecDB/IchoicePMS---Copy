@@ -40,7 +40,42 @@ try {
             
         case 'POST':
             $data = json_decode(file_get_contents('php://input'), true);
-            
+
+                        // เพิ่มสกุลเงินใหม่
+            if (isset($data['add_currency'])) {
+                if (
+                    empty($data['code']) ||
+                    empty($data['name']) ||
+                    empty($data['symbol']) ||
+                    !isset($data['exchange_rate']) ||
+                    !isset($data['is_active'])
+                ) {
+                    throw new Exception('ข้อมูลไม่ครบถ้วน');
+                }
+
+                // ตรวจสอบซ้ำ
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM currencies WHERE code = ?");
+                $stmt->execute([strtoupper($data['code'])]);
+                if ($stmt->fetchColumn() > 0) {
+                    throw new Exception('รหัสสกุลเงินนี้มีอยู่แล้ว');
+                }
+
+                $stmt = $pdo->prepare("INSERT INTO currencies (code, name, symbol, exchange_rate, is_active, updated_at) VALUES (?, ?, ?, ?, ?, NOW())");
+                $success = $stmt->execute([
+                    strtoupper(trim($data['code'])),
+                    trim($data['name']),
+                    trim($data['symbol']),
+                    floatval($data['exchange_rate']),
+                    intval($data['is_active'])
+                ]);
+                if ($success) {
+                    echo json_encode(['success' => true]);
+                } else {
+                    throw new Exception('เกิดข้อผิดพลาดในการบันทึก');
+                }
+                break;
+            }
+
             if (isset($data['update_rates'])) {
                 // อัปเดตอัตราแลกเปลี่ยนหลายสกุลพร้อมกัน
                 $rates = $data['rates']; // array of ['currency_id' => rate]
@@ -75,31 +110,92 @@ try {
                     throw new Exception('ไม่สามารถอัปเดตอัตราแลกเปลี่ยนได้');
                 }
                 
+
             } else {
                 throw new Exception('ข้อมูลไม่ครบถ้วน');
             }
             break;
-            
-        case 'PUT':
-            // เปิด/ปิดการใช้งานสกุลเงิน
-            $data = json_decode(file_get_contents('php://input'), true);
-            
-            if (!isset($data['currency_id']) || !isset($data['is_active'])) {
-                throw new Exception('ข้อมูลไม่ครบถ้วน');
-            }
-            
-            $stmt = $pdo->prepare("UPDATE currencies SET is_active = ?, updated_at = NOW() WHERE currency_id = ? AND is_base = 0");
-            
-            if ($stmt->execute([$data['is_active'], $data['currency_id']])) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => $data['is_active'] ? 'เปิดใช้งานสกุลเงินแล้ว' : 'ปิดใช้งานสกุลเงินแล้ว'
-                ]);
-            } else {
-                throw new Exception('ไม่สามารถอัปเดตสถานะได้');
-            }
-            break;
-            
+    // ---------------------------------------------------------------------------------------------
+            case 'PUT':
+                $data = json_decode(file_get_contents('php://input'), true);
+
+                // กรณีแก้ไขข้อมูลสกุลเงิน
+                if (isset($data['edit_currency']) && isset($data['currency_id'])) {
+                    if (
+                        empty($data['name']) ||
+                        empty($data['symbol']) ||
+                        !isset($data['exchange_rate']) ||
+                        !isset($data['is_active'])
+                    ) {
+                        throw new Exception('ข้อมูลไม่ครบถ้วน');
+                    }
+
+                    $stmt = $pdo->prepare("UPDATE currencies SET name = ?, symbol = ?, exchange_rate = ?, is_active = ?, updated_at = NOW() WHERE currency_id = ?");
+                    $success = $stmt->execute([
+                        trim($data['name']),
+                        trim($data['symbol']),
+                        floatval($data['exchange_rate']),
+                        intval($data['is_active']),
+                        intval($data['currency_id'])
+                    ]);
+                    if ($success) {
+                        echo json_encode(['success' => true]);
+                    } else {
+                        throw new Exception('เกิดข้อผิดพลาดในการบันทึก');
+                    }
+                    break;
+                }
+                // กรณีเปิด/ปิดการใช้งานสกุลเงิน
+                elseif (isset($data['currency_id']) && isset($data['is_active'])) {
+                    $stmt = $pdo->prepare("UPDATE currencies SET is_active = ?, updated_at = NOW() WHERE currency_id = ? AND is_base = 0");
+                    if ($stmt->execute([$data['is_active'], $data['currency_id']])) {
+                        echo json_encode([
+                            'success' => true,
+                            'message' => $data['is_active'] ? 'เปิดใช้งานสกุลเงินแล้ว' : 'ปิดใช้งานสกุลเงินแล้ว'
+                        ]);
+                    } else {
+                        throw new Exception('เกิดข้อผิดพลาดในการอัปเดตสถานะ');
+                    }
+                    break;
+                }
+                else {
+                    throw new Exception('ข้อมูลไม่ครบถ้วน');
+                }
+                break;
+  // ---------------------------------------------------------------------------------------------
+            case 'DELETE':
+                $data = json_decode(file_get_contents('php://input'), true);
+
+                if (!isset($data['currency_id'])) {
+                    throw new Exception('ข้อมูลไม่ครบถ้วน');
+                }
+
+                // ไม่อนุญาตให้ลบสกุลเงินหลัก
+                $stmt = $pdo->prepare("SELECT is_base FROM currencies WHERE currency_id = ?");
+                $stmt->execute([intval($data['currency_id'])]);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$row) {
+                    throw new Exception('ไม่พบสกุลเงินนี้');
+                }
+                if ($row['is_base']) {
+                    throw new Exception('ไม่สามารถลบสกุลเงินหลักได้');
+                }
+
+                $stmt = $pdo->prepare("DELETE FROM currencies WHERE currency_id = ?");
+                $success = $stmt->execute([intval($data['currency_id'])]);
+                if ($success) {
+                    echo json_encode(['success' => true]);
+                } else {
+                    throw new Exception('เกิดข้อผิดพลาดในการลบ');
+                }
+                break;
+    // ...existing code...
+
+
+
+
+
+
         default:
             http_response_code(405);
             echo json_encode(['success' => false, 'error' => 'Method not allowed']);

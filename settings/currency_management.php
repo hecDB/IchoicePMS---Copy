@@ -17,164 +17,165 @@ $currencies = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <link rel="stylesheet" href="../assets/style.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
-.currency-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
+        .currency-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
 
-.currency-table th {
-    background: #1976d2;
-    color: white;
-    padding: 15px;
-    text-align: left;
-    font-weight: 600;
-}
+        .currency-table th {
+            background: #1976d2;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
 
-.currency-table td {
-    padding: 12px 15px;
-    border-bottom: 1px solid #eee;
-}
+        .currency-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
 
-.currency-table tr:hover {
-    background: #f8f9ff;
-}
+        .currency-table tr:hover {
+            background: #f8f9ff;
+        }
 
-.rate-input {
-    width: 120px;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    text-align: right;
-}
+        .rate-input {
+            width: 120px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-align: right;
+        }
 
-.rate-input:focus {
-    border-color: #1976d2;
-    outline: none;
-}
+        .rate-input:focus {
+            border-color: #1976d2;
+            outline: none;
+        }
 
-.currency-symbol {
-    font-size: 20px;
-    font-weight: bold;
-    color: #1976d2;
-    margin-right: 8px;
-}
+        .currency-symbol {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-right: 8px;
+        }
 
-.base-badge {
-    background: #4caf50;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-}
+        .base-badge {
+            background: #4caf50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
 
-.status-toggle {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 24px;
-}
+        .status-toggle {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
 
-.status-toggle input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
+        .status-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
 
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
-    border-radius: 24px;
-}
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
 
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
-}
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
 
-input:checked + .slider {
-    background-color: #4caf50;
-}
+        input:checked + .slider {
+            background-color: #4caf50;
+        }
 
-input:checked + .slider:before {
-    transform: translateX(26px);
-}
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
 
-.update-btn {
-    background: #1976d2;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-    margin: 5px;
-}
+        .update-btn {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 5px;
+        }
 
-.update-btn:hover {
-    background: #1565c0;
-}
+        .update-btn:hover {
+            background: #1565c0;
+        }
 
-.update-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-}
+        .update-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
 
-.last-updated {
-    font-size: 12px;
-    color: #666;
-}
+        .last-updated {
+            font-size: 12px;
+            color: #666;
+        }
 
-.card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
 
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
 
-.stat-card {
-    background: linear-gradient(135deg, #1976d2, #42a5f5);
-    color: white;
-    padding: 20px;
-    border-radius: 12px;
-    text-align: center;
-}
+        .stat-card {
+            background: linear-gradient(135deg, #1976d2, #42a5f5);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
 
-.stat-number {
-    font-size: 28px;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
 
-.stat-label {
-    font-size: 14px;
-    opacity: 0.9;
-}
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    
 </style>
 </head>
 <body>
@@ -205,6 +206,10 @@ input:checked + .slider:before {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3>รายการสกุลเงิน</h3>
                 <div>
+                    <button class="update-btn" onclick="openAddCurrencyPopup()">
+                        <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">add</span>
+                        เพิ่มสกุลเงิน
+                    </button>
                     <button class="update-btn" onclick="updateAllRates()">
                         <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">refresh</span>
                         อัปเดตอัตราทั้งหมด
@@ -266,10 +271,18 @@ input:checked + .slider:before {
                             <?= date('d/m/Y H:i', strtotime($currency['updated_at'])) ?>
                         </td>
                         <td>
-                            <?php if(!$currency['is_base']): ?>
+                             <?php if(!$currency['is_base']): ?>
                                 <button class="update-btn" style="padding: 6px 12px; font-size: 14px;"
                                         onclick="updateSingleRate(<?= $currency['currency_id'] ?>, '<?= $currency['code'] ?>')">
                                     อัปเดต
+                                </button>
+                                <button class="update-btn" style="background:#ffa726;padding:6px 12px;font-size:14px;"
+                                        onclick="openEditCurrencyPopup(<?= htmlspecialchars(json_encode($currency), ENT_QUOTES, 'UTF-8') ?>)">
+                                    แก้ไข
+                                </button>
+                                <button class="update-btn" style="background:#e53935;padding:6px 12px;font-size:14px;"
+                                        onclick="deleteCurrency(<?= $currency['currency_id'] ?>)">
+                                    ลบ
                                 </button>
                             <?php endif; ?>
                         </td>
@@ -291,6 +304,85 @@ input:checked + .slider:before {
         </div>
     </div>
 </div>
+
+
+<!-- Popup สำหรับเพิ่มสกุลเงิน -->
+<div id="addCurrencyPopup" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; padding:32px 24px; min-width:320px; max-width:90vw; box-shadow:0 2px 16px rgba(0,0,0,0.2); position:relative;">
+        <button onclick="closeAddCurrencyPopup()" style="position:absolute; top:12px; right:12px; background:none; border:none; font-size:22px; color:#888; cursor:pointer;">&times;</button>
+        <h3 style="margin-top:0;">เพิ่มสกุลเงินใหม่</h3>
+        <form id="addCurrencyForm" onsubmit="submitAddCurrency(event)">
+            <div style="margin-bottom:12px;">
+                <label>รหัสสกุลเงิน (เช่น USD, JPY):<br>
+                    <input type="text" name="code" maxlength="6" required style="width:100%;padding:8px;">
+                </label>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label>ชื่อสกุลเงิน:<br>
+                    <input type="text" name="name" required style="width:100%;padding:8px;">
+                </label>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label>สัญลักษณ์:<br>
+                    <input type="text" name="symbol" maxlength="4" required style="width:100%;padding:8px;">
+                </label>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label>อัตราแลกเปลี่ยน:<br>
+                    <input type="number" name="exchange_rate" step="0.000001" min="0" required style="width:100%;padding:8px;">
+                </label>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label>
+                    <input type="checkbox" name="is_active" checked>
+                    เปิดใช้งาน
+                </label>
+            </div>
+            <button type="submit" class="update-btn" style="width:100%;">บันทึก</button>
+        </form>
+    </div>
+</div>
+<!-- ...existing code... -->
+
+
+<!-- Popup สำหรับแก้ไขสกุลเงิน -->
+<div id="editCurrencyPopup" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; padding:32px 24px; min-width:320px; max-width:90vw; box-shadow:0 2px 16px rgba(0,0,0,0.2); position:relative;">
+        <button onclick="closeEditCurrencyPopup()" style="position:absolute; top:12px; right:12px; background:none; border:none; font-size:22px; color:#888; cursor:pointer;">&times;</button>
+        <h3 style="margin-top:0;">แก้ไขสกุลเงิน</h3>
+        <form id="editCurrencyForm" onsubmit="submitEditCurrency(event)">
+            <input type="hidden" name="currency_id">
+            <div style="margin-bottom:12px;">
+                <label>รหัสสกุลเงิน:<br>
+                    <input type="text" name="code" maxlength="6" required style="width:100%;padding:8px;" readonly>
+                </label>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label>ชื่อสกุลเงิน:<br>
+                    <input type="text" name="name" required style="width:100%;padding:8px;">
+                </label>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label>สัญลักษณ์:<br>
+                    <input type="text" name="symbol" maxlength="4" required style="width:100%;padding:8px;">
+                </label>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label>อัตราแลกเปลี่ยน:<br>
+                    <input type="number" name="exchange_rate" step="0.000001" min="0" required style="width:100%;padding:8px;">
+                </label>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label>
+                    <input type="checkbox" name="is_active">
+                    เปิดใช้งาน
+                </label>
+            </div>
+            <button type="submit" class="update-btn" style="width:100%;">บันทึกการแก้ไข</button>
+        </form>
+    </div>
+</div>
+<!-- Popup สำหรับแก้ไขสกุลเงิน -->
 
 <script>
 let changedRates = new Map();
@@ -325,6 +417,125 @@ function updateSaveButtonState() {
         saveBtn.innerHTML = `<span class="material-icons" style="vertical-align: middle; margin-right: 5px;">save</span>บันทึกการเปลี่ยนแปลง`;
     }
 }
+
+// เปิดป๊อปอัพเพิ่มสกุลเงิน
+function openAddCurrencyPopup() {
+    document.getElementById('addCurrencyPopup').style.display = 'flex';
+}
+function closeAddCurrencyPopup() {
+    document.getElementById('addCurrencyPopup').style.display = 'none';
+    document.getElementById('addCurrencyForm').reset();
+}
+
+// เปิดป๊อปอัพแก้ไขสกุลเงิน
+function openEditCurrencyPopup(currency) {
+    const popup = document.getElementById('editCurrencyPopup');
+    const form = document.getElementById('editCurrencyForm');
+    form.currency_id.value = currency.id;
+    form.code.value = currency.code;
+    form.name.value = currency.name;
+    form.symbol.value = currency.symbol;
+    form.exchange_rate.value = currency.exchange_rate;
+    form.is_active.checked = currency.is_active === 1;
+    popup.style.display = 'flex';
+}
+function closeEditCurrencyPopup() {
+    document.getElementById('editCurrencyPopup').style.display = 'none';
+    document.getElementById('editCurrencyForm').reset();
+}
+
+// ส่งข้อมูลไป API เพื่อแก้ไข
+async function submitEditCurrency(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = {
+        currency_id: form.currency_id.value,
+        name: form.name.value.trim(),
+        symbol: form.symbol.value.trim(),
+        exchange_rate: parseFloat(form.exchange_rate.value),
+        is_active: form.is_active.checked ? 1 : 0
+    };
+    try {
+        const res = await fetch('../api/currency_api.php', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ edit_currency: true, ...data })
+        });
+        const result = await res.json();
+        if (result.success) {
+            closeEditCurrencyPopup();
+            Swal.fire('สำเร็จ', 'แก้ไขสกุลเงินเรียบร้อย', 'success').then(() => location.reload());
+        } else {
+            Swal.fire('เกิดข้อผิดพลาด', result.error || 'ไม่สามารถแก้ไขสกุลเงินได้', 'error');
+        }
+    } catch (err) {
+        Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+    }
+}
+
+// ลบสกุลเงิน
+async function deleteCurrency(currencyId) {
+    const result = await Swal.fire({
+        title: 'ยืนยันการลบ',
+        text: 'ต้องการลบสกุลเงินนี้หรือไม่?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'ลบ',
+        cancelButtonText: 'ยกเลิก'
+    });
+    if (result.isConfirmed) {
+        try {
+            const res = await fetch('../api/currency_api.php', {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ currency_id: currencyId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('สำเร็จ', 'ลบสกุลเงินเรียบร้อย', 'success').then(() => location.reload());
+            } else {
+                Swal.fire('เกิดข้อผิดพลาด', data.error || 'ไม่สามารถลบสกุลเงินได้', 'error');
+            }
+        } catch (err) {
+            Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+        }
+    }
+}
+
+// ส่งข้อมูลไป API เพื่อเพิ่มสกุลเงิน
+async function submitAddCurrency(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = {
+        code: form.code.value.trim().toUpperCase(),
+        name: form.name.value.trim(),
+        symbol: form.symbol.value.trim(),
+        exchange_rate: parseFloat(form.exchange_rate.value),
+        is_active: form.is_active.checked ? 1 : 0
+    };
+    try {
+        const res = await fetch('../api/currency_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ add_currency: true, ...data })
+        });
+        const result = await res.json();
+
+
+             if (result.success) {
+                closeAddCurrencyPopup();
+                Swal.fire('สำเร็จ', 'เพิ่มสกุลเงินใหม่เรียบร้อย', 'success').then(() => location.reload());
+            } else {
+                closeAddCurrencyPopup();
+                Swal.fire('เกิดข้อผิดพลาด', result.error || 'ไม่สามารถเพิ่มสกุลเงินได้', 'error');
+            }
+
+
+    } catch (err) {
+        Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+    }
+}
+
 
 // บันทึกการเปลี่ยนแปลงทั้งหมด
 async function saveAllRates() {
@@ -450,6 +661,8 @@ async function toggleCurrencyStatus(currencyId, isActive) {
             // รีเซ็ตสถานะ
             event.target.checked = !isActive;
         }
+
+
     } catch (error) {
         Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
         event.target.checked = !isActive;

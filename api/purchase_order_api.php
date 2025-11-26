@@ -1,4 +1,8 @@
 <?php
+
+ini_set('display_errors', 0);
+error_reporting(0);
+
 // purchase_order_api.php
 header('Content-Type: application/json');
 ini_set('display_errors', 0); // ปิดแสดง error
@@ -19,7 +23,7 @@ try {
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
     if(!$order) throw new Exception("ไม่พบใบสั่งซื้อ");
 
-    // 2. ดึงรายการสินค้าพร้อมข้อมูลสกุลเงิน (เฉพาะสินค้าที่มีอยู่แล้ว - product_id IS NOT NULL)
+    // 2. ดึงรายการสินค้าพร้อมข้อมูลสกุลเงิน (รวมสินค้าปกติและสินค้า temp)
     $stmt = $pdo->prepare("SELECT 
                            poi.item_id,
                            poi.po_id,
@@ -28,7 +32,7 @@ try {
                            COALESCE(poi.qty, poi.quantity, 0) as qty,
                            COALESCE(poi.price_per_unit, poi.unit_price, 0) as price_per_unit,
                            COALESCE(poi.total, poi.qty * poi.price_per_unit, poi.quantity * poi.unit_price, 0) as total,
-                           p.name AS product_name, 
+                           COALESCE(p.name, tp.product_name) AS product_name, 
                            COALESCE(p.sku, '-') AS sku, 
                            COALESCE(p.barcode, '') AS barcode, 
                            p.image, 
@@ -46,10 +50,11 @@ try {
                            po.exchange_rate,
                            po.currency_id
                            FROM purchase_order_items poi
-                           INNER JOIN products p ON poi.product_id = p.product_id
+                           LEFT JOIN products p ON poi.product_id = p.product_id
+                           LEFT JOIN temp_products tp ON poi.temp_product_id = tp.temp_product_id
                            LEFT JOIN purchase_orders po ON poi.po_id = po.po_id
                            LEFT JOIN currencies c ON po.currency_id = c.currency_id
-                           WHERE poi.po_id = ? AND poi.product_id IS NOT NULL
+                           WHERE poi.po_id = ? AND (poi.product_id IS NOT NULL OR poi.temp_product_id IS NOT NULL)
                            ORDER BY poi.item_id ASC");
     $stmt->execute([$po_id]);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
