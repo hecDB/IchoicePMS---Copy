@@ -272,10 +272,6 @@ $currencies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </td>
                         <td>
                              <?php if(!$currency['is_base']): ?>
-                                <button class="update-btn" style="padding: 6px 12px; font-size: 14px;"
-                                        onclick="updateSingleRate(<?= $currency['currency_id'] ?>, '<?= $currency['code'] ?>')">
-                                    อัปเดต
-                                </button>
                                 <button class="update-btn" style="background:#ffa726;padding:6px 12px;font-size:14px;"
                                         onclick="openEditCurrencyPopup(<?= htmlspecialchars(json_encode($currency), ENT_QUOTES, 'UTF-8') ?>)">
                                     แก้ไข
@@ -431,12 +427,12 @@ function closeAddCurrencyPopup() {
 function openEditCurrencyPopup(currency) {
     const popup = document.getElementById('editCurrencyPopup');
     const form = document.getElementById('editCurrencyForm');
-    form.currency_id.value = currency.id;
+    form.currency_id.value = currency.currency_id;
     form.code.value = currency.code;
     form.name.value = currency.name;
     form.symbol.value = currency.symbol;
     form.exchange_rate.value = currency.exchange_rate;
-    form.is_active.checked = currency.is_active === 1;
+    form.is_active.checked = currency.is_active == 1;
     popup.style.display = 'flex';
 }
 function closeEditCurrencyPopup() {
@@ -455,13 +451,15 @@ async function submitEditCurrency(e) {
         exchange_rate: parseFloat(form.exchange_rate.value),
         is_active: form.is_active.checked ? 1 : 0
     };
+    
     try {
         const res = await fetch('../api/currency_api.php', {
-            method: 'PUT',
+            method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ edit_currency: true, ...data })
         });
         const result = await res.json();
+        
         if (result.success) {
             closeEditCurrencyPopup();
             Swal.fire('สำเร็จ', 'แก้ไขสกุลเงินเรียบร้อย', 'success').then(() => location.reload());

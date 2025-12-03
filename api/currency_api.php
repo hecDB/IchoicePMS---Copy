@@ -131,18 +131,28 @@ try {
                     }
 
                     $stmt = $pdo->prepare("UPDATE currencies SET name = ?, symbol = ?, exchange_rate = ?, is_active = ?, updated_at = NOW() WHERE currency_id = ?");
+
+                    // if ($success) {
+                    //     echo json_encode(['success' => true]);
+                    // } else {
+                    //     throw new Exception('เกิดข้อผิดพลาดในการบันทึก');
+                    // }
+
                     $success = $stmt->execute([
-                        trim($data['name']),
-                        trim($data['symbol']),
-                        floatval($data['exchange_rate']),
-                        intval($data['is_active']),
-                        intval($data['currency_id'])
-                    ]);
-                    if ($success) {
-                        echo json_encode(['success' => true]);
-                    } else {
-                        throw new Exception('เกิดข้อผิดพลาดในการบันทึก');
-                    }
+                            trim($data['name']),
+                            trim($data['symbol']),
+                            floatval($data['exchange_rate']),
+                            intval($data['is_active']),
+                            intval($data['currency_id'])
+                        ]);
+                        if ($success) {
+                            $count = $stmt->rowCount();
+                            echo json_encode(['success' => true, 'updated' => $count]);
+                        } else {
+                            throw new Exception('เกิดข้อผิดพลาดในการบันทึก');
+                        }
+
+
                     break;
                 }
                 // กรณีเปิด/ปิดการใช้งานสกุลเงิน
