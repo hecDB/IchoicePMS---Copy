@@ -100,6 +100,19 @@ $fully_received = count(array_filter($all_pos, function($po) {
     return $po['total_received_qty'] > 0 && $po['total_received_qty'] >= $po['total_ordered_qty']; // รับครบหรือเกิน
 }));
 
+// Count cancelled POs
+$sql_cancelled = "
+    SELECT COUNT(DISTINCT po.po_id) as cancelled_count
+    FROM purchase_orders po
+    LEFT JOIN purchase_order_items poi ON po.po_id = poi.po_id
+    WHERE (poi.is_cancelled = 1 OR poi.is_partially_cancelled = 1)
+    AND po.status IN ('pending', 'partial', 'completed')
+";
+
+$stmt_cancelled = $pdo->query($sql_cancelled);
+$cancelled_data = $stmt_cancelled->fetch(PDO::FETCH_ASSOC);
+$cancelled_pos = $cancelled_data['cancelled_count'] ?? 0;
+
 ?>
 
 <!DOCTYPE html>
@@ -288,6 +301,68 @@ $fully_received = count(array_filter($all_pos, function($po) {
             color: #6b7280;
         }
 
+        /* Stats Card Variants */
+        .stats-card.stats-danger {
+            border-left: 4px solid #ef4444;
+        }
+
+        .stats-card.stats-danger .stats-icon {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Compact Stats Cards - Single Row */
+        .row > [class*="col-"] .stats-card {
+            margin-bottom: 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .row > [class*="col-"] .stats-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .row > [class*="col-"] .stats-card.active {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            transform: scale(1.02);
+        }
+
+        .stats-card-body {
+            padding: 0.75rem 1rem !important;
+        }
+
+        .stats-title {
+            font-size: 0.75rem !important;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+
+        .stats-value {
+            font-size: 1.5rem !important;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+
+        .stats-subtitle {
+            font-size: 0.65rem !important;
+            color: #9ca3af;
+        }
+
+        .stats-icon {
+            font-size: 1.75rem !important;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .modal-xl {
@@ -342,9 +417,9 @@ $fully_received = count(array_filter($all_pos, function($po) {
         </div>
 
         <!-- Stats Cards -->
-        <div class="row mb-4">
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-primary">
+        <div class="row g-2 mb-4">
+            <div class="col-xl-2 col-lg-4 col-md-6 mb-0">
+                <div class="stats-card stats-primary" data-filter="all">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -360,8 +435,8 @@ $fully_received = count(array_filter($all_pos, function($po) {
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-success">
+            <div class="col-xl-2 col-lg-4 col-md-6 mb-0">
+                <div class="stats-card stats-success" data-filter="ready">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -377,8 +452,8 @@ $fully_received = count(array_filter($all_pos, function($po) {
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-warning">
+            <div class="col-xl-2 col-lg-4 col-md-6 mb-0">
+                <div class="stats-card stats-warning" data-filter="partial">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -394,8 +469,8 @@ $fully_received = count(array_filter($all_pos, function($po) {
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-info">
+            <div class="col-xl-2 col-lg-4 col-md-6 mb-0">
+                <div class="stats-card stats-info" data-filter="completed">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -405,6 +480,23 @@ $fully_received = count(array_filter($all_pos, function($po) {
                             </div>
                             <div class="col-auto">
                                 <i class="material-icons stats-icon">done_all</i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-2 col-lg-4 col-md-6 mb-0">
+                <div class="stats-card stats-danger" data-filter="cancelled">
+                    <div class="stats-card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="stats-title">ยกเลิกแล้ว</div>
+                                <div class="stats-value"><?= number_format($cancelled_pos) ?></div>
+                                <div class="stats-subtitle">เลิกสั่งซื้อ</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="material-icons stats-icon">cancel</i>
                             </div>
                         </div>
                     </div>
@@ -460,7 +552,7 @@ $fully_received = count(array_filter($all_pos, function($po) {
                     }
                     ?>
                     <div class="col-lg-6 col-xl-4 mb-4">
-                        <div class="po-card">
+                        <div class="po-card" data-po-id="<?= $po['po_id'] ?>" data-po-status="<?= htmlspecialchars($po['status']) ?>">
                             <div class="po-card-header">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <div>
@@ -686,17 +778,17 @@ $fully_received = count(array_filter($all_pos, function($po) {
                 </div>
                 
                 <div class="table-responsive">
-                    <table class="table table-striped" id="poItemsTable">
+                    <table class="table table-striped table-sm" id="poItemsTable">
                         <thead class="table-dark">
                             <tr>
-                                <th width="4%">#</th>
-                                <th width="25%">สินค้า</th>
-                                <th width="8%">SKU</th>
-                                <th width="7%">หน่วย</th>
-                                <th width="8%">จำนวนสั่ง</th>
-                                <th width="8%">ราคา/หน่วย</th>
-                                <th width="8%">รับแล้ว</th>
-                                <th width="8%">คงเหลือ</th>
+                                <th width="3%">#</th>
+                                <th width="20%">สินค้า</th>
+                                <th width="7%">SKU</th>
+                                <th width="6%">หน่วย</th>
+                                <th width="7%">จำนวนสั่ง</th>
+                                <th width="7%">รับแล้ว</th>
+                                <th width="7%">ยกเลิก/ราคา</th>
+                                <th width="7%">คงเหลือ</th>
                                 <th width="10%">วันหมดอายุ</th>
                                 <th width="10%">รับเข้า</th>
                             </tr>
@@ -786,6 +878,94 @@ $fully_received = count(array_filter($all_pos, function($po) {
     </div>
 </div>
 
+<!-- Cancel Item Modal -->
+<div class="modal fade" id="cancelItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger">
+                <h5 class="modal-title text-white">
+                    <span class="material-icons align-middle me-2">warning</span>
+                    ยกเลิกสินค้าจาก PO
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning" role="alert">
+                    <span class="material-icons align-middle me-2" style="font-size: 1.2rem;">info</span>
+                    <strong>สำคัญ:</strong> การยกเลิกสินค้าจะถูกบันทึกและไม่สามารถยกเลิกได้ หลังจากนี้
+                </div>
+                
+                <form id="cancelItemForm">
+                    <input type="hidden" id="cancelItemId" name="item_id">
+                    <input type="hidden" id="cancelPoId" name="po_id">
+                    <input type="hidden" id="cancelOrderedQty" name="ordered_qty">
+                    <input type="hidden" id="cancelReceivedQty" name="received_qty">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">สินค้า</label>
+                        <div id="cancelProductName" class="form-control-plaintext fw-bold text-danger"></div>
+                        <small class="text-muted">
+                            จำนวนที่สั่ง: <span id="cancelDisplayOrderedQty">0</span> | 
+                            จำนวนที่รับแล้ว: <span id="cancelDisplayReceivedQty">0</span>
+                        </small>
+                    </div>
+                    
+                    <!-- Cancel Type Selection -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">ประเภทการยกเลิก *</label>
+                        <div class="form-check">
+                            <input class="form-check-input cancel-type-radio" type="radio" id="cancelTypeAll" name="cancel_type" value="cancel_all" required>
+                            <label class="form-check-label" for="cancelTypeAll">
+                                <strong>ยกเลิกจำนวนทั้งหมด</strong>
+                                <small class="d-block text-muted">สินค้าจะถูกเลิกการสั่งซื้อและปิด PO ที่ 100%</small>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input cancel-type-radio" type="radio" id="cancelTypePartial" name="cancel_type" value="cancel_partial" required>
+                            <label class="form-check-label" for="cancelTypePartial">
+                                <strong>ยกเลิกบางจำนวน</strong>
+                                <small class="d-block text-muted">กรอกจำนวนที่ต้องการยกเลิก</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Cancel Partial Quantity Input (Hidden by default) -->
+                    <div class="mb-3" id="cancelQtyContainer" style="display: none;">
+                        <label for="cancelQty" class="form-label fw-bold">จำนวนที่ยกเลิก *</label>
+                        <input type="number" class="form-control" id="cancelQty" name="cancel_qty" min="1" step="1" placeholder="กรอกจำนวนที่ต้องการยกเลิก">
+                        <small class="text-muted d-block mt-2">จำนวนสูงสุดที่สามารถยกเลิกได้: <span id="maxCancelQty">0</span></small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="cancelReason" class="form-label fw-bold">เหตุผลการยกเลิก *</label>
+                        <select class="form-select" id="cancelReason" name="cancel_reason" required>
+                            <option value="">-- เลือกเหตุผล --</option>
+                            <option value="supplier_shortage">สินค้าไม่ครบตามจำนวนที่สั่ง</option>
+                            <option value="supplier_unavailable">ผู้จำหน่ายไม่มีสินค้า</option>
+                            <option value="product_discontinued">สินค้าถูกยกเลิก</option>
+                            <option value="wrong_order">ผิดข้อมูลสั่งซื้อ</option>
+                            <option value="customer_request">ตามคำขอของลูกค้า</option>
+                            <option value="other">อื่นๆ</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="cancelNotes" class="form-label">หมายเหตุเพิ่มเติม</label>
+                        <textarea class="form-control" id="cancelNotes" name="cancel_notes" rows="3" placeholder="บอกรายละเอียดเพิ่มเติม..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="button" class="btn btn-danger" id="confirmCancelItem">
+                    <span class="material-icons me-1">delete</span>
+                    ยืนยันการยกเลิก
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -797,6 +977,7 @@ $(document).ready(function() {
     let currentPoData = {};
     let receiveItems = {};
     let showingCompleted = false;
+    let activeFilter = 'all';
     
     // Add hover effects and animations
     $('.po-card').hover(
@@ -808,31 +989,275 @@ $(document).ready(function() {
         }
     );
     
-    // Receive PO button click
-    $('.receive-po-btn').on('click', function() {
-        const poId = $(this).data('po-id');
-        const poNumber = $(this).data('po-number');
-        const supplier = $(this).data('supplier');
-        const remark = $(this).data('remark') || '';
+    // Stats card filter click handler
+    $('.stats-card').on('click', function() {
+        const filterType = $(this).data('filter');
         
-        console.log('Receive button clicked:', { poId, poNumber, supplier, remark });
-        loadPoItems(poId, poNumber, supplier, 'receive', remark);
+        // Remove active class from all cards
+        $('.stats-card').removeClass('active');
+        
+        // Add active class to clicked card
+        $(this).addClass('active');
+        
+        // Apply filter
+        activeFilter = filterType;
+        
+        // For completed and cancelled, load from database
+        if (filterType === 'completed' || filterType === 'cancelled') {
+            loadAndFilterSpecialStatus(filterType);
+        } else {
+            filterPosByStatus(filterType);
+        }
     });
     
-    // View PO button click
-    $('.view-po-btn').on('click', function() {
+    // Load and filter special status (completed/cancelled)
+    function loadAndFilterSpecialStatus(filterType) {
+        const loadingHtml = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">กำลังโหลด...</span>
+                </div>
+                <p class="mt-3 text-muted">กำลังโหลดข้อมูล...</p>
+            </div>
+        `;
+        
+        // Show loading message
+        $('.table-body .row').first().html(loadingHtml);
+        showFilterInfo(filterType);
+        
+        // Load data from database
+        $.ajax({
+            url: 'get_completed_pos.php',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                console.log('Completed POs Response:', response);
+                
+                if (response.success && response.data && response.data.length > 0) {
+                    // Filter based on filterType
+                    let filteredPos = response.data;
+                    
+                    if (filterType === 'completed') {
+                        // Show only 100% received (no cancelled items)
+                        filteredPos = response.data.filter(po => {
+                            const total = parseInt(po.total_items) || 0;
+                            const received = parseInt(po.fully_received_items) || 0;
+                            const cancelled = parseInt(po.cancelled_items) || 0;
+                            
+                            // Show if all items fully received and no cancelled items
+                            return (total > 0 && received === total && cancelled === 0);
+                        });
+                    } else if (filterType === 'cancelled') {
+                        // Show only POs with cancelled items
+                        filteredPos = response.data.filter(po => {
+                            const cancelled = parseInt(po.cancelled_items) || 0;
+                            return cancelled > 0;
+                        });
+                    }
+                    
+                    if (filteredPos.length > 0) {
+                        displayFilteredSpecialPOs(filteredPos, filterType);
+                    } else {
+                        // No matching records
+                        const emptyMessage = filterType === 'completed' ? 'ไม่มีใบ PO ที่รับครบแล้ว' : 'ไม่มีใบ PO ที่ถูกยกเลิก';
+                        $('.table-body .row').first().html(`
+                            <div class="col-12">
+                                <div class="text-center py-5">
+                                    <span class="material-icons mb-3" style="font-size: 3rem; color: #6b7280;">info</span>
+                                    <h5>${emptyMessage}</h5>
+                                    <p class="text-muted mb-0">กรุณากลับไปยังหน้าแรกเพื่อดูรายการอื่น</p>
+                                </div>
+                            </div>
+                        `);
+                    }
+                } else {
+                    const emptyMessage = filterType === 'completed' ? 'ไม่มีใบ PO ที่รับครบแล้ว' : 'ไม่มีใบ PO ที่ถูกยกเลิก';
+                    $('.table-body .row').first().html(`
+                        <div class="col-12">
+                            <div class="text-center py-5">
+                                <span class="material-icons mb-3" style="font-size: 3rem; color: #6b7280;">info</span>
+                                <h5>${emptyMessage}</h5>
+                            </div>
+                        </div>
+                    `);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Load completed POs error:', error);
+                $('.table-body .row').first().html(`
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <span class="material-icons mb-3" style="font-size: 3rem; color: #ef4444;">error</span>
+                            <h5>เกิดข้อผิดพลาด</h5>
+                            <p class="text-muted mb-0">ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง</p>
+                        </div>
+                    </div>
+                `);
+            }
+        });
+    }
+    
+    // Display filtered special POs (completed/cancelled)
+    function displayFilteredSpecialPOs(completedPOs, filterType) {
+        let html = '';
+        
+        completedPOs.forEach(function(po) {
+            const isCancelled = parseInt(po.cancelled_items) > 0;
+            const statusBadgeClass = isCancelled ? 'bg-danger' : 'bg-success';
+            const statusText = isCancelled ? 'ยกเลิกแล้ว' : 'รับครบแล้ว';
+            const headerBg = isCancelled ? 'bg-danger' : 'bg-success';
+            
+            html += `
+                <div class="col-lg-6 col-xl-4 mb-4">
+                    <div class="po-card" data-po-id="${po.po_id}" data-po-status="completed">
+                        <div class="po-card-header" style="background: linear-gradient(135deg, ${isCancelled ? '#dc3545' : '#10b981'} 0%, ${isCancelled ? '#a71d2a' : '#059669'} 100%); color: white;">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="mb-0 fw-bold">${escapeHtml(po.po_number)}</h6>
+                                    <small class="text-white-50">${escapeHtml(po.supplier_name || '-')}</small>
+                                </div>
+                                <span class="po-status-badge ${statusBadgeClass}" style="background: rgba(255,255,255,0.3); color: white; font-size: 0.65rem;">${statusText}</span>
+                            </div>
+                            <div class="row g-2 mt-2" style="font-size: 0.75rem;">
+                                <div class="col-6">
+                                    <small class="text-white-50">วันสั่ง</small>
+                                    <div class="text-white fw-bold">${formatDate(po.po_date)}</div>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <small class="text-white-50">จำนวนเงิน</small>
+                                    <div class="text-white fw-bold">${parseFloat(po.total_amount).toLocaleString()} ${po.currency_code || 'THB'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="row g-3 mb-3">
+                                <div class="col-6">
+                                    <small class="d-block text-muted mb-1">รายการสินค้า</small>
+                                    <div class="fw-bold" style="font-size: 1.1rem;">${po.total_items} รายการ</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="d-block text-muted mb-1">${isCancelled ? 'รายการที่ยกเลิก' : 'รับครบแล้ว'}</small>
+                                    <div class="fw-bold" style="font-size: 1.1rem;">${po.fully_received_items || po.cancelled_items} รายการ</div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary flex-grow-1 view-po-btn" data-po-id="${po.po_id}" data-po-number="${escapeHtml(po.po_number)}" data-supplier="${escapeHtml(po.supplier_name)}" data-remark="${escapeHtml(po.remark || '')}">
+                                    <span class="material-icons me-1" style="font-size: 1rem;">visibility</span>
+                                    ดูรายละเอียด
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        $('.table-body .row').first().html(html);
+        
+        // Re-bind view button events
+        $(document).off('click', '.view-po-btn').on('click', '.view-po-btn', function() {
+            const poId = $(this).data('po-id');
+            const poNumber = $(this).data('po-number');
+            const supplier = $(this).data('supplier');
+            const remark = $(this).data('remark') || '';
+            
+            loadPoItems(poId, poNumber, supplier, 'view', remark);
+        });
+    }
+    
+    // Filter POs by status
+    function filterPosByStatus(filterType) {
+        const poCards = $('.po-card').closest('.col-lg-6, .col-xl-4');
+        
+        poCards.each(function() {
+            const card = $(this);
+            const poCard = card.find('.po-card');
+            const completionText = poCard.find('.po-status-badge').text().trim();
+            let shouldShow = false;
+            
+            switch(filterType) {
+                case 'all':
+                    shouldShow = true;
+                    break;
+                case 'ready':
+                    shouldShow = completionText === 'พร้อมรับสินค้า';
+                    break;
+                case 'partial':
+                    shouldShow = completionText === 'รับบางส่วน';
+                    break;
+            }
+            
+            if (shouldShow) {
+                card.fadeIn(300);
+                card.css('opacity', '1');
+            } else {
+                card.fadeOut(300);
+                card.css('opacity', '0.3');
+            }
+        });
+        
+        // Show reset message if filter is active
+        if (filterType !== 'all') {
+            showFilterInfo(filterType);
+        }
+    }
+    
+    // Show filter info
+    function showFilterInfo(filterType) {
+        let title = '';
+        switch(filterType) {
+            case 'ready': title = 'พร้อมรับสินค้า'; break;
+            case 'partial': title = 'รับบางส่วน'; break;
+            case 'completed': title = 'รับครบแล้ว'; break;
+            case 'cancelled': title = 'ยกเลิกแล้ว'; break;
+        }
+        
+        Swal.fire({
+            icon: 'info',
+            title: 'กรองตามสถานะ',
+            text: 'กำลังแสดงเฉพาะ: ' + title,
+            timer: 2000,
+            showConfirmButton: false
+        });
+    }
+    
+    // Receive PO button click - using event delegation
+    $(document).on('click', '.receive-po-btn', function() {
         const poId = $(this).data('po-id');
         const poNumber = $(this).data('po-number');
         const supplier = $(this).data('supplier');
         const remark = $(this).data('remark') || '';
         
-        loadPoItems(poId, poNumber, supplier, 'view', remark);
+        // Get PO status from parent card
+        const poCard = $(this).closest('.po-card');
+        const poStatus = poCard.data('po-status') || 'pending';
+        
+        console.log('Receive button clicked:', { poId, poNumber, supplier, remark, poStatus });
+        loadPoItems(poId, poNumber, supplier, 'receive', remark, poStatus);
+    });
+    
+    // View PO button click - using event delegation
+    $(document).on('click', '.view-po-btn', function() {
+        const poId = $(this).data('po-id');
+        const poNumber = $(this).data('po-number');
+        const supplier = $(this).data('supplier');
+        const remark = $(this).data('remark') || '';
+        
+        // Get PO status from parent card
+        const poCard = $(this).closest('.po-card');
+        const poStatus = poCard.data('po-status') || 'pending';
+        
+        console.log('View button clicked:', { poId, poNumber, supplier, remark, poStatus });
+        loadPoItems(poId, poNumber, supplier, 'view', remark, poStatus);
     });
     
     // Load PO items
-    function loadPoItems(poId, poNumber, supplier, mode, remark) {
-        console.log('loadPoItems called with:', { poId, poNumber, supplier, mode, remark });
-        currentPoData = { poId, poNumber, supplier, mode, remark };
+    function loadPoItems(poId, poNumber, supplier, mode, remark, poStatus) {
+        console.log('loadPoItems called with:', { poId, poNumber, supplier, mode, remark, poStatus });
+        
+        currentPoData = { poId, poNumber, supplier, mode, remark, status: poStatus };
         
         $('#modalPoNumber').text(poNumber);
         $('#modalSupplier').text(supplier);
@@ -863,28 +1288,66 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 console.log('API Response:', response);
-                if (response.success) {
-                    console.log('Items:', response.items);
-                    displayPoItems(response.items, mode);
-                } else {
-                    console.error('API Error:', response.error);
+                console.log('Response type:', typeof response);
+                
+                // Handle string response (HTML error)
+                if (typeof response === 'string') {
+                    console.error('API returned HTML instead of JSON:', response.substring(0, 200));
                     $('#poItemsTableBody').html(`
                         <tr>
                             <td colspan="9" class="text-center py-4 text-danger">
                                 <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
-                                <div>${response.error}</div>
+                                <div>API ส่งคืนข้อมูลผิดประเภท (ไม่ใช่ JSON)</div>
+                                <small class="text-muted d-block mt-2">ตรวจสอบไฟล์ API ว่าถูกต้องหรือไม่</small>
+                            </td>
+                        </tr>
+                    `);
+                    return;
+                }
+                
+                if (response && response.success) {
+                    console.log('Items received:', response.items);
+                    if (response.items && response.items.length > 0) {
+                        displayPoItems(response.items, mode, currentPoData.status);
+                    } else {
+                        $('#poItemsTableBody').html(`
+                            <tr>
+                                <td colspan="9" class="text-center py-4 text-muted">
+                                    <span class="material-icons mb-2" style="font-size: 2rem;">inbox</span>
+                                    <div>ไม่พบรายการสินค้า</div>
+                                </td>
+                            </tr>
+                        `);
+                    }
+                } else {
+                    const errorMsg = response && response.error ? response.error : 'ไม่ทราบสาเหตุ';
+                    console.error('API Error:', errorMsg);
+                    $('#poItemsTableBody').html(`
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-danger">
+                                <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
+                                <div>${errorMsg}</div>
                             </td>
                         </tr>
                     `);
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error loading PO items:', error);
+                console.error('AJAX Error - Status:', status, 'Error:', error);
+                console.error('Response:', xhr.responseText);
+                let errorMsg = 'เกิดข้อผิดพลาดในการโหลดข้อมูล';
+                if (xhr.status === 404) {
+                    errorMsg = 'ไฟล์ API ไม่พบ (404)';
+                } else if (xhr.status === 500) {
+                    errorMsg = 'ข้อผิดพลาดเซิร์ฟเวอร์ (500)';
+                }
+                
                 $('#poItemsTableBody').html(`
                     <tr>
                         <td colspan="9" class="text-center py-4 text-danger">
                             <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
-                            <div>เกิดข้อผิดพลาดในการโหลดข้อมูล</div>
+                            <div>${errorMsg}</div>
+                            <small class="text-muted d-block mt-2">Status: ${xhr.status} | Error: ${error}</small>
                         </td>
                     </tr>
                 `);
@@ -893,38 +1356,70 @@ $(document).ready(function() {
     }
     
     // Display PO items in table
-    function displayPoItems(items, mode) {
-        console.log('displayPoItems called with:', items, mode);
+    function displayPoItems(items, mode, poStatus) {
+        console.log('displayPoItems called with:', items, mode, poStatus);
         let html = '';
         receiveItems = {};
+        
+        // If viewing cancelled items (status is in cancelled filter), show only cancelled items
+        const showOnlyCancelled = poStatus === 'completed' && activeFilter === 'cancelled';
         
         if (!items || !Array.isArray(items) || items.length === 0) {
             html = `
                 <tr>
-                    <td colspan="9" class="text-center py-4 text-muted">
+                    <td colspan="10" class="text-center py-4 text-muted">
                         <span class="material-icons mb-2" style="font-size: 2rem;">inbox</span>
                         <div>ไม่พบรายการสินค้าในใบสั่งซื้อนี้</div>
                     </td>
                 </tr>
             `;
         } else {
-            items.forEach(function(item, index) {
+            // Filter items based on status
+            let displayItems = items;
+            if (showOnlyCancelled) {
+                displayItems = items.filter(item => item.is_cancelled || item.is_partially_cancelled);
+            }
+            
+            displayItems.forEach(function(item, index) {
                 const remainingQty = parseFloat(item.remaining_qty);
                 const canReceive = remainingQty > 0;
+                const isCancelled = item.is_cancelled || item.is_partially_cancelled;
+                const cancelQty = parseFloat(item.cancel_qty || 0);
+                
+                // Skip non-cancelled items if viewing cancelled items only
+                if (showOnlyCancelled && !isCancelled) {
+                    return;
+                }
+                
+                // Determine row styling for cancelled items
+                const rowClass = isCancelled ? 'table-danger' : '';
+                const textDecoration = isCancelled ? 'style="text-decoration: line-through; opacity: 0.7;"' : '';
                 
                 html += `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>
+                    <tr class="${rowClass}">
+                        <td ${textDecoration}>${index + 1}</td>
+                        <td ${textDecoration}>
                             <div class="fw-bold">${escapeHtml(item.product_name)}</div>
                             ${item.barcode ? `<small class="text-muted">Barcode: ${escapeHtml(item.barcode)}</small>` : ''}
                         </td>
-                        <td><span class="badge bg-secondary">${escapeHtml(item.sku)}</span></td>
-                        <td>${escapeHtml(item.unit)}</td>
-                        <td class="fw-bold text-info">${parseFloat(item.order_qty).toLocaleString()}</td>
-                        <td>${parseFloat(item.unit_price).toLocaleString()} ${escapeHtml(item.currency_code || '')}</td>
-                        <td class="fw-bold text-success">${parseFloat(item.received_qty || 0).toLocaleString()}</td>
-                        <td class="fw-bold ${canReceive ? 'text-warning' : 'text-muted'}">${remainingQty.toLocaleString()}</td>
+                        <td ${textDecoration}><span class="badge bg-secondary">${escapeHtml(item.sku)}</span></td>
+                        <td ${textDecoration}>${escapeHtml(item.unit)}</td>
+                        <td ${textDecoration} class="fw-bold text-info">${parseFloat(item.order_qty).toLocaleString()}</td>
+                        <td ${textDecoration} class="fw-bold text-success">${parseFloat(item.received_qty || 0).toLocaleString()}</td>`;
+                
+                // Show cancel info if item is cancelled
+                if (isCancelled) {
+                    html += `<td class="fw-bold text-danger">${cancelQty.toLocaleString()}</td>`;
+                } else {
+                    html += `<td class="fw-bold text-success">${parseFloat(item.unit_price).toLocaleString()} ${escapeHtml(item.currency_code || '')}</td>`;
+                }
+                
+                html += `
+                        <td ${textDecoration} class="fw-bold ${canReceive && !isCancelled ? 'text-warning' : 'text-muted'}">${remainingQty.toLocaleString()}</td>`;
+                
+                // Show expiry date only if NOT viewing cancelled items
+                if (!showOnlyCancelled) {
+                    html += `
                         <td>
                             <div class="d-flex align-items-center gap-1 flex-wrap">
                                 <span class="expiry-display" data-item-id="${item.item_id}">
@@ -938,8 +1433,23 @@ $(document).ready(function() {
                             </div>
                         </td>
                         <td>`;
+                } else {
+                    // Show cancellation date/info if viewing cancelled items
+                    const cancelledAt = item.cancelled_at ? new Date(item.cancelled_at).toLocaleDateString('th-TH', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    }) : '-';
+                    
+                    html += `
+                        <td class="text-muted">
+                            <small>${cancelledAt}</small>
+                        </td>
+                        <td>`;
+                }
                 
-                if (mode === 'receive' && canReceive) {
+                // Show action buttons only if NOT viewing cancelled items
+                if (mode === 'receive' && canReceive && !isCancelled && !showOnlyCancelled) {
                     html += `
                         <div class="input-group input-group-sm">
                             <input type="number" 
@@ -960,18 +1470,67 @@ $(document).ready(function() {
                                     title="รับเข้าด่วน">
                                 <span class="material-icons" style="font-size: 1rem;">speed</span>
                             </button>
+                            <button type="button" 
+                                    class="btn btn-outline-danger cancel-item-btn"
+                                    data-item-id="${item.item_id}"
+                                    data-product-name="${escapeHtml(item.product_name)}"
+                                    data-ordered-qty="${item.order_qty}"
+                                    data-received-qty="${item.received_qty || 0}"
+                                    title="ยกเลิกสินค้า">
+                                <span class="material-icons" style="font-size: 1rem;">clear</span>
+                            </button>
                         </div>
                     `;
                 } else if (mode === 'view') {
                     html += `<span class="text-muted">-</span>`;
                 } else {
-                    html += `<span class="text-muted">รับครบแล้ว</span>`;
+                    html += `<span class="text-muted">-</span>`;
                 }
                 
                 html += `
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
+                
+                // Add cancellation details row if item is cancelled
+                if (isCancelled) {
+                    const cancelReason = item.cancel_reason || 'ไม่ระบุ';
+                    const cancelNotes = item.cancel_notes || '-';
+                    const cancelledBy = item.cancelled_by || 'N/A';
+                    const cancelledAt = item.cancelled_at ? new Date(item.cancelled_at).toLocaleDateString('th-TH', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }) : '-';
+                    
+                    html += `
+                    <tr class="table-light">
+                        <td colspan="10" class="py-2">
+                            <div class="alert alert-warning mb-0 py-2 px-3">
+                                <div class="row g-2 small">
+                                    <div class="col-12">
+                                        <strong class="text-danger">
+                                            <span class="material-icons align-middle" style="font-size: 1.2rem;">warning</span>
+                                            ยกเลิก: ${item.is_cancelled ? 'ทั้งหมด' : 'บางส่วน'} - ${cancelQty.toLocaleString()} ${escapeHtml(item.unit)}
+                                        </strong>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>เหตุผล:</strong> ${escapeHtml(cancelReason)}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>หมายเหตุ:</strong> ${escapeHtml(cancelNotes)}
+                                    </div>
+                                    <div class="col-md-12">
+                                        <small class="text-muted">
+                                            <strong>วันที่ยกเลิก:</strong> ${cancelledAt}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>`;
+                }
             });
         }
         
@@ -985,8 +1544,8 @@ $(document).ready(function() {
             $('#saveReceiveBtn').hide();
         }
         
-        // Setup quick receive buttons
-        $('.quick-receive-btn').on('click', function() {
+        // Setup quick receive buttons - using event delegation
+        $(document).on('click', '.quick-receive-btn', function() {
             const itemId = $(this).data('item-id');
             const productName = $(this).data('product-name');
             const orderedQty = $(this).data('ordered-qty');
@@ -996,8 +1555,18 @@ $(document).ready(function() {
             showQuickReceiveModal(itemId, productName, orderedQty, remainingQty, unit);
         });
         
-        // Edit expiry date button for existing dates
-        $('.edit-expiry-btn').on('click', function(e) {
+        // Setup cancel item buttons - using event delegation
+        $(document).on('click', '.cancel-item-btn', function() {
+            const itemId = $(this).data('item-id');
+            const productName = $(this).data('product-name');
+            const orderedQty = $(this).data('ordered-qty');
+            const receivedQty = $(this).data('received-qty');
+            
+            showCancelItemModal(itemId, productName, orderedQty, receivedQty);
+        });
+        
+        // Edit expiry date button for existing dates - using event delegation
+        $(document).on('click', '.edit-expiry-btn', function(e) {
             e.stopPropagation();
             const itemId = $(this).data('item-id');
             const currentDate = $(this).closest('td').find('.expiry-display .badge').text();
@@ -1296,6 +1865,31 @@ $(document).ready(function() {
         }, 500);
     }
     
+    // Show cancel item modal
+    function showCancelItemModal(itemId, productName, orderedQty, receivedQty) {
+        $('#cancelItemId').val(itemId);
+        $('#cancelPoId').val(currentPoData.poId);
+        $('#cancelProductName').text(productName);
+        $('#cancelOrderedQty').val(orderedQty);
+        $('#cancelReceivedQty').val(receivedQty);
+        $('#cancelDisplayOrderedQty').text(parseFloat(orderedQty).toLocaleString());
+        $('#cancelDisplayReceivedQty').text(parseFloat(receivedQty).toLocaleString());
+        
+        // Reset form
+        $('input[name="cancel_type"]').prop('checked', false);
+        $('#cancelQtyContainer').hide();
+        $('#cancelQty').val('');
+        $('#cancelReason').val('');
+        $('#cancelNotes').val('');
+        $('#maxCancelQty').text(parseFloat(orderedQty).toLocaleString());
+        
+        $('#cancelItemModal').modal('show');
+        
+        setTimeout(() => {
+            $('#cancelTypeAll').focus();
+        }, 500);
+    }
+    
     // Save receive items (batch)
     $('#saveReceiveBtn').on('click', function() {
         // Check if receiveItems is empty
@@ -1369,6 +1963,77 @@ $(document).ready(function() {
         saveSingleReceive(itemId, quantity, notes);
     });
     
+    // Handle cancel type selection
+    $(document).on('change', '.cancel-type-radio', function() {
+        if ($('#cancelTypePartial').is(':checked')) {
+            $('#cancelQtyContainer').show();
+            $('#cancelQty').attr('required', 'required');
+        } else {
+            $('#cancelQtyContainer').hide();
+            $('#cancelQty').removeAttr('required');
+        }
+    });
+    
+    // Confirm cancel item
+    $('#confirmCancelItem').on('click', function() {
+        const form = $('#cancelItemForm')[0];
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        
+        const itemId = $('#cancelItemId').val();
+        const cancelType = $('input[name="cancel_type"]:checked').val();
+        const reason = $('#cancelReason').val();
+        const notes = $('#cancelNotes').val();
+        const orderedQty = parseFloat($('#cancelOrderedQty').val());
+        const receivedQty = parseFloat($('#cancelReceivedQty').val());
+        
+        if (!cancelType) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'กรุณาเลือกประเภทการยกเลิก',
+                text: 'โปรดเลือกว่าต้องการยกเลิกทั้งหมดหรือบางจำนวน'
+            });
+            return;
+        }
+        
+        if (!reason) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'กรุณาเลือกเหตุผล',
+                text: 'โปรดระบุเหตุผลของการยกเลิก'
+            });
+            return;
+        }
+        
+        let cancelQty = orderedQty; // Default for cancel all
+        
+        if (cancelType === 'cancel_partial') {
+            cancelQty = parseFloat($('#cancelQty').val()) || 0;
+            
+            if (cancelQty <= 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'จำนวนไม่ถูกต้อง',
+                    text: 'กรุณากรอกจำนวนที่มากกว่า 0'
+                });
+                return;
+            }
+            
+            if (cancelQty > orderedQty) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'จำนวนเกินไป',
+                    text: `จำนวนสูงสุดที่สามารถยกเลิกได้คือ ${orderedQty}`
+                });
+                return;
+            }
+        }
+        
+        saveCancelItem(itemId, cancelType, cancelQty, reason, notes);
+    });
+    
     // Save single receive
     function saveSingleReceive(itemId, quantity, notes) {
         const expiryDate = $('#quickExpiryDate').val();
@@ -1415,6 +2080,76 @@ $(document).ready(function() {
                     icon: 'error',
                     title: 'เกิดข้อผิดพลาด',
                     text: 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง'
+                });
+            }
+        });
+    }
+    
+    // Save cancel item
+    function saveCancelItem(itemId, cancelType, cancelQty, reason, notes) {
+        let confirmText = '';
+        if (cancelType === 'cancel_all') {
+            confirmText = 'ยกเลิกสินค้าทั้งหมด และปิด PO นี้เป็นสำเร็จ (100%)';
+        } else {
+            confirmText = `ยกเลิกสินค้า ${parseFloat(cancelQty).toLocaleString()} หน่วย`;
+        }
+        
+        Swal.fire({
+            title: 'ยืนยันการยกเลิก',
+            text: confirmText,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'ยืนยัน',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'process_receive_po.php',
+                    method: 'POST',
+                    data: {
+                        action: 'cancel_item',
+                        po_id: currentPoData.poId,
+                        item_id: itemId,
+                        cancel_type: cancelType,
+                        cancel_qty: cancelQty,
+                        cancel_reason: reason,
+                        cancel_notes: notes,
+                        po_number: currentPoData.poNumber
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'ยกเลิกสินค้าสำเร็จ',
+                                text: response.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                $('#cancelItemModal').modal('hide');
+                                // Reload PO items
+                                loadPoItems(currentPoData.poId, currentPoData.poNumber, currentPoData.supplier, currentPoData.mode, currentPoData.remark);
+                                // Refresh page to update statistics
+                                setTimeout(() => location.reload(), 1000);
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'เกิดข้อผิดพลาด',
+                                text: response.message || 'ไม่สามารถยกเลิกสินค้าได้'
+                            });
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Cancel error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง'
+                        });
+                    }
                 });
             }
         });

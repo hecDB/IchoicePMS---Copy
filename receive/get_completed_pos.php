@@ -11,7 +11,8 @@ if (!$user_id) {
 }
 
 try {
-    // Get completed Purchase Orders (100% received)
+    // Get completed Purchase Orders - simpler and more reliable approach
+    // Step 1: Get all POs with their received and cancelled item counts
     $sql = "
         SELECT 
             po.po_id,
@@ -23,9 +24,8 @@ try {
             po.remark,
             po.status,
             COUNT(poi.item_id) as total_items,
-            COALESCE(SUM(
-                CASE WHEN COALESCE(received_summary.total_received, 0) >= poi.qty THEN 1 ELSE 0 END
-            ), 0) as received_items
+            SUM(CASE WHEN COALESCE(ri.total_received, 0) >= poi.qty THEN 1 ELSE 0 END) as fully_received_items,
+            SUM(CASE WHEN poi.is_cancelled = 1 OR poi.is_partially_cancelled = 1 THEN 1 ELSE 0 END) as cancelled_items
         FROM purchase_orders po
         LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
         LEFT JOIN currencies c ON po.currency_id = c.currency_id
@@ -34,23 +34,39 @@ try {
             SELECT item_id, SUM(receive_qty) as total_received 
             FROM receive_items 
             GROUP BY item_id
-        ) received_summary ON poi.item_id = received_summary.item_id
+        ) ri ON poi.item_id = ri.item_id
         WHERE po.status IN ('pending', 'partial', 'completed')
+        AND poi.item_id IS NOT NULL
         GROUP BY po.po_id, po.po_number, s.name, po.order_date, po.total_amount, c.code, po.remark, po.status
-        HAVING COUNT(poi.item_id) > 0 
-        AND COALESCE(SUM(
-            CASE WHEN COALESCE(received_summary.total_received, 0) >= poi.qty THEN 1 ELSE 0 END
-        ), 0) = COUNT(poi.item_id)
         ORDER BY po.order_date DESC, po.po_number DESC
-        LIMIT 50
+        LIMIT 200
     ";
     
     $stmt = $pdo->query($sql);
-    $completed_pos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $all_pos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Filter results: keep only completed (100% received) or cancelled items
+    $completed_pos = array_filter($all_pos, function($po) {
+        $total = (int)$po['total_items'];
+        $received = (int)($po['fully_received_items'] ?? 0);
+        $cancelled = (int)($po['cancelled_items'] ?? 0);
+        
+        // Show PO if: (all items fully received) OR (has any cancelled items)
+        $is_completed = ($total > 0 && $received === $total);
+        $has_cancelled = ($cancelled > 0);
+        
+        return $is_completed || $has_cancelled;
+    });
+    
+    // Add has_cancelled_items flag for frontend
+    $completed_pos = array_map(function($po) {
+        $po['has_cancelled_items'] = (int)($po['cancelled_items'] ?? 0) > 0 ? 1 : 0;
+        return $po;
+    }, $completed_pos);
     
     echo json_encode([
         'success' => true,
-        'data' => $completed_pos,
+        'data' => array_values($completed_pos),
         'count' => count($completed_pos)
     ]);
     
@@ -58,7 +74,7 @@ try {
     error_log("Get completed POs error: " . $e->getMessage());
     echo json_encode([
         'success' => false,
-        'error' => 'เกิดข้อผิดพลาดในการโหลดข้อมูล'
+        'error' => 'เกิดข้อผิดพลาดในการโหลดข้อมูล: ' . $e->getMessage()
     ]);
 }
 ?>

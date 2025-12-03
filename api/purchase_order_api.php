@@ -29,9 +29,9 @@ try {
                            poi.po_id,
                            poi.product_id,
                            poi.temp_product_id,
-                           COALESCE(poi.qty, poi.quantity, 0) as qty,
-                           COALESCE(poi.price_per_unit, poi.unit_price, 0) as price_per_unit,
-                           COALESCE(poi.total, poi.qty * poi.price_per_unit, poi.quantity * poi.unit_price, 0) as total,
+                           COALESCE(poi.qty, 0) as qty,
+                           COALESCE(poi.price_per_unit, 0) as price_per_unit,
+                           COALESCE(poi.total, poi.qty * poi.price_per_unit, 0) as total,
                            COALESCE(p.name, tp.product_name) AS product_name, 
                            COALESCE(p.sku, '-') AS sku, 
                            COALESCE(p.barcode, '') AS barcode, 
@@ -39,11 +39,11 @@ try {
                            COALESCE(p.unit, 'ชิ้น') AS unit,
                            CASE 
                                WHEN poi.price_original > 0 THEN poi.price_original
-                               ELSE COALESCE(poi.price_per_unit, poi.unit_price, 0)
+                               ELSE COALESCE(poi.price_per_unit, 0)
                            END as price_original,
                            CASE 
                                WHEN poi.price_base > 0 THEN poi.price_base
-                               ELSE (COALESCE(poi.price_per_unit, poi.unit_price, 0) * COALESCE(po.exchange_rate, 1))
+                               ELSE (COALESCE(poi.price_per_unit, 0) * COALESCE(po.exchange_rate, 1))
                            END as price_base,
                            c.code as item_currency_code, 
                            c.symbol as item_currency_symbol,
