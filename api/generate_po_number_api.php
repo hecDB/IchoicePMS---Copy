@@ -29,7 +29,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT MAX(CAST(SUBSTRING(po_number, LOCATE('-', po_number, 8) + 1) AS UNSIGNED)) as max_num
         FROM purchase_orders 
-        WHERE po_number LIKE CONCAT('PO-New-', ?, '-%')
+        WHERE po_number LIKE CONCAT('PO-', ?, '-%')
     ");
     $stmt->execute([$year]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);

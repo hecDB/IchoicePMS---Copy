@@ -1302,26 +1302,6 @@ function displayPoItems(items, mode) {
         $('#saveReceiveBtn').hide();
     }
     
-    // Setup quick receive buttons
-    $('.quick-receive-btn').on('click', function() {
-        const itemId = $(this).data('item-id');
-        const productName = $(this).data('product-name');
-        const orderedQty = $(this).data('ordered-qty');
-        const remainingQty = $(this).data('remaining-qty');
-        const unit = $(this).data('unit');
-        
-        showQuickReceiveModal(itemId, productName, orderedQty, remainingQty, unit);
-    });
-    
-    // Setup cancel item buttons
-    $('.cancel-item-btn').on('click', function() {
-        const itemId = $(this).data('item-id');
-        const productName = $(this).data('product-name');
-        const remainingQty = $(this).data('remaining-qty');
-        const unit = $(this).data('unit');
-        
-        showCancelItemModal(itemId, productName, remainingQty, unit);
-    });
 }
 
 $(document).ready(function() {
@@ -1730,10 +1710,7 @@ $(document).ready(function() {
         
         // Setup input validation
         const cancelQtyInput = $('#cancelQuantity');
-        cancelQtyInput.attr('max', maxCancelQty).val('').focus();
-        
-        // Validate on input
-        cancelQtyInput.on('input', function() {
+        cancelQtyInput.attr('max', maxCancelQty).val('').off('input').on('input', function() {
             const value = parseFloat($(this).val()) || 0;
             const validationMsg = $('#cancelQtyValidation');
             
@@ -1752,16 +1729,36 @@ $(document).ready(function() {
             } else {
                 validationMsg.hide();
             }
-        });
+        }).focus();
         
         $('#cancelReason').val('');
         $('#cancelNotes').val('');
         
         $('#cancelItemModal').modal('show');
     }
+
+    // Delegated handlers for dynamic action buttons
+    $(document).on('click', '.quick-receive-btn', function() {
+        const itemId = $(this).data('item-id');
+        const productName = $(this).data('product-name');
+        const orderedQty = $(this).data('ordered-qty');
+        const remainingQty = $(this).data('remaining-qty');
+        const unit = $(this).data('unit');
+
+        showQuickReceiveModal(itemId, productName, orderedQty, remainingQty, unit);
+    });
+
+    $(document).on('click', '.cancel-item-btn', function() {
+        const itemId = $(this).data('item-id');
+        const productName = $(this).data('product-name');
+        const remainingQty = $(this).data('remaining-qty');
+        const unit = $(this).data('unit');
+
+        showCancelItemModal(itemId, productName, remainingQty, unit);
+    });
     
-    // Confirm cancel item
-    $('#confirmCancelItem').on('click', function() {
+    // Confirm cancel item - Reset event binding
+    $(document).off('click', '#confirmCancelItem').on('click', '#confirmCancelItem', function() {
         const form = $('#cancelItemForm')[0];
         if (!form.checkValidity()) {
             form.reportValidity();
@@ -1860,37 +1857,85 @@ $(document).ready(function() {
     
     // Save receive items (batch)
     $('#saveReceiveBtn').on('click', function() {
-        // Check if receiveItems is empty
-        const itemCount = Object.keys(receiveItems).length;
-        if (itemCount === 0) {
+        const itemsToReceive = [];
+        let invalidQuantity = null;
+        let invalidExpiry = false;
+
+        $('#poItemsTableBody tr').each(function() {
+            const qtyInput = $(this).find('.receive-qty-input');
+            if (!qtyInput.length) {
+                return;
+            }
+
+            const itemId = qtyInput.data('item-id');
+            const rawQty = qtyInput.val();
+            const quantity = parseFloat(rawQty);
+            const maxQty = parseFloat(qtyInput.data('max'));
+            const expiryInput = $(this).find('.expiry-date-input');
+            const expiryValue = expiryInput.length ? (expiryInput.val() || null) : null;
+
+            if (!rawQty || quantity <= 0 || Number.isNaN(quantity)) {
+                return;
+            }
+
+            if (!Number.isFinite(quantity) || (Number.isFinite(maxQty) && quantity > maxQty + 0.00001)) {
+                invalidQuantity = maxQty;
+                return;
+            }
+
+            if (expiryValue) {
+                const selectedDateObj = new Date(expiryValue + 'T00:00:00');
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (selectedDateObj < today) {
+                    invalidExpiry = true;
+                    return;
+                }
+            }
+
+            itemsToReceive.push({
+                item_id: itemId,
+                quantity: quantity,
+                expiry_date: expiryValue
+            });
+        });
+
+        if (invalidQuantity !== null) {
+            const limitText = Number.isFinite(invalidQuantity) ? invalidQuantity.toLocaleString() : '';
             Swal.fire({
                 icon: 'warning',
-                title: 'ไม่พบรายการรับเข้า',
-                text: 'กรุณากรอกจำนวนสินค้าหรือแก้ไขวันหมดอายุ'
+                title: 'จำนวนเกินกำหนด',
+                text: limitText ? `กรุณาตรวจสอบจำนวนรับเข้าที่ระบุ (สูงสุด ${limitText})` : 'กรุณาตรวจสอบจำนวนรับเข้าที่ระบุ'
             });
             return;
         }
-        
-        const itemsToReceive = Object.keys(receiveItems).map(itemId => {
-            const item = receiveItems[itemId];
-            
-            // Always return object format with quantity and expiry_date
-            return {
-                item_id: itemId,
-                quantity: typeof item === 'number' ? item : (item.quantity || 0),
-                expiry_date: (typeof item === 'object' ? item.expiry_date : null) || null
-            };
-        }).filter(item => item.quantity > 0 || item.expiry_date); // Allow items with expiry_date only (no quantity)
-        
+
+        if (invalidExpiry) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'วันที่หมดอายุไม่ถูกต้อง',
+                text: 'กรุณาเลือกวันหมดอายุที่ไม่เป็นอดีต'
+            });
+            return;
+        }
+
         if (itemsToReceive.length === 0) {
             Swal.fire({
                 icon: 'warning',
-                title: 'ไม่พบรายการที่มีจำนวน',
-                text: 'กรุณากรอกจำนวนสินค้าที่มากกว่า 0 หรือแก้ไขวันหมดอายุ'
+                title: 'ไม่พบรายการรับเข้า',
+                text: 'กรุณากรอกจำนวนสินค้าที่ต้องการรับเข้า'
             });
             return;
         }
-        
+
+        // Sync latest values to receiveItems cache
+        itemsToReceive.forEach(item => {
+            receiveItems[item.item_id] = {
+                quantity: item.quantity,
+                expiry_date: item.expiry_date
+            };
+        });
+
         Swal.fire({
             title: 'ยืนยันการรับเข้าสินค้า',
             text: `จำนวน ${itemsToReceive.length} รายการ`,
