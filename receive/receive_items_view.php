@@ -2160,6 +2160,38 @@ $(document).ready(function() {
                     </p>
                 </div>
 
+
+
+                   <!-- สรุปจำนวน -->
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0">สรุปการแบ่งจำนวน</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label class="form-label">จำนวนรวม</label>
+                                <div class="form-control-plaintext fw-bold" id="summary-total">0</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">จำนวนที่แบ่งแล้ว</label>
+                                <div class="form-control-plaintext fw-bold" id="summary-allocated">0</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">จำนวนที่เหลือ</label>
+                                <div class="form-control-plaintext fw-bold" id="summary-remaining">0</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">สถานะ</label>
+                                <div class="form-control-plaintext fw-bold" id="summary-status">
+                                    <span class="badge bg-warning">ยังไม่สมดุล</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                
                 <!-- PO หลัก -->
                 <div class="card mb-3">
                     <div class="card-header bg-primary text-white">
@@ -2205,35 +2237,10 @@ $(document).ready(function() {
                     </div>
                 </div>
 
-                <!-- สรุปจำนวน -->
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h6 class="mb-0">สรุปการแบ่งจำนวน</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <label class="form-label">จำนวนรวม</label>
-                                <div class="form-control-plaintext fw-bold" id="summary-total">0</div>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">จำนวนที่แบ่งแล้ว</label>
-                                <div class="form-control-plaintext fw-bold" id="summary-allocated">0</div>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">จำนวนที่เหลือ</label>
-                                <div class="form-control-plaintext fw-bold" id="summary-remaining">0</div>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">สถานะ</label>
-                                <div class="form-control-plaintext fw-bold" id="summary-status">
-                                    <span class="badge bg-warning">ยังไม่สมดุล</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+             
             </div>
+
+
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
                 <button type="button" class="btn btn-primary" id="confirm-split" disabled>ยืนยันการแบ่ง</button>

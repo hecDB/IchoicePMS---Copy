@@ -504,3 +504,21 @@
 [03-Dec-2025 16:25:42 Europe/Berlin] Processing update: po_id=22, type=item
 [03-Dec-2025 16:26:11 Europe/Berlin] update_po_section.php called with: {"po_id":"21","item_id":"35","product_id":"10","product_name":"(REACH\u00ae) Waxed Dental Floss 50.2m or 182.8m \u0e23\u0e35\u0e0a \u0e44\u0e2b\u0e21\u0e02\u0e31\u0e14\u0e1f\u0e31\u0e19 \u0e40\u0e04\u0e25\u0e37\u0e2d\u0e1a\u0e41\u0e27\u0e47\u0e01\u0e0b\u0e4c","qty":"5","price_per_unit":"468","currency_id":"2","price_original":"12","exchange_rate":"39","update_type":"item"}
 [03-Dec-2025 16:26:11 Europe/Berlin] Processing update: po_id=21, type=item
+[06-Dec-2025 03:52:02 Europe/Berlin] === product_search_api.php START ===
+[06-Dec-2025 03:52:02 Europe/Berlin] Request query: ะำห
+[06-Dec-2025 03:52:02 Europe/Berlin] Request method: GET
+[06-Dec-2025 03:52:02 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%B0%E0%B8%B3%E0%B8%AB&limit=10
+[06-Dec-2025 03:52:02 Europe/Berlin] Searching for: 'ะำห' with limit: 10
+[06-Dec-2025 03:52:02 Europe/Berlin] About to encode 0 results for type: default
+[06-Dec-2025 03:52:02 Europe/Berlin] Sent JSON response length: 2
+[06-Dec-2025 03:52:02 Europe/Berlin] === product_search_api.php END ===
+[06-Dec-2025 03:52:04 Europe/Berlin] === product_search_api.php START ===
+[06-Dec-2025 03:52:04 Europe/Berlin] Request query: test
+[06-Dec-2025 03:52:04 Europe/Berlin] Request method: GET
+[06-Dec-2025 03:52:04 Europe/Berlin] Request URI: /api/product_search_api.php?q=test&limit=10
+[06-Dec-2025 03:52:04 Europe/Berlin] Searching for: 'test' with limit: 10
+[06-Dec-2025 03:52:04 Europe/Berlin] About to encode 1 results for type: default
+[06-Dec-2025 03:52:04 Europe/Berlin] Sent JSON response length: 432
+[06-Dec-2025 03:52:04 Europe/Berlin] === product_search_api.php END ===
+[06-Dec-2025 03:52:11 Europe/Berlin] update_po_section.php called with: {"po_id":"27","product_id":"15","product_name":"\u0e2b\u0e21\u0e39\u0e40\u0e14\u0e49\u0e07","qty":"2","price_per_unit":"010","unit":"\u0e0a\u0e34\u0e49\u0e19","currency_id":"1","price_original":"010","exchange_rate":"1","update_type":"add_item"}
+[06-Dec-2025 03:52:11 Europe/Berlin] Processing update: po_id=27, type=add_item
