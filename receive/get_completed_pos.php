@@ -11,8 +11,7 @@ if (!$user_id) {
 }
 
 try {
-    // Get completed Purchase Orders - simpler and more reliable approach
-    // Step 1: Get all POs with their received and cancelled item counts
+    // Get completed Purchase Orders - where (received + cancelled) >= ordered for ALL items
     $sql = "
         SELECT 
             po.po_id,
@@ -23,9 +22,13 @@ try {
             c.code as currency_code,
             po.remark,
             po.status,
-            COUNT(poi.item_id) as total_items,
-            SUM(CASE WHEN COALESCE(ri.total_received, 0) >= poi.qty THEN 1 ELSE 0 END) as fully_received_items,
-            SUM(CASE WHEN poi.is_cancelled = 1 OR poi.is_partially_cancelled = 1 THEN 1 ELSE 0 END) as cancelled_items
+            COUNT(DISTINCT poi.item_id) as total_items,
+            COALESCE(SUM(
+                CASE WHEN (COALESCE(received_summary.total_received, 0) + COALESCE(poi.cancel_qty, 0)) >= poi.qty THEN 1 ELSE 0 END
+            ), 0) as fully_received_items,
+            COALESCE(SUM(poi.qty), 0) as total_ordered_qty,
+            COALESCE(SUM(COALESCE(received_summary.total_received, 0)), 0) as total_received_qty,
+            COALESCE(SUM(COALESCE(poi.cancel_qty, 0)), 0) as total_cancelled_qty
         FROM purchase_orders po
         LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
         LEFT JOIN currencies c ON po.currency_id = c.currency_id
@@ -34,40 +37,49 @@ try {
             SELECT item_id, SUM(receive_qty) as total_received 
             FROM receive_items 
             GROUP BY item_id
-        ) ri ON poi.item_id = ri.item_id
+        ) received_summary ON poi.item_id = received_summary.item_id
         WHERE po.status IN ('pending', 'partial', 'completed')
-        AND poi.item_id IS NOT NULL
         GROUP BY po.po_id, po.po_number, s.name, po.order_date, po.total_amount, c.code, po.remark, po.status
+        HAVING COUNT(DISTINCT poi.item_id) > 0 
+            AND COUNT(DISTINCT poi.item_id) = SUM(
+                CASE WHEN (COALESCE(received_summary.total_received, 0) + COALESCE(poi.cancel_qty, 0)) >= poi.qty THEN 1 ELSE 0 END
+            )
         ORDER BY po.order_date DESC, po.po_number DESC
-        LIMIT 200
+        LIMIT 100
     ";
     
     $stmt = $pdo->query($sql);
-    $all_pos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $completed_pos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Filter results: keep only completed (100% received) or cancelled items
-    $completed_pos = array_filter($all_pos, function($po) {
-        $total = (int)$po['total_items'];
-        $received = (int)($po['fully_received_items'] ?? 0);
-        $cancelled = (int)($po['cancelled_items'] ?? 0);
+    // Format the data with proper types
+    $formatted_data = array_map(function($po) {
+        $total_ordered = floatval($po['total_ordered_qty'] ?? 0);
+        $total_received = floatval($po['total_received_qty'] ?? 0);
+        $total_cancelled = floatval($po['total_cancelled_qty'] ?? 0);
+        $total_fulfilled = $total_received + $total_cancelled;
         
-        // Show PO if: (all items fully received) OR (has any cancelled items)
-        $is_completed = ($total > 0 && $received === $total);
-        $has_cancelled = ($cancelled > 0);
-        
-        return $is_completed || $has_cancelled;
-    });
-    
-    // Add has_cancelled_items flag for frontend
-    $completed_pos = array_map(function($po) {
-        $po['has_cancelled_items'] = (int)($po['cancelled_items'] ?? 0) > 0 ? 1 : 0;
-        return $po;
+        return [
+            'po_id' => intval($po['po_id']),
+            'po_number' => $po['po_number'],
+            'supplier_name' => $po['supplier_name'] ?? 'N/A',
+            'po_date' => $po['po_date'],
+            'total_amount' => $total_ordered > 0 ? floatval($po['total_amount']) : 0,
+            'currency_code' => $po['currency_code'] ?? 'THB',
+            'remark' => $po['remark'],
+            'status' => $po['status'],
+            'total_items' => intval($po['total_items'] ?? 0),
+            'fully_received_items' => intval($po['fully_received_items'] ?? 0),
+            'total_ordered_qty' => $total_ordered,
+            'total_received_qty' => $total_received,
+            'total_cancelled_qty' => $total_cancelled,
+            'completion_rate' => $total_ordered > 0 ? ($total_fulfilled / $total_ordered) * 100 : 0
+        ];
     }, $completed_pos);
     
     echo json_encode([
         'success' => true,
-        'data' => array_values($completed_pos),
-        'count' => count($completed_pos)
+        'data' => $formatted_data,
+        'count' => count($formatted_data)
     ]);
     
 } catch (Exception $e) {

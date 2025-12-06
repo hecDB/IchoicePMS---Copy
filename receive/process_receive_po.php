@@ -241,7 +241,7 @@ $po_id = $_POST['po_id'] ?? null;
 if ($action === 'cancel_item') {
     try {
         $item_id = $_POST['item_id'] ?? null;
-        $cancel_type = $_POST['cancel_type'] ?? 'cancel_all';
+        $cancel_type = $_POST['cancel_type'] ?? 'cancel_partial';
         $cancel_qty = (float)($_POST['cancel_qty'] ?? 0);
         $cancel_reason = $_POST['cancel_reason'] ?? null;
         $cancel_notes = $_POST['cancel_notes'] ?? null;
@@ -252,7 +252,11 @@ if ($action === 'cancel_item') {
         }
         
         // Check if PO item exists and get details
-        $check_sql = "SELECT item_id, qty as ordered_qty FROM purchase_order_items WHERE item_id = ? AND po_id = ?";
+        $check_sql = "SELECT poi.item_id, poi.qty as ordered_qty, COALESCE(SUM(ri.receive_qty), 0) as received_qty
+                     FROM purchase_order_items poi
+                     LEFT JOIN receive_items ri ON poi.item_id = ri.item_id
+                     WHERE poi.item_id = ? AND poi.po_id = ?
+                     GROUP BY poi.item_id";
         $check_stmt = $pdo->prepare($check_sql);
         $check_stmt->execute([$item_id, $po_id]);
         $item_info = $check_stmt->fetch(PDO::FETCH_ASSOC);
@@ -262,72 +266,57 @@ if ($action === 'cancel_item') {
         }
         
         $ordered_qty = $item_info['ordered_qty'];
+        $received_qty = $item_info['received_qty'];
+        $remaining_qty = $ordered_qty - $received_qty;
         
-        // Get already received quantity
-        $received_sql = "SELECT COALESCE(SUM(receive_qty), 0) as received FROM receive_items WHERE item_id = ?";
-        $received_stmt = $pdo->prepare($received_sql);
-        $received_stmt->execute([$item_id]);
-        $received_qty = (float)$received_stmt->fetchColumn();
-        
-        // Start transaction
-        $pdo->beginTransaction();
-        
-        if ($cancel_type === 'cancel_all') {
-            // Cancel entire item
-            // Create receive record with full quantity to mark as 100% complete
-            $insert_sql = "INSERT INTO receive_items (item_id, po_id, receive_qty, created_by, created_at, remark) 
-                          VALUES (?, ?, ?, ?, NOW(), ?)";
-            $insert_stmt = $pdo->prepare($insert_sql);
-            $insert_stmt->execute([
-                $item_id,
-                $po_id,
-                $ordered_qty - $received_qty,  // Receive remaining amount to complete
-                $user_id,
-                'ยกเลิกสินค้าจำนวนทั้งหมด'
-            ]);
-            
-            // Mark item as cancelled - store full qty in both fields
-            $cancel_sql = "UPDATE purchase_order_items SET is_cancelled = 1, cancelled_by = ?, cancelled_at = NOW(), 
-                          cancel_reason = ?, cancel_notes = ?, cancel_qty = ?, cancel_qty_reason = ? 
-                          WHERE item_id = ?";
-            $cancel_stmt = $pdo->prepare($cancel_sql);
-            $cancel_stmt->execute([
-                $user_id,
-                $cancel_reason,
-                $cancel_notes,
-                $ordered_qty,
-                $ordered_qty,
-                $item_id
-            ]);
-            
-            $message = 'ยกเลิกสินค้าทั้งหมดสำเร็จ และปิด PO ที่ 100%';
-            
-        } else if ($cancel_type === 'cancel_partial') {
-            // Cancel partial quantity
+        // Validate cancel_qty based on cancel_type
+        if ($cancel_type === 'cancel_partial') {
+            // For partial cancellation, must specify amount
             if ($cancel_qty <= 0) {
                 throw new Exception('จำนวนที่ยกเลิกต้องมากกว่า 0');
             }
             
-            if ($cancel_qty > $ordered_qty) {
-                throw new Exception('จำนวนที่ยกเลิกเกินจำนวนที่สั่ง');
+            if ($cancel_qty > $remaining_qty) {
+                throw new Exception("จำนวนที่ยกเลิกเกินจำนวนที่รับได้อีก ({$remaining_qty})");
             }
+        } else if ($cancel_type === 'cancel_all') {
+            // For full cancellation, use remaining quantity
+            $cancel_qty = $remaining_qty;
             
-            // Update the item to record partial cancellation - store cancel_qty in both fields
-            $cancel_sql = "UPDATE purchase_order_items SET cancel_qty = ?, cancel_qty_reason = ?, cancelled_by = ?, cancelled_at = NOW(), 
-                          cancel_reason = ?, cancel_notes = ?, is_partially_cancelled = 1
-                          WHERE item_id = ?";
-            $cancel_stmt = $pdo->prepare($cancel_sql);
-            $cancel_stmt->execute([
-                $cancel_qty,
-                $cancel_qty,
-                $user_id,
-                $cancel_reason,
-                $cancel_notes,
-                $item_id
-            ]);
-            
-            $message = "ยกเลิกสินค้า {$cancel_qty} หน่วยสำเร็จ";
+            if ($cancel_qty <= 0) {
+                throw new Exception('ไม่มีจำนวนสินค้าที่สามารถยกเลิกได้');
+            }
         }
+        
+        // Start transaction
+        $pdo->beginTransaction();
+        
+        // Update purchase_order_items with cancellation information
+        $cancel_sql = "UPDATE purchase_order_items SET 
+                      cancel_qty = ?, 
+                      cancelled_by = ?, 
+                      cancelled_at = NOW(), 
+                      cancel_reason = ?, 
+                      cancel_notes = ?";
+        
+        if ($cancel_type === 'cancel_all') {
+            $cancel_sql .= ", is_cancelled = 1";
+        } else {
+            $cancel_sql .= ", is_partially_cancelled = 1";
+        }
+        
+        $cancel_sql .= " WHERE item_id = ?";
+        
+        $cancel_stmt = $pdo->prepare($cancel_sql);
+        $cancel_stmt->execute([
+            $cancel_qty,
+            $user_id,
+            $cancel_reason,
+            $cancel_notes,
+            $item_id
+        ]);
+        
+        $message = "ยกเลิกสินค้า {$cancel_qty} หน่วยสำเร็จ";
         
         // Log the cancellation
         try {
@@ -337,7 +326,7 @@ if ($action === 'cancel_item') {
             $log_stmt->execute([
                 $user_id, 
                 'cancel_po_item', 
-                "ยกเลิกสินค้าจาก PO {$po_number} ({$cancel_type}): เหตุผล={$cancel_reason}"
+                "ยกเลิกสินค้าจาก PO {$po_number} ({$cancel_type}): เหตุผล={$cancel_reason}, จำนวน={$cancel_qty}"
             ]);
         } catch (Exception $e) {
             // Silently fail if activity_logs doesn't exist

@@ -183,37 +183,71 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         -webkit-overflow-scrolling: touch;
     }
     
+/* Full-width table styling */
+.table-card {
+    width: 100%;          /* ทำให้เต็มความกว้าง */
+    margin: 0;            /* ล้าง margin ที่ดันเข้าด้านใน */
+    padding: 0;
+    border-radius: 0;
+}
+
+.table-header {
+    width: 100%;
+    margin: 0;
+    padding: 1.5rem;
+}
+
+.table-body {
+    width: 100%;
+    margin: 0;
+    padding: 0 1.5rem;
+}
+
+    
     #receive-table {
-        min-width: 2400px; /* เพิ่มความกว้างให้มากขึ้น */
-        white-space: nowrap;
+        width: 100%;
+        white-space: normal;
+        margin-bottom: 0;
     }
     
     #receive-table th,
     #receive-table td {
-        padding: 0.85rem 0.65rem; /* เพิ่ม padding เพิ่มเติม */
-        font-size: 0.95rem; /* เพิ่มขนาดตัวอักษร */
+        padding: 0.75rem 0.5rem;
+        font-size: 0.9rem;
         vertical-align: middle;
+        border-bottom: 1px solid #e5e7eb;
     }
     
-    /* กำหนดความกว้างคอลัมน์ - เพิ่มความกว้างทุกคอลัมน์ */
-    #receive-table th:nth-child(1) { width: 90px; min-width: 90px; } /* รูปภาพ */
-    #receive-table th:nth-child(2) { width: 140px; min-width: 140px; } /* SKU */
-    #receive-table th:nth-child(3) { width: 240px; min-width: 240px; } /* ชื่อสินค้า */
-    #receive-table th:nth-child(4) { width: 160px; min-width: 160px; } /* บาร์โค้ด */
-    #receive-table th:nth-child(5) { width: 140px; min-width: 140px; } /* ผู้เพิ่มรายการ */
-    #receive-table th:nth-child(6) { width: 160px; min-width: 160px; } /* วันที่เพิ่ม */
-    #receive-table th:nth-child(7) { width: 120px; min-width: 120px; } /* จำนวนก่อน */
-    #receive-table th:nth-child(8) { width: 120px; min-width: 120px; } /* เพิ่ม/ลด */
-    #receive-table th:nth-child(9) { width: 120px; min-width: 120px; } /* จำนวนล่าสุด */
-    #receive-table th:nth-child(10) { width: 200px; min-width: 200px; } /* PO/แท็ค/Lot */
-    #receive-table th:nth-child(11) { width: 160px; min-width: 160px; } /* ตำแหน่ง */
-    #receive-table th:nth-child(12) { width: 140px; min-width: 140px; } /* วันหมดอายุ */
-    #receive-table th:nth-child(13) { width: 150px; min-width: 150px; } /* จัดการ */
+    #receive-table thead {
+        background-color: #f3f4f6;
+        border-bottom: 2px solid #d1d5db;
+    }
+    
+    #receive-table tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    #receive-table tbody tr:hover {
+        background-color: #f9fafb;
+    }
+    
+    /* Define column widths for new order - percentage-based layout */
+    #receive-table th:nth-child(1) { flex: 0 0 6.5%; } /* Image */
+    #receive-table th:nth-child(2) { flex: 0 0 9.3%; } /* Barcode */
+    #receive-table th:nth-child(3) { flex: 0 0 7.5%; } /* SKU */
+    #receive-table th:nth-child(4) { flex: 0 0 12%; } /* Date */
+    #receive-table th:nth-child(5) { flex: 0 0 9.3%; } /* Qty Changed */
+    #receive-table th:nth-child(6) { flex: 0 0 10.3%; } /* Movement Type */
+    #receive-table th:nth-child(7) { flex: 0 0 8.4%; } /* Latest Qty */
+    #receive-table th:nth-child(8) { flex: 0 0 10.3%; } /* Expiry Date */
+    #receive-table th:nth-child(9) { flex: 0 0 11.2%; } /* PO/Tag */
+    #receive-table th:nth-child(10) { flex: 0 0 10.3%; } /* Created By */
+    #receive-table th:nth-child(11) { flex: 1 1 auto; } /* Remark - flexible width */
+    #receive-table th:nth-child(12) { flex: 0 0 6.5%; } /* Actions */
     
     /* ปรับ text overflow สำหรับข้อความยาว */
-    #receive-table td:nth-child(3), /* ชื่อสินค้า */
-    #receive-table td:nth-child(15) { /* หมายเหตุ */
-        max-width: 200px; /* เพิ่มจาก 150px */
+    #receive-table td:nth-child(11) { /* Remark */
+        max-width: 200px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -251,12 +285,36 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     /* Mobile responsive adjustments */
     @media (max-width: 768px) {
         #receive-table {
-            min-width: 1200px; /* ลดความกว้างสำหรับมือถือ */
+            width: 100%;
         }
         
         #receive-table th,
         #receive-table td {
-            padding: 0.25rem 0.1rem;
+            padding: 0.5rem 0.25rem;
+            font-size: 0.85rem;
+        }
+        
+        .product-image {
+            width: 32px !important; 
+            height: 32px !important;
+            max-width: 32px !important; 
+            max-height: 32px !important;
+        }
+        
+        .badge {
+            font-size: 0.7rem !important;
+            padding: 0.25rem 0.4rem !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        #receive-table {
+            width: 100%;
+        }
+        
+        #receive-table th,
+        #receive-table td {
+            padding: 0.4rem 0.15rem;
             font-size: 0.8rem;
         }
         
@@ -265,30 +323,6 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             height: 24px !important;
             max-width: 24px !important; 
             max-height: 24px !important;
-        }
-        
-        .badge {
-            font-size: 0.65rem !important;
-            padding: 0.2rem 0.4rem !important;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        #receive-table {
-            min-width: 1000px;
-        }
-        
-        #receive-table th,
-        #receive-table td {
-            padding: 0.2rem 0.05rem;
-            font-size: 0.75rem;
-        }
-        
-        .product-image {
-            width: 20px !important; 
-            height: 20px !important;
-            max-width: 20px !important; 
-            max-height: 20px !important;
         }
     }
     
@@ -732,7 +766,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
 
         <!-- Main Table -->
-        <div class="table-card">
+      <div class="row mb-4">
             <div class="table-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="table-title mb-0">
@@ -762,25 +796,24 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <table id="receive-table" class="table modern-table table-striped table-hover">
                     <thead>
                         <tr>
-                            <th style="width: 60px;">รูปภาพ</th>
-                            <th>SKU</th>
-                            <th>ชื่อสินค้า</th>
-                            <th>บาร์โค้ด</th>
-                            <th>ผู้ทำรายการ</th>
-                            <th>วันที่ทำรายการ</th>
-                            <th>จำนวนก่อน</th>
-                            <th>เพิ่ม/ลด</th>
-                            <th>จำนวนล่าสุด</th>
-                            <th>PO/แท็ค/Lot</th>
-                            <th>สถานที่จัดเก็บ</th>
-                            <th>วันหมดอายุ</th>
-                            <th class="no-sort text-center" style="width: 100px;">จัดการ</th>
+                            <th style="width: 6.5%;">รูปภาพ</th>
+                            <th style="width: 9.3%;">บาร์โค้ด</th>
+                            <th style="width: 7.5%;">SKU</th>
+                            <th style="width: 12%;">วันที่ทำรายการ</th>
+                            <th style="width: 9.3%;">จำนวนที่เคลื่อนไหว</th>
+                            <th style="width: 10.3%;">ประเภทการเคลื่อนไหว</th>
+                            <th style="width: 8.4%;">จำนวนล่าสุด</th>
+                            <th style="width: 10.3%;">วันหมดอายุ</th>
+                            <th style="width: 11.2%;">PO / แท็กอ้างอิง</th>
+                            <th style="width: 10.3%;">ชื่อผู้ดำเนินการ</th>
+                            <th style="flex: 1 1 auto;">หมายเหตุ / การแก้ไขเพิ่มเติม</th>
+                            <th class="no-sort text-center" style="width: 6.5%;">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php if (empty($rows)): ?>
                     <tr>
-                        <td colspan="16" class="text-center py-4">
+                        <td colspan="12" class="text-center py-4">
                             <div class="d-flex flex-column align-items-center">
                                 <span class="material-icons mb-2" style="font-size: 3rem; color: #d1d5db;">receipt</span>
                                 <h5 class="text-muted">ไม่พบข้อมูลการรับสินค้า</h5>
@@ -798,6 +831,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             data-po-number="<?= htmlspecialchars($row['po_number'] ?? '') ?>"
                             data-transaction-type="<?= htmlspecialchars($row['transaction_type']) ?>"
                             class="<?= $row['transaction_type'] === 'issue' ? 'table-danger' : '' ?>">
+                            <!-- 1. Image -->
                             <td>
                                 <?php $image_path = getImagePath($row['image'] ?? ''); ?>
                                 <img src="<?= htmlspecialchars($image_path) ?>" 
@@ -805,50 +839,86 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                      class="product-image" 
                                      onerror="this.src='../images/noimg.png';">
                             </td>
-                            <td><span class="fw-bold"><?= htmlspecialchars($row['sku']) ?></span></td>
-                            <td title="<?= htmlspecialchars($row['product_name'] ?? '-') ?>">
-                                <span class="<?= $row['transaction_type'] === 'issue' ? 'text-danger' : 'text-primary' ?>">
-                                    <?= htmlspecialchars($row['product_name'] ?? '-') ?>
+
+                            <!-- 2. Barcode -->
+                            <td>
+                                <span class="fw-bold" title="<?= htmlspecialchars($row['barcode']) ?>">
+                                    <?= htmlspecialchars($row['barcode']) ?>
                                 </span>
                             </td>
-                            <td><?= htmlspecialchars($row['barcode']) ?></td>
-                            <td><?= htmlspecialchars($row['created_by'] ?? 'ไม่ระบุ') ?></td>
+
+                            <!-- 3. SKU -->
+                            <td>
+                                <span class="fw-bold text-secondary" title="<?= htmlspecialchars($row['sku']) ?>">
+                                    <?= htmlspecialchars($row['sku']) ?>
+                                </span>
+                            </td>
+
+                            <!-- 4. Date -->
                             <td><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></td>
-                            <td class="text-center">
-                                <span class="fw-bold text-muted">
-                                    <?= number_format(getPrevQty($row['sku'], $row['barcode'], $row['created_at'], $pdo)) ?>
-                                </span>
-                            </td>
+
+                            <!-- 5. Quantity Changed -->
                             <td class="text-center">
                                 <?php if ($row['transaction_type'] === 'issue'): ?>
                                     <span class="qty-minus text-danger fw-bold">-<?= number_format($row['quantity']) ?></span>
                                 <?php else: ?>
-                                    <?= qtyChange($row['quantity']) ?>
+                                    <span class="qty-plus text-success fw-bold">+<?= number_format($row['quantity']) ?></span>
                                 <?php endif; ?>
                             </td>
+
+                            <!-- 6. Movement Type -->
+                            <td class="text-center">
+                                <?php if ($row['transaction_type'] === 'issue'): ?>
+                                    <span class="badge bg-danger" title="ลดสต็อก">
+                                        <span class="material-icons" style="font-size: 0.85rem; vertical-align: middle;">trending_down</span>
+                                        ลด
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge bg-success" title="เพิ่มสต็อก">
+                                        <span class="material-icons" style="font-size: 0.85rem; vertical-align: middle;">trending_up</span>
+                                        เพิ่ม
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+
+                            <!-- 7. Latest Quantity -->
                             <td class="text-center">
                                 <span class="fw-bold text-primary">
                                     <?= number_format(getCurrentQty($row['sku'], $row['barcode'], $row['created_at'], $pdo)) ?>
                                 </span>
                             </td>
+
+                            <!-- 8. Expiry Date -->
+                            <td class="text-center">
+                                <?php if (isset($row['expiry_date']) && $row['expiry_date']): ?>
+                                    <span class="badge bg-light text-dark" title="วันหมดอายุ">
+                                        <span class="material-icons" style="font-size: 0.75rem; vertical-align: middle;">calendar_today</span>
+                                        <?= date('d/m/Y', strtotime($row['expiry_date'])) ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
+
+                            <!-- 9. PO / Reference Tag -->
                             <td>
                                 <?php if ($row['transaction_type'] === 'issue'): ?>
                                     <?php if (!empty($row['issue_tag'])): ?>
                                         <div class="issue-tag-info">
                                             <span class="badge issue-tag-badge" title="เลขแท็กการขาย">
-                                                <i class="material-icons po-badge-icon">local_offer</i>
+                                                <span class="material-icons po-badge-icon">local_offer</span>
                                                 <?= htmlspecialchars($row['issue_tag']) ?>
                                             </span>
                                             <?php if (!empty($row['platform'])): ?>
-                                                <span class="badge bg-secondary" title="แพลตฟอร์มการขาย">
-                                                    <i class="material-icons po-badge-icon">storefront</i>
+                                                <span class="badge bg-secondary" title="แพลตฟอร์มการขาย" style="display: block; margin-top: 0.25rem;">
+                                                    <span class="material-icons po-badge-icon">storefront</span>
                                                     <?= htmlspecialchars($row['platform']) ?>
                                                 </span>
                                             <?php endif; ?>
                                         </div>
                                     <?php else: ?>
                                         <span class="badge bg-light text-muted" title="รายการออกสินค้าไม่มีแท็ก">
-                                            <i class="material-icons po-badge-icon">remove_shopping_cart</i>
+                                            <span class="material-icons po-badge-icon">remove_shopping_cart</span>
                                             รายการออก
                                         </span>
                                     <?php endif; ?>
@@ -856,29 +926,39 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <div class="po-info">
                                         <?php if (!empty($row['po_number'])): ?>
                                             <span class="badge bg-primary" title="เลขใบสั่งซื้อ">
-                                                <i class="material-icons po-badge-icon">description</i>
+                                                <span class="material-icons po-badge-icon">description</span>
                                                 <?= htmlspecialchars($row['po_number']) ?>
                                             </span>
-                                        <?php endif; ?>
-                                        
-                                        <?php if (!empty($row['remark'])): ?>
-                                            <small class="po-remark" title="หมายเหตุ: <?= htmlspecialchars($row['remark']) ?>">
-                                                <i class="material-icons" style="font-size: 0.65rem; vertical-align: middle; opacity: 0.7;">note</i>
-                                                <?= htmlspecialchars($row['remark']) ?>
-                                            </small>
-                                        <?php endif; ?>
-                                        
-                                        <?php if (empty($row['po_number']) && empty($row['remark'])): ?>
-                                            <span class="badge bg-light text-muted" title="ไม่มีข้อมูล">
-                                                <i class="material-icons po-badge-icon">remove</i>
-                                                ไม่มีข้อมูล
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-muted">
+                                                <span class="material-icons po-badge-icon">remove</span>
+                                                ไม่มี PO
                                             </span>
                                         <?php endif; ?>
                                     </div>
                                 <?php endif; ?>
                             </td>
-                            <td><?= htmlspecialchars($row['location_desc'] ?? '-') ?></td>
-                            <td><?= isset($row['expiry_date']) && $row['expiry_date'] ? date('d/m/Y', strtotime($row['expiry_date'])) : '-' ?></td>
+
+                            <!-- 10. Created By -->
+                            <td>
+                                <span title="<?= htmlspecialchars($row['created_by'] ?? 'ไม่ระบุ') ?>">
+                                    <?= htmlspecialchars($row['created_by'] ?? 'ไม่ระบุ') ?>
+                                </span>
+                            </td>
+
+                            <!-- 11. Remark / Additional Info -->
+                            <td>
+                                <?php if ($row['transaction_type'] === 'receive' && !empty($row['remark'])): ?>
+                                    <small class="text-muted d-block" title="<?= htmlspecialchars($row['remark']) ?>">
+                                        <span class="material-icons" style="font-size: 0.75rem; vertical-align: middle;">note</span>
+                                        <?= htmlspecialchars(substr($row['remark'], 0, 50)) . (strlen($row['remark']) > 50 ? '...' : '') ?>
+                                    </small>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
+
+                            <!-- 12. Actions -->
                             <td class="text-center">
                                 <?php if ($row['transaction_type'] === 'receive'): ?>
                                     <div class="btn-group" role="group">
@@ -887,7 +967,6 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 title="แก้ไขรายการ">
                                             <span class="material-icons" style="font-size: 1rem;">edit</span>
                                         </button>
-                                        <!-- Delete button removed for security -->
                                     </div>
                                 <?php else: ?>
                                     <div class="btn-group" role="group">
