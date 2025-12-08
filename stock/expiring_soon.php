@@ -17,6 +17,7 @@ $sql_expiring_soon = "
         p.image,
         ri.receive_qty AS stock_on_hand,
         ri.expiry_date,
+        po.po_number,
         DATEDIFF(ri.expiry_date, CURDATE()) as days_to_expire,
         CASE 
             WHEN DATEDIFF(ri.expiry_date, CURDATE()) < 240 THEN 'critical'
@@ -27,9 +28,14 @@ $sql_expiring_soon = "
     FROM products p
     LEFT JOIN purchase_order_items poi ON poi.product_id = p.product_id
     LEFT JOIN receive_items ri ON ri.item_id = poi.item_id
+    LEFT JOIN product_holding ph ON ph.receive_id = ri.receive_id AND ph.status = 'holding'
+    LEFT JOIN product_holding ph_moved ON ph_moved.product_id = p.product_id AND ph_moved.status = 'moved_to_sale'
+    LEFT JOIN purchase_orders po ON ri.po_id = po.po_id
     WHERE ri.expiry_date IS NOT NULL 
         AND ri.expiry_date BETWEEN ? AND ?
-      AND ri.receive_qty > 0
+        AND ri.receive_qty > 0
+        AND ph.receive_id IS NULL
+        AND ph_moved.holding_id IS NULL
     ORDER BY ri.expiry_date ASC, p.name ASC
 ";
 $stmt = $pdo->prepare($sql_expiring_soon);
@@ -367,6 +373,7 @@ $stats = [
                             <th>SKU</th>
                             <th>จำนวนคงคลัง</th>
                             <th>หน่วย</th>
+                            <th>เลขที่ PO</th>
                             <th>วันหมดอายุ</th>
                             <th>เหลืออีก (วัน)</th>
                             <th>สถานะ</th>
@@ -375,7 +382,7 @@ $stats = [
                     <tbody>
                         <?php if (empty($products)): ?>
                         <tr>
-                            <td colspan="8" class="text-center py-4">
+                            <td colspan="10" class="text-center py-4">
                                 <div class="d-flex flex-column align-items-center">
                                     <span class="material-icons mb-2" style="font-size: 3rem; color: #10b981;">check_circle</span>
                                     <h5 class="text-success">ยอดเยี่ยม! ไม่มีสินค้าใกล้หมดอายุ</h5>
@@ -409,6 +416,7 @@ $stats = [
                                 <td><span class="fw-bold"><?= htmlspecialchars($product['sku']) ?></span></td>
                                 <td><span class="fw-bold text-primary"><?= number_format($product['stock_on_hand']) ?></span></td>
                                 <td><?= htmlspecialchars($product['unit']) ?></td>
+                                <td><?= $product['po_number'] ? htmlspecialchars($product['po_number']) : '-' ?></td>
                                 <td>
                                     <?= date("d/m/Y", strtotime($product['expiry_date'])) ?>
                                 </td>
@@ -486,7 +494,7 @@ $(document).ready(function() {
         language: 'th',
         exportButtons: true,
         batchOperations: false, // Disable auto checkboxes (using manual checkboxes)
-        defaultOrder: [[8, 'asc']], // Sort by days to expire (column index 8 - after checkbox)
+        defaultOrder: [[8, 'asc']], // Sort by days to expire (column index 8 - days remaining)
         columnDefs: [
             { orderable: false, targets: 0 } // Disable sorting on checkbox column
         ]
@@ -679,7 +687,7 @@ $(document).ready(function() {
         });
     }
 
-    const statusColumnIndex = 8;
+    const statusColumnIndex = 9;
 
     function setActiveCard($card) {
         $('.filter-card').removeClass('active').attr('aria-pressed', 'false');
