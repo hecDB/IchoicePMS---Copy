@@ -513,12 +513,6 @@ $stats = [
                                 <button class="action-btn btn-edit" onclick="editProduct(<?= $product['product_id'] ?>)" title="แก้ไข">
                                     <span class="material-icons" style="font-size: 1rem;">edit</span>
                                 </button>
-                                <button class="action-btn btn-toggle" onclick="toggleStatus(<?= $product['product_id'] ?>, <?= $product['is_active'] ?>)" title="เปลี่ยนสถานะ">
-                                    <span class="material-icons" style="font-size: 1rem;"><?= $product['is_active'] == 1 ? 'visibility_off' : 'visibility' ?></span>
-                                </button>
-                                <button class="action-btn btn-delete" onclick="deleteProduct(<?= $product['product_id'] ?>)" title="ลบ">
-                                    <span class="material-icons" style="font-size: 1rem;">delete</span>
-                                </button>
                             </td>
                         </tr>
                         <?php endforeach; ?>

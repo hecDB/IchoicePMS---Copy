@@ -228,6 +228,21 @@ $fully_received = count(array_filter($all_pos, function($po) {
             box-shadow: none;
         }
 
+        .po-item-image-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .po-item-image {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #e5e7eb;
+            background: #f3f4f6;
+        }
+
         /* Modal Styles */
         .modal-xl {
             max-width: 95%;
@@ -704,7 +719,8 @@ $fully_received = count(array_filter($all_pos, function($po) {
                         <thead class="table-dark">
                             <tr>
                                 <th width="3%">#</th>
-                                <th width="22%">สินค้า</th>
+                                <th width="8%">รูปภาพ</th>
+                                <th width="20%">สินค้า</th>
                                 <th width="6%">SKU</th>
                                 <th width="6%">หน่วย</th>
                                 <th width="7%">จำนวนสั่ง</th>
@@ -712,8 +728,8 @@ $fully_received = count(array_filter($all_pos, function($po) {
                                 <th width="7%">รับแล้ว</th>
                                 <th width="7%">ยกเลิก</th>
                                 <th width="7%">คงเหลือ</th>
-                                <th width="10%">วันหมดอายุ</th>
-                                <th width="10%">รับเข้า</th>
+                                <th width="11%">วันหมดอายุ</th>
+                                <th width="11%">รับเข้า</th>
                             </tr>
                         </thead>
                         <tbody id="poItemsTableBody">
@@ -911,8 +927,9 @@ $fully_received = count(array_filter($all_pos, function($po) {
                         <thead class="table-light">
                             <tr>
                                 <th style="width: 6%; text-align: center;">#</th>
+                                <th style="width: 12%; text-align: center;">รูปภาพ</th>
                                 <th>ชื่อสินค้า</th>
-                                <th style="width: 18%; text-align: center;">SKU</th>
+                                <th style="width: 16%; text-align: center;">SKU</th>
                                 <th style="width: 15%; text-align: right;">จำนวนสั่ง</th>
                                 <th style="width: 15%; text-align: right;">รับจริง</th>
                                 <th style="width: 15%; text-align: right;">ยกเลิก</th>
@@ -977,6 +994,59 @@ function isExpired(dateString) {
     return expiryDate < today;
 }
 
+function resolveProductImage(item) {
+    const fallback = '../images/noimg.png';
+    if (!item) {
+        return fallback;
+    }
+
+    const sources = [item.image_path, item.image_url, item.image, item.product_image];
+
+    for (const src of sources) {
+        if (!src || typeof src !== 'string') {
+            continue;
+        }
+
+        const trimmed = src.trim();
+        if (!trimmed) {
+            continue;
+        }
+
+        if (trimmed.startsWith('data:image')) {
+            return trimmed;
+        }
+
+        const base64Candidate = trimmed.replace(/\s+/g, '');
+        if (/^[A-Za-z0-9+/=]+$/.test(base64Candidate) && base64Candidate.length > 100) {
+            return `data:image/*;base64,${base64Candidate}`;
+        }
+
+        if (/^https?:\/\//i.test(trimmed)) {
+            return trimmed;
+        }
+
+        if (trimmed.startsWith('../')) {
+            return trimmed;
+        }
+
+        if (trimmed.startsWith('./')) {
+            return `../${trimmed.slice(2)}`;
+        }
+
+        if (trimmed.startsWith('/')) {
+            return `..${trimmed}`;
+        }
+
+        if (trimmed.startsWith('images/')) {
+            return `../${trimmed}`;
+        }
+
+        return `../images/${trimmed}`;
+    }
+
+    return fallback;
+}
+
 // Toggle completed POs function
 function toggleCompletedPOs() {
     const button = $('#toggleText');
@@ -1035,7 +1105,7 @@ function loadPoItems(poId, poNumber, supplier, mode, remark) {
     // Show loading
     $('#poItemsTableBody').html(`
         <tr>
-            <td colspan="9" class="text-center py-4">
+            <td colspan="12" class="text-center py-4">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">กำลังโหลด...</span>
                 </div>
@@ -1065,7 +1135,7 @@ function loadPoItems(poId, poNumber, supplier, mode, remark) {
                 console.error('API Error:', response.error);
                 $('#poItemsTableBody').html(`
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-danger">
+                        <td colspan="12" class="text-center py-4 text-danger">
                             <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
                             <div>${response.error}</div>
                         </td>
@@ -1077,7 +1147,7 @@ function loadPoItems(poId, poNumber, supplier, mode, remark) {
             console.error('Error loading PO items:', error);
             $('#poItemsTableBody').html(`
                 <tr>
-                    <td colspan="9" class="text-center py-4 text-danger">
+                    <td colspan="12" class="text-center py-4 text-danger">
                         <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
                         <div>เกิดข้อผิดพลาดในการโหลดข้อมูล</div>
                     </td>
@@ -1097,7 +1167,7 @@ function loadCompletedPoItems(poId, poNumber, supplier, remark) {
     // Show loading
     $('#completedPoItemsTableBody').html(`
         <tr>
-            <td colspan="5" class="text-center py-4">
+            <td colspan="7" class="text-center py-4">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">กำลังโหลด...</span>
                 </div>
@@ -1127,7 +1197,7 @@ function loadCompletedPoItems(poId, poNumber, supplier, remark) {
                 console.error('API Error:', response.error);
                 $('#completedPoItemsTableBody').html(`
                     <tr>
-                        <td colspan="5" class="text-center py-4 text-danger">
+                        <td colspan="7" class="text-center py-4 text-danger">
                             <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
                             <div>${response.error}</div>
                         </td>
@@ -1139,7 +1209,7 @@ function loadCompletedPoItems(poId, poNumber, supplier, remark) {
             console.error('Error loading completed PO items:', error);
             $('#completedPoItemsTableBody').html(`
                 <tr>
-                    <td colspan="5" class="text-center py-4 text-danger">
+                    <td colspan="7" class="text-center py-4 text-danger">
                         <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
                         <div>เกิดข้อผิดพลาดในการโหลดข้อมูล</div>
                     </td>
@@ -1157,7 +1227,7 @@ function displayCompletedPoItems(items) {
     if (!items || !Array.isArray(items) || items.length === 0) {
         html = `
             <tr>
-                <td colspan="5" class="text-center py-4 text-muted">
+                <td colspan="7" class="text-center py-4 text-muted">
                     <span class="material-icons mb-2" style="font-size: 2rem;">inbox</span>
                     <div>ไม่พบรายการสินค้าในใบสั่งซื้อนี้</div>
                 </td>
@@ -1168,12 +1238,17 @@ function displayCompletedPoItems(items) {
             const orderedQty = parseFloat(item.order_qty || item.ordered_qty || 0);
             const receivedQty = parseFloat(item.received_qty || 0);
             const cancelledQty = parseFloat(item.cancel_qty || 0);
+            const productName = escapeHtml(item.product_name);
+            const imageSrc = resolveProductImage(item);
             
             html += `
                 <tr>
                     <td>${index + 1}</td>
+                    <td class="text-center">
+                        <img src="${imageSrc}" alt="${productName}" class="po-item-image" onerror="this.onerror=null;this.src='../images/noimg.png';">
+                    </td>
                     <td>
-                        <div class="fw-bold">${escapeHtml(item.product_name)}</div>
+                        <div class="fw-bold">${productName}</div>
                     </td>
                     <td>
                         <span class="badge bg-secondary">${escapeHtml(item.sku)}</span>
@@ -1204,7 +1279,7 @@ function displayPoItems(items, mode) {
     if (!items || !Array.isArray(items) || items.length === 0) {
         html = `
             <tr>
-                <td colspan="9" class="text-center py-4 text-muted">
+                <td colspan="12" class="text-center py-4 text-muted">
                     <span class="material-icons mb-2" style="font-size: 2rem;">inbox</span>
                     <div>ไม่พบรายการสินค้าในใบสั่งซื้อนี้</div>
                 </td>
@@ -1216,12 +1291,17 @@ function displayPoItems(items, mode) {
             const cancelledQty = parseFloat(item.cancel_qty || 0);
             const canReceive = remainingQty > 0;
             const isCancelled = item.is_cancelled === true || item.is_cancelled === 1;
+            const productName = escapeHtml(item.product_name);
+            const imageSrc = resolveProductImage(item);
             
             html += `
                 <tr ${isCancelled ? 'style="background-color: #fee2e2; opacity: 0.8;"' : ''}>
                     <td>${index + 1}</td>
+                    <td class="text-center">
+                        <img src="${imageSrc}" alt="${productName}" class="po-item-image" onerror="this.onerror=null;this.src='../images/noimg.png';">
+                    </td>
                     <td>
-                        <div class="fw-bold">${escapeHtml(item.product_name)}</div>
+                        <div class="fw-bold">${productName}</div>
                         ${item.barcode ? `<small class="text-muted">Barcode: ${escapeHtml(item.barcode)}</small>` : ''}
                     </td>
                     <td><span class="badge bg-secondary">${escapeHtml(item.sku)}</span></td>
@@ -1382,7 +1462,7 @@ $(document).ready(function() {
         // Show loading
         $('#poItemsTableBody').html(`
             <tr>
-                <td colspan="9" class="text-center py-4">
+                <td colspan="12" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">กำลังโหลด...</span>
                     </div>
@@ -1412,7 +1492,7 @@ $(document).ready(function() {
                     console.error('API Error:', response.error);
                     $('#poItemsTableBody').html(`
                         <tr>
-                            <td colspan="9" class="text-center py-4 text-danger">
+                            <td colspan="12" class="text-center py-4 text-danger">
                                 <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
                                 <div>${response.error}</div>
                             </td>
@@ -1424,7 +1504,7 @@ $(document).ready(function() {
                 console.error('Error loading PO items:', error);
                 $('#poItemsTableBody').html(`
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-danger">
+                        <td colspan="12" class="text-center py-4 text-danger">
                             <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
                             <div>เกิดข้อผิดพลาดในการโหลดข้อมูล</div>
                         </td>

@@ -22,6 +22,7 @@ try {
             tp.provisional_sku as sku,
             tp.provisional_barcode as barcode,
             tp.unit,
+            tp.product_image,
             poi.qty as order_qty,
             poi.price_per_unit as unit_price,
             c.code as currency_code,
@@ -62,7 +63,8 @@ try {
             'currency_code' => $item['currency_code'] ?? 'THB',
             'received_qty' => (float)$item['received_qty'],
             'remaining_qty' => (float)$item['remaining_qty'],
-            'expiry_date' => $item['expiry_date'] ?? null
+            'expiry_date' => $item['expiry_date'] ?? null,
+            'product_image' => $item['product_image'] ?? null
         ];
     }
 

@@ -29,6 +29,7 @@ try {
             p.sku,
             p.barcode,
             p.unit,
+            p.image,
             poi.qty as order_qty,
             poi.price_per_unit as unit_price,
             poi.total as total_price,
@@ -49,7 +50,7 @@ try {
         LEFT JOIN currencies c ON po.currency_id = c.currency_id
         LEFT JOIN receive_items ri ON poi.item_id = ri.item_id
         WHERE poi.po_id = :po_id AND poi.temp_product_id IS NULL
-        GROUP BY poi.item_id, poi.product_id, p.name, p.sku, p.barcode, p.unit, poi.qty, poi.price_per_unit, poi.total, c.code,
+        GROUP BY poi.item_id, poi.product_id, p.name, p.sku, p.barcode, p.unit, p.image, poi.qty, poi.price_per_unit, poi.total, c.code,
                  poi.is_cancelled, poi.is_partially_cancelled, poi.cancel_qty, poi.cancel_reason, poi.cancel_notes, poi.cancelled_at, poi.cancelled_by
         ORDER BY p.name
     ";
