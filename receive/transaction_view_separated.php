@@ -103,7 +103,21 @@ try {
         font-family: 'Prompt', sans-serif;
         background-color: #f8fafc;
     }
-    
+
+    /* Full-width table styling */
+    .mainwrap .table-card {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .mainwrap .table-header,
+    .mainwrap .table-body {
+        width: 100%;
+        margin: 0;
+    }
+
+
     .product-image {
         width: 36px; 
         height: 36px;
@@ -188,14 +202,7 @@ try {
         color: #111827;
         font-weight: 500;
     }
-
-    @media (max-width: 768px) {
-        .product-image { width: 28px; height: 28px; }
-    }
-    @media (max-width: 480px) {
-        .product-image { width: 20px; height: 20px; }
-    }
-
+ 
     /* Table responsive adjustments */
     .table-responsive {
         overflow-x: auto;
@@ -203,7 +210,8 @@ try {
     }
     
     #transaction-table {
-        min-width: 2400px;
+        width: 100%;
+        min-width: 100%;
         white-space: nowrap;
     }
     
@@ -237,6 +245,7 @@ try {
         --bs-table-bg: rgba(220, 53, 69, 0.05);
     }
     
+   
     .action-btn {
         padding: 0.375rem 0.5rem;
         font-size: 0.875rem;
@@ -334,6 +343,53 @@ try {
         letter-spacing: 0.5px;
         color: #6b7280;
     }
+
+
+    /* Mobile responsive adjustments */
+    @media (max-width: 768px) {
+        #receive-table {
+            width: 100%;
+        }
+        
+        #receive-table th,
+        #receive-table td {
+            padding: 0.5rem 0.25rem;
+            font-size: 0.85rem;
+        }
+        
+        .product-image {
+            width: 32px !important; 
+            height: 32px !important;
+            max-width: 32px !important; 
+            max-height: 32px !important;
+        }
+        
+        .badge {
+            font-size: 0.7rem !important;
+            padding: 0.25rem 0.4rem !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        #receive-table {
+            width: 100%;
+        }
+        
+        #receive-table th,
+        #receive-table td {
+            padding: 0.4rem 0.15rem;
+            font-size: 0.8rem;
+        }
+        
+        .product-image {
+            width: 24px !important; 
+            height: 24px !important;
+            max-width: 24px !important; 
+            max-height: 24px !important;
+        }
+    }
+    
+    
 </style>
 
 </head>

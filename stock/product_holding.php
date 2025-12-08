@@ -10,24 +10,21 @@ $sql_holding = "
         ph.holding_code,
         ph.product_id,
         p.name,
+        p.image,
         p.sku,
+        p.barcode,
         ph.original_sku,
         ph.new_sku,
         ph.holding_qty,
         ph.cost_price,
         ph.sale_price,
-        ph.promo_name,
-        ph.promo_discount,
         ph.expiry_date,
         ph.days_to_expire,
         ph.holding_reason,
         ph.status,
-        ph.created_at,
-        u.name as created_by_name,
-        ph.remark
+        ph.created_at
     FROM product_holding ph
     LEFT JOIN products p ON ph.product_id = p.product_id
-    LEFT JOIN users u ON ph.created_by = u.user_id
     WHERE ph.status = 'holding'
     ORDER BY ph.days_to_expire ASC, ph.created_at DESC
 ";
@@ -65,6 +62,20 @@ $stats = [
             background-color: #f8fafc;
         }
         
+    /* Full-width table styling */
+    .mainwrap .table-card {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .mainwrap .table-header,
+    .mainwrap .table-body {
+        width: 100%;
+        margin: 0;
+    }
+
+
         .stats-card {
             background: white;
             border-radius: 12px;
@@ -87,6 +98,27 @@ $stats = [
             color: #6b7280;
             font-size: 0.875rem;
             margin-top: 0.5rem;
+        }
+
+        .product-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .no-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 0.75rem;
+            border: 1px dashed #d1d5db;
         }
         
         .badge-status {
@@ -135,16 +167,6 @@ $stats = [
             color: white;
         }
         
-        .btn-delete {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .btn-delete:hover {
-            background: #dc2626;
-            color: white;
-        }
-        
         .urgency-critical {
             color: #dc2626;
             font-weight: 700;
@@ -154,6 +176,26 @@ $stats = [
             color: #f59e0b;
             font-weight: 600;
         }
+         .mainwrap .table-body {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mainwrap .table-body table {
+        min-width: 960px;
+    }
+
+    @media (max-width: 768px) {
+        .mainwrap .table-body table {
+            min-width: 720px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .mainwrap .table-body table {
+            min-width: 680px;
+        }
+    }
     </style>
 </head>
 <body>
@@ -214,23 +256,22 @@ $stats = [
                 <table id="holding-products-table" class="table modern-table table-striped table-hover">
                     <thead>
                         <tr>
-                            <th>รหัสอ้างอิง</th>
-                            <th>ชื่อสินค้า</th>
+                            <th style="width: 80px;">รูปภาพ</th>
                             <th>SKU</th>
-                            <th>จำนวน</th>
+                            <th>Barcode</th>
+                            <th class="text-center">จำนวน</th>
                             <th>ราคาต้นทุน</th>
                             <th>ราคาขาย</th>
-                            <th>โปรโมชั่น</th>
                             <th>วันหมดอายุ</th>
-                            <th>เหลือ (วัน)</th>
+                            <th class="text-center">เหลือ (วัน)</th>
                             <th>สถานะ</th>
-                            <th>จัดการ</th>
+                            <th class="text-center">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($holdingProducts)): ?>
                         <tr>
-                            <td colspan="11" class="text-center py-4">
+                            <td colspan="10" class="text-center py-4">
                                 <div class="d-flex flex-column align-items-center">
                                     <span class="material-icons mb-2" style="font-size: 3rem; color: #10b981;">check_circle</span>
                                     <h5 class="text-success">ยอดเยี่ยม!</h5>
@@ -242,63 +283,61 @@ $stats = [
                         <?php foreach ($holdingProducts as $product): ?>
                             <tr data-id="<?= $product['holding_id'] ?>">
                                 <td>
-                                    <span class="fw-bold text-primary"><?= htmlspecialchars($product['holding_code']) ?></span>
-                                </td>
-                                <td>
-                                    <strong><?= htmlspecialchars($product['name']) ?></strong>
-                                    <br>
-                                    <small class="text-muted">โดย: <?= htmlspecialchars($product['created_by_name']) ?></small>
+                                    <?php
+                                    $imagePath = '../images/noimg.png';
+                                    $hasImage = !empty($product['image']);
+                                    if ($hasImage) {
+                                        if (strpos($product['image'], 'images/') === 0) {
+                                            $imagePath = '../' . $product['image'];
+                                        } else {
+                                            $imagePath = '../images/' . $product['image'];
+                                        }
+                                    }
+                                    $displayName = $product['name'] ?? 'สินค้า';
+                                    $expiryDate = $product['expiry_date'] ?? null;
+                                    $isValidExpiry = !empty($expiryDate) && $expiryDate !== '0000-00-00';
+                                    ?>
+                                    <?php if ($hasImage): ?>
+                                        <img src="<?= htmlspecialchars($imagePath) ?>" alt="<?= htmlspecialchars($displayName) ?>" class="product-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="no-image" style="display: none;">ไม่มีรูป</div>
+                                    <?php else: ?>
+                                        <div class="no-image">ไม่มีรูป</div>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <span class="fw-bold"><?= htmlspecialchars($product['original_sku']) ?></span>
-                                    <?php if ($product['new_sku']): ?>
-                                    <br><span class="badge bg-success">→ <?= htmlspecialchars($product['new_sku']) ?></span>
+                                    <?php if (!empty($product['new_sku'])): ?>
+                                        <br><span class="badge bg-success">→ <?= htmlspecialchars($product['new_sku']) ?></span>
                                     <?php endif; ?>
                                 </td>
+                                <td><?= ($product['barcode'] !== null && $product['barcode'] !== '') ? htmlspecialchars($product['barcode']) : '-' ?></td>
                                 <td class="text-center">
                                     <span class="fw-bold text-primary"><?= number_format($product['holding_qty']) ?></span>
                                 </td>
-                                <td>
-                                    ฿<?= number_format($product['cost_price'], 2) ?>
-                                </td>
-                                <td>
-                                    <strong class="text-success">฿<?= number_format($product['sale_price'], 2) ?></strong>
-                                </td>
-                                <td>
-                                    <div class="small">
-                                        <strong><?= htmlspecialchars($product['promo_name']) ?></strong>
-                                        <br>
-                                        <span class="text-danger">ลด <?= $product['promo_discount'] ?>%</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <?= date("d/m/Y", strtotime($product['expiry_date'])) ?>
-                                </td>
+                                <td>฿<?= number_format($product['cost_price'], 2) ?></td>
+                                <td><strong class="text-success">฿<?= number_format($product['sale_price'], 2) ?></strong></td>
+                                <td><?= $isValidExpiry ? date('d/m/Y', strtotime($expiryDate)) : '-' ?></td>
                                 <td class="text-center">
-                                    <?php if ($product['days_to_expire'] <= 7): ?>
-                                    <span class="urgency-critical"><?= $product['days_to_expire'] ?> วัน</span>
-                                    <?php elseif ($product['days_to_expire'] <= 30): ?>
-                                    <span class="urgency-warning"><?= $product['days_to_expire'] ?> วัน</span>
+                                    <?php if ($product['days_to_expire'] !== null && $product['days_to_expire'] <= 7): ?>
+                                        <span class="urgency-critical"><?= $product['days_to_expire'] ?> วัน</span>
+                                    <?php elseif ($product['days_to_expire'] !== null && $product['days_to_expire'] <= 30): ?>
+                                        <span class="urgency-warning"><?= $product['days_to_expire'] ?> วัน</span>
+                                    <?php elseif ($product['days_to_expire'] !== null): ?>
+                                        <span class="text-success"><?= $product['days_to_expire'] ?> วัน</span>
                                     <?php else: ?>
-                                    <span class="text-success"><?= $product['days_to_expire'] ?> วัน</span>
+                                        <span class="text-muted">-</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
                                     <span class="badge-status badge-holding">พักไว้</span>
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     <div class="btn-group btn-group-sm" role="group">
-                                        <button type="button" class="action-btn btn-edit" 
-                                                onclick="editHolding(<?= $product['holding_id'] ?>, '<?= htmlspecialchars($product['new_sku'] ?: $product['original_sku']) ?>', <?= $product['sale_price'] ?>, '<?= htmlspecialchars($product['holding_reason']) ?>', '<?= $product['expiry_date'] ?>')">
+                                        <button type="button" class="action-btn btn-edit" onclick="editHolding(<?= (int)$product['holding_id'] ?>, <?= htmlspecialchars(json_encode($product['new_sku'] ?: $product['original_sku']), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode((string)$product['sale_price']), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($product['holding_reason'] ?? ''), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($expiryDate ?? ''), ENT_QUOTES, 'UTF-8') ?>)">
                                             <span class="material-icons" style="font-size: 1rem;">edit</span>
                                         </button>
-                                        <button type="button" class="action-btn btn-move-sale"
-                                                onclick="moveToSale(<?= $product['holding_id'] ?>, '<?= htmlspecialchars($product['new_sku'] ?: $product['original_sku']) ?>', this)">
+                                        <button type="button" class="action-btn btn-move-sale" onclick="moveToSale(<?= (int)$product['holding_id'] ?>, <?= htmlspecialchars(json_encode($product['new_sku'] ?: $product['original_sku']), ENT_QUOTES, 'UTF-8') ?>, this)">
                                             <span class="material-icons" style="font-size: 1rem;">shopping_cart</span>
-                                        </button>
-                                        <button type="button" class="action-btn btn-delete"
-                                                onclick="deleteHolding(<?= $product['holding_id'] ?>, '<?= htmlspecialchars($product['holding_code']) ?>')">
-                                            <span class="material-icons" style="font-size: 1rem;">delete</span>
                                         </button>
                                     </div>
                                 </td>
@@ -328,7 +367,7 @@ $(document).ready(function() {
         language: 'th',
         exportButtons: true,
         batchOperations: false,
-        defaultOrder: [[8, 'asc']] // Sort by days to expire
+        defaultOrder: [[7, 'asc']] // Sort by days to expire
     });
 });
 
@@ -511,62 +550,6 @@ function executeMoveSale(holdingId) {
     });
 }
 
-// ลบสินค้าพัก
-function deleteHolding(holdingId, holdingCode) {
-    Swal.fire({
-        title: '🗑️ ลบสินค้าพัก',
-        html: `
-            <div style="text-align: left;">
-                <p>คุณต้องการลบรหัส: <strong>${holdingCode}</strong> หรือไม่?</p>
-                <div class="alert alert-warning" role="alert">
-                    <small>⚠️ การดำเนินการนี้จะคืนสินค้าไปยังตารางรับเข้าต้นฉบับ</small>
-                </div>
-            </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: '✅ ลบเลย',
-        cancelButtonText: '❌ ยกเลิก',
-        confirmButtonColor: '#ef4444'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            executeDelete(holdingId);
-        }
-    });
-}
-
-// ทำการลบ
-function executeDelete(holdingId) {
-    Swal.fire({
-        title: 'กำลังประมวลผล...',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
-    
-    $.ajax({
-        url: '../api/delete_product_holding.php',
-        method: 'POST',
-        dataType: 'json',
-        data: JSON.stringify({ holding_id: holdingId }),
-        contentType: 'application/json',
-        success: function(response) {
-            if (response.success) {
-                Swal.fire('สำเร็จ!', response.message, 'success').then(() => {
-                    location.reload();
-                });
-            } else {
-                Swal.fire('ข้อผิดพลาด', response.message, 'error');
-            }
-        },
-        error: function(xhr) {
-            let errorMsg = 'เกิดข้อผิดพลาด';
-            try {
-                const response = JSON.parse(xhr.responseText);
-                errorMsg = response.message;
-            } catch (e) {}
-            Swal.fire('ข้อผิดพลาด', errorMsg, 'error');
-        }
-    });
-}
 </script>
 
 </body>

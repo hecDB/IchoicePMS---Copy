@@ -184,26 +184,26 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
 /* Full-width table styling */
-.table-card {
-    width: 100%;          /* ทำให้เต็มความกว้าง */
-    margin: 0;            /* ล้าง margin ที่ดันเข้าด้านใน */
-    padding: 0;
-    border-radius: 0;
-}
+        .table-card {
+            width: 100%;          /* ทำให้เต็มความกว้าง */
+            margin: 0;            /* ล้าง margin ที่ดันเข้าด้านใน */
+            padding: 0;
+            border-radius: 0;
+        }
 
-.table-header {
-    width: 100%;
-    margin: 0;
-    padding: 1.5rem;
-}
+        .table-header {
+            width: 100%;
+            margin: 0;
+            padding: 1.5rem;
+        }
 
-.table-body {
-    width: 100%;
-    margin: 0;
-    padding: 0 1.5rem;
-}
+        .table-body {
+            width: 100%;
+            margin: 0;
+            padding: 0 1.5rem;
+        }
 
-    
+            
     #receive-table {
         width: 100%;
         white-space: normal;
@@ -371,6 +371,34 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         color: rgba(255, 255, 255, 0.8);
     }
     
+    .stats-card.filter-card {
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .stats-card.filter-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12);
+    }
+
+    .stats-card.filter-card.active {
+        outline: 3px solid rgba(59, 130, 246, 0.35);
+        box-shadow: 0 16px 32px rgba(37, 99, 235, 0.2);
+    }
+
+    .status-filter-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.85rem;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-weight: 600;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        white-space: nowrap;
+    }
+
     .dataTables_length select {
         border: 1px solid #d1d5db;
         border-radius: 0.375rem;
@@ -697,7 +725,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- Stats Cards -->
         <div class="row mb-4">
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-primary">
+                <div class="stats-card stats-primary filter-card active" data-filter="all" role="button" tabindex="0" aria-pressed="true">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -714,7 +742,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
 
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-success">
+                <div class="stats-card stats-success filter-card" data-filter="receive" role="button" tabindex="0" aria-pressed="false">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -731,7 +759,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
 
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-danger">
+                <div class="stats-card stats-danger filter-card" data-filter="issue" role="button" tabindex="0" aria-pressed="false">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -748,7 +776,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
 
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-info">
+                <div class="stats-card stats-info filter-card" data-filter="today" role="button" tabindex="0" aria-pressed="false">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -782,6 +810,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <input type="text" class="form-control" id="custom-search" placeholder="ค้นหาในตาราง...">
                             </div>
                         </div>
+                        <span id="status-filter-label" class="status-filter-pill me-3">แสดง: ทั้งหมด</span>
                         <button class="btn-modern btn-modern-secondary btn-sm refresh-table" onclick="refreshTableData()">
                             <span class="material-icons">refresh</span>
                             รีเฟรช
@@ -830,6 +859,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             data-expiry="<?= isset($row['expiry_date']) && $row['expiry_date'] ? date('Y-m-d', strtotime($row['expiry_date'])) : '' ?>"
                             data-po-number="<?= htmlspecialchars($row['po_number'] ?? '') ?>"
                             data-transaction-type="<?= htmlspecialchars($row['transaction_type']) ?>"
+                            data-created-date="<?= date('Y-m-d', strtotime($row['created_at'])) ?>"
                             class="<?= $row['transaction_type'] === 'issue' ? 'table-danger' : '' ?>">
                             <!-- 1. Image -->
                             <td>
@@ -1003,6 +1033,44 @@ $(document).ready(function() {
     console.log('jQuery version:', $.fn.jquery);
     console.log('DataTable available:', typeof $.fn.DataTable);
     console.log('Found table element:', $('#receive-table').length);
+
+    const todayString = '<?= date('Y-m-d'); ?>';
+    let statusFilter = 'all';
+    const statusFilterLabels = {
+        all: 'แสดง: ทั้งหมด',
+        receive: 'แสดง: รายการรับ',
+        issue: 'แสดง: รายการออก',
+        today: 'แสดง: รายการวันนี้'
+    };
+
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+        if (!settings.nTable || settings.nTable.id !== 'receive-table') {
+            return true;
+        }
+
+        if (statusFilter === 'all') {
+            return true;
+        }
+
+        const rowData = settings.aoData[dataIndex] || {};
+        const rowNode = rowData.nTr || null;
+
+        if (!rowNode) {
+            return true;
+        }
+
+        const $row = $(rowNode);
+
+        if (statusFilter === 'receive' || statusFilter === 'issue') {
+            return $row.data('transaction-type') === statusFilter;
+        }
+
+        if (statusFilter === 'today') {
+            return $row.data('created-date') === todayString;
+        }
+
+        return true;
+    });
     
     // Function to bind action button events (delete functionality removed)
     window.bindEditButtonEvents = function() {
@@ -1097,6 +1165,41 @@ $(document).ready(function() {
         }
     });
     
+    const $statusFilterLabel = $('#status-filter-label');
+
+    function updateStatusFilterLabel(filterKey) {
+        const label = statusFilterLabels[filterKey] || statusFilterLabels.all;
+        $statusFilterLabel.text(label);
+    }
+
+    function applyStatusFilter(filterKey) {
+        statusFilter = filterKey || 'all';
+        $('.stats-card.filter-card').removeClass('active').attr('aria-pressed', 'false');
+        const $card = $(`.stats-card.filter-card[data-filter="${statusFilter}"]`);
+        if ($card.length) {
+            $card.addClass('active').attr('aria-pressed', 'true');
+        }
+        updateStatusFilterLabel(statusFilter);
+        if (receiveTable && typeof receiveTable.draw === 'function') {
+            receiveTable.draw();
+        }
+    }
+
+    $(document).on('click', '.stats-card.filter-card', function() {
+        const filterKey = $(this).data('filter') || 'all';
+        applyStatusFilter(filterKey);
+    });
+
+    $(document).on('keydown', '.stats-card.filter-card', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const filterKey = $(this).data('filter') || 'all';
+            applyStatusFilter(filterKey);
+        }
+    });
+
+    updateStatusFilterLabel(statusFilter);
+
     // Fallback event handler using event delegation
     $(document).on('click', '.edit-btn', function(e) {
         e.preventDefault();

@@ -130,10 +130,25 @@ $fully_received = count(array_filter($all_pos, function($po) {
             background-color: #f8fafc;
         }
 
+            /* Full-width table styling */
+                .mainwrap .table-card {
+                    width: 100%;
+                    max-width: 100%;
+                    margin: 0;
+                }
+
+                .mainwrap .table-header,
+                .mainwrap .table-body {
+                    width: 100%;
+                    margin: 0;
+                }
+
+
+
         .po-card {
             border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            margin-bottom: 1rem;
+            border-radius: 10px;
+            margin-bottom: 0.75rem;
             background: white;
             transition: all 0.3s ease;
         }
@@ -144,10 +159,22 @@ $fully_received = count(array_filter($all_pos, function($po) {
         }
 
         .po-card-header {
-            padding: 1rem 1.25rem;
+            padding: 0.75rem 1rem;
             border-bottom: 1px solid #f1f5f9;
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            border-radius: 12px 12px 0 0;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .po-card .card-body {
+            padding: 0.75rem 1rem;
+        }
+
+        .po-card h6 {
+            font-size: 0.95rem;
+        }
+
+        .po-card .small {
+            font-size: 0.75rem;
         }
 
         .po-status-badge {
@@ -548,7 +575,7 @@ $fully_received = count(array_filter($all_pos, function($po) {
                     <p class="text-muted mb-0">ไม่มีใบสั่งซื้อปกติที่ต้องรับสินค้า</p>
                 </div>
                 <?php else: ?>
-                <div class="row">
+                <div class="row g-3">
                     <?php foreach ($purchase_orders as $po): ?>
                     <?php
                     // คำนวณเปอร์เซ็นต์จากจำนวนที่รับจริง เทียบกับจำนวนที่สั่ง
@@ -571,7 +598,7 @@ $fully_received = count(array_filter($all_pos, function($po) {
                         $progress_class = 'progress-complete';
                     }
                     ?>
-                    <div class="col-lg-6 col-xl-4 mb-4 po-card-container" data-filter-status="<?php 
+                    <div class="col-sm-6 col-lg-4 col-xl-3 mb-3 po-card-container" data-filter-status="<?php 
                         if ($completion_rate == 0) echo 'ready';
                         elseif ($completion_rate < 100) echo 'partial';
                         else echo 'complete';
@@ -582,6 +609,7 @@ $fully_received = count(array_filter($all_pos, function($po) {
                                     <div>
                                         <h6 class="mb-1 fw-bold"><?= htmlspecialchars($po['po_number']) ?></h6>
                                         <div class="small text-muted"><?= date('d/m/Y', strtotime($po['po_date'])) ?></div>
+                                          <div class="small text-muted">ซื้อจาก : <?= htmlspecialchars($po['supplier_name']) ?></div>
                                     </div>
                                     <span class="po-status-badge <?= $status_class ?>"><?= $status_text ?></span>
                                 </div>
@@ -589,8 +617,8 @@ $fully_received = count(array_filter($all_pos, function($po) {
                             
                             <div class="card-body">
                                 <div class="d-flex gap-2">
-                                    <button type="button" 
-                                            class="btn btn-outline-primary flex-fill view-po-btn"
+                                        <button type="button" 
+                                            class="btn btn-outline-primary btn-sm w-100 view-po-btn"
                                             data-po-id="<?= $po['po_id'] ?>"
                                             data-po-number="<?= htmlspecialchars($po['po_number']) ?>"
                                             data-supplier="<?= htmlspecialchars($po['supplier_name']) ?>"
@@ -627,7 +655,7 @@ $fully_received = count(array_filter($all_pos, function($po) {
                 </div>
             </div>
             <div class="table-body">
-                <div class="row">
+                <div class="row g-3">
                     <?php foreach ($new_product_orders as $po): ?>
                     <?php
                     // คำนวณเปอร์เซ็นต์จากจำนวนที่รับจริง เทียบกับจำนวนที่สั่ง
@@ -650,7 +678,7 @@ $fully_received = count(array_filter($all_pos, function($po) {
                         $progress_class = 'progress-complete';
                     }
                     ?>
-                    <div class="col-lg-6 col-xl-4 mb-4 po-card-container" data-filter-status="<?php 
+                    <div class="col-sm-6 col-lg-4 col-xl-3 mb-3 po-card-container" data-filter-status="<?php 
                         if ($completion_rate == 0) echo 'ready';
                         elseif ($completion_rate < 100) echo 'partial';
                         else echo 'complete';
@@ -661,6 +689,7 @@ $fully_received = count(array_filter($all_pos, function($po) {
                                     <div>
                                         <h6 class="mb-1 fw-bold"><?= htmlspecialchars($po['po_number']) ?></h6>
                                         <div class="small text-muted"><?= date('d/m/Y', strtotime($po['po_date'])) ?></div>
+                                       <div class="small text-muted">ซื้อจาก : <?= htmlspecialchars($po['supplier_name']) ?></div>
                                         <span class="badge bg-warning text-dark" style="font-size: 0.7rem; margin-top: 3px;">สินค้าใหม่</span>
                                     </div>
                                     <span class="po-status-badge <?= $status_class ?>"><?= $status_text ?></span>
@@ -669,8 +698,8 @@ $fully_received = count(array_filter($all_pos, function($po) {
                             
                             <div class="card-body">
                                 <div class="d-flex gap-2">
-                                    <button type="button" 
-                                            class="btn btn-outline-success flex-fill view-po-btn"
+                                        <button type="button" 
+                                            class="btn btn-outline-success btn-sm w-100 view-po-btn"
                                             data-po-id="<?= $po['po_id'] ?>"
                                             data-po-number="<?= htmlspecialchars($po['po_number']) ?>"
                                             data-supplier="<?= htmlspecialchars($po['supplier_name']) ?>"
@@ -2258,25 +2287,25 @@ function displayCompletedPOs(completedPOs) {
             const hasCancelled = parseFloat(po.total_cancelled_qty || 0) > 0;
             
             html += `
-                <div class="col-lg-6 col-xl-4 mb-4">
-                    <div class="po-card" style="opacity: 0.8; border-left: 4px solid #10b981;">
+                <div class="col-sm-6 col-lg-4 col-xl-3 mb-3">
+                    <div class="po-card" style="opacity: 0.85; border-left: 4px solid #10b981;">
                         <div class="po-card-header">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div style="flex: 1;">
-                                    <h6 class="mb-1 fw-bold">${escapeHtml(po.po_number)}</h6>
-                                    <p class="text-muted mb-1 small">${escapeHtml(po.supplier_name)}</p>
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div style="flex: 1; min-width: 0;">
+                                    <h6 class="mb-1 fw-bold" style="font-size: 0.95rem;">${escapeHtml(po.po_number)}</h6>
+                                    <p class="text-muted mb-1 small" style="font-size: 0.75rem;">${escapeHtml(po.supplier_name)}</p>
                                     <div class="small text-muted">${formatDate(po.po_date)}</div>
                                 </div>
                                 <div class="text-end" style="margin-left: 10px;">
-                                    <span class="po-status-badge status-received d-block mb-2">รับครบแล้ว</span>
-                                    ${hasCancelled ? `<span class="material-icons" style="color: #f59e0b; font-size: 1.8rem;" title="มีรายการที่ถูกยกเลิก">warning</span>` : ''}
+                                    <span class="po-status-badge status-received d-block mb-2" style="font-size: 0.7rem;">รับครบแล้ว</span>
+                                    ${hasCancelled ? `<span class="material-icons" style="color: #f59e0b; font-size: 1.4rem;" title="มีรายการที่ถูกยกเลิก">warning</span>` : ''}
                                 </div>
                             </div>
                         </div>
                         
                         <div class="card-body">
                             <button type="button" 
-                                    class="btn btn-primary w-100 view-po-btn"
+                                    class="btn btn-primary btn-sm w-100 view-po-btn"
                                     data-po-id="${po.po_id}"
                                     data-po-number="${escapeHtml(po.po_number)}"
                                     data-supplier="${escapeHtml(po.supplier_name)}"
@@ -2293,7 +2322,7 @@ function displayCompletedPOs(completedPOs) {
     }
     
     // Create a new wrapper for completed POs with unique id
-    const completedContainer = `<div class="row" id="completedPOsRow">${html}</div>`;
+    const completedContainer = `<div class="row g-3" id="completedPOsRow">${html}</div>`;
     
     // Get the table-body element
     const tableBody = $('.table-body').first();

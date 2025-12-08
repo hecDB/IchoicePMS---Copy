@@ -3,8 +3,8 @@ session_start();
 include '../config/db_connect.php';
 include '../templates/sidebar.php';
 
-// ====== สินค้าใกล้หมดอายุ (ใน 90 วัน) ======
-$ninety_days_later = date('Y-m-d', strtotime('+90 days'));
+// ====== สินค้าใกล้หมดอายุ (ใน 300 วัน) ======
+$three_hundred_days_later = date('Y-m-d', strtotime('+300 days'));
 $today = date('Y-m-d');
 
 $sql_expiring_soon = "
@@ -19,21 +19,21 @@ $sql_expiring_soon = "
         ri.expiry_date,
         DATEDIFF(ri.expiry_date, CURDATE()) as days_to_expire,
         CASE 
-            WHEN DATEDIFF(ri.expiry_date, CURDATE()) <= 7 THEN 'critical'
-            WHEN DATEDIFF(ri.expiry_date, CURDATE()) <= 30 THEN 'warning'
-            WHEN DATEDIFF(ri.expiry_date, CURDATE()) <= 60 THEN 'caution'
+            WHEN DATEDIFF(ri.expiry_date, CURDATE()) < 240 THEN 'critical'
+            WHEN DATEDIFF(ri.expiry_date, CURDATE()) < 270 THEN 'warning'
+            WHEN DATEDIFF(ri.expiry_date, CURDATE()) <= 300 THEN 'caution'
             ELSE 'normal'
         END as expiry_status
     FROM products p
     LEFT JOIN purchase_order_items poi ON poi.product_id = p.product_id
     LEFT JOIN receive_items ri ON ri.item_id = poi.item_id
     WHERE ri.expiry_date IS NOT NULL 
-      AND ri.expiry_date BETWEEN ? AND ?
+        AND ri.expiry_date BETWEEN ? AND ?
       AND ri.receive_qty > 0
     ORDER BY ri.expiry_date ASC, p.name ASC
 ";
 $stmt = $pdo->prepare($sql_expiring_soon);
-$stmt->execute([$today, $ninety_days_later]);
+$stmt->execute([$today, $three_hundred_days_later]);
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get statistics
@@ -68,6 +68,20 @@ $stats = [
             background-color: #f8fafc;
         }
         
+           /* Full-width table styling */
+            .mainwrap .table-card {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+            }
+
+            .mainwrap .table-header,
+            .mainwrap .table-body {
+                width: 100%;
+                margin: 0;
+            }
+
+    
         .product-image {
             width: 40px;
             height: 40px;
@@ -102,6 +116,42 @@ $stats = [
         .expiry-normal { 
             background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
             color: #0277bd;
+        }
+
+        .stats-card-grid {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        @media (min-width: 1200px) {
+            .stats-card-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+
+        .stats-card-item {
+            display: flex;
+        }
+
+        .stats-card.filter-card {
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            flex: 1 1 auto;
+        }
+
+        .stats-card.filter-card .stats-card-body {
+            padding: 1rem 1.25rem;
+        }
+
+        .stats-card.filter-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+        }
+
+        .stats-card.filter-card.active {
+            outline: 3px solid rgba(59, 130, 246, 0.35);
+            box-shadow: 0 16px 32px rgba(37, 99, 235, 0.2);
         }
 
         .days-remaining {
@@ -140,6 +190,27 @@ $stats = [
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
         }
+
+         .mainwrap .table-body {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        }
+
+        .mainwrap .table-body table {
+            min-width: 960px;
+        }
+
+        @media (max-width: 768px) {
+            .mainwrap .table-body table {
+                min-width: 720px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .mainwrap .table-body table {
+                min-width: 680px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -156,7 +227,7 @@ $stats = [
                 <div>
                     <h6 class="mb-1 text-danger fw-bold">สินค้าวิกฤต!</h6>
                     <p class="mb-0 text-danger">
-                        พบสินค้าที่หมดอายุใน 7 วันข้างหน้า จำนวน <?= $stats['critical'] ?> รายการ ต้องดำเนินการด่วน
+                        พบสินค้าที่จะหมดอายุภายใน 240 วัน จำนวน <?= $stats['critical'] ?> รายการ ต้องดำเนินการด่วน
                     </p>
                 </div>
             </div>
@@ -170,14 +241,14 @@ $stats = [
                     <span class="material-icons align-middle me-2" style="font-size: 2rem; color: #f59e0b;">schedule</span>
                     สินค้าใกล้หมดอายุ
                 </h1>
-                <p class="text-muted mb-0">รายการสินค้าที่จะหมดอายุภายใน 90 วัน</p>
+                <p class="text-muted mb-0">รายการสินค้าที่จะหมดอายุภายใน 300 วัน (ประมาณ 10 เดือน)</p>
             </div>
         </div>
 
         <!-- Stats Cards -->
-        <div class="row mb-4">
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-warning">
+        <div class="stats-card-grid mb-4">
+            <div class="stats-card-item">
+                <div class="stats-card stats-warning filter-card active" data-filter="all" data-search="" role="button" tabindex="0" aria-pressed="true">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -193,14 +264,14 @@ $stats = [
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-danger">
+            <div class="stats-card-item">
+                <div class="stats-card stats-danger filter-card" data-filter="critical" data-search="วิกฤต" role="button" tabindex="0" aria-pressed="false">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
                                 <div class="stats-title">วิกฤต</div>
                                 <div class="stats-value"><?= number_format($stats['critical']) ?></div>
-                                <div class="stats-subtitle">≤ 7 วัน</div>
+                                <div class="stats-subtitle">น้อยกว่า 240 วัน</div>
                             </div>
                             <div class="col-auto">
                                 <i class="material-icons stats-icon">priority_high</i>
@@ -210,14 +281,14 @@ $stats = [
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-warning">
+            <div class="stats-card-item">
+                <div class="stats-card stats-warning filter-card" data-filter="warning" data-search="เตือน" role="button" tabindex="0" aria-pressed="false">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
                                 <div class="stats-title">ใกล้หมดอายุ</div>
                                 <div class="stats-value"><?= number_format($stats['warning']) ?></div>
-                                <div class="stats-subtitle">8-30 วัน</div>
+                                <div class="stats-subtitle">240-269 วัน</div>
                             </div>
                             <div class="col-auto">
                                 <i class="material-icons stats-icon">warning</i>
@@ -227,17 +298,34 @@ $stats = [
                 </div>
             </div>
 
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-info">
+            <div class="stats-card-item">
+                <div class="stats-card stats-info filter-card" data-filter="caution" data-search="ระวัง" role="button" tabindex="0" aria-pressed="false">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
                                 <div class="stats-title">ต้องติดตาม</div>
                                 <div class="stats-value"><?= number_format($stats['caution']) ?></div>
-                                <div class="stats-subtitle">31-90 วัน</div>
+                                <div class="stats-subtitle">270-300 วัน</div>
                             </div>
                             <div class="col-auto">
                                 <i class="material-icons stats-icon">info</i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-card-item">
+                <div class="stats-card stats-success filter-card" data-filter="normal" data-search="ปกติ" role="button" tabindex="0" aria-pressed="false">
+                    <div class="stats-card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="stats-title">ปลอดภัย</div>
+                                <div class="stats-value"><?= number_format($stats['normal']) ?></div>
+                                <div class="stats-subtitle">มากกว่า 300 วัน</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="material-icons stats-icon">check_circle</i>
                             </div>
                         </div>
                     </div>
@@ -291,7 +379,7 @@ $stats = [
                                 <div class="d-flex flex-column align-items-center">
                                     <span class="material-icons mb-2" style="font-size: 3rem; color: #10b981;">check_circle</span>
                                     <h5 class="text-success">ยอดเยี่ยม! ไม่มีสินค้าใกล้หมดอายุ</h5>
-                                    <p class="text-muted mb-0">สินค้าทั้งหมดยังไม่หมดอายุใน 90 วันข้างหน้า</p>
+                                    <p class="text-muted mb-0">สินค้าทั้งหมดยังไม่หมดอายุใน 300 วันข้างหน้า</p>
                                 </div>
                             </td>
                         </tr>
@@ -350,19 +438,19 @@ $stats = [
                                     $status_class = '';
                                     switch ($product['expiry_status']) {
                                         case 'critical':
-                                            $status_text = 'วิกฤต';
+                                            $status_text = 'วิกฤต (<240 วัน)';
                                             $status_class = 'expiry-critical';
                                             break;
                                         case 'warning':
-                                            $status_text = 'เตือน';
+                                            $status_text = 'เตือน (240-269 วัน)';
                                             $status_class = 'expiry-warning';
                                             break;
                                         case 'caution':
-                                            $status_text = 'ระวัง';
+                                            $status_text = 'ระวัง (270-300 วัน)';
                                             $status_class = 'expiry-caution';
                                             break;
                                         case 'normal':
-                                            $status_text = 'ปกติ';
+                                            $status_text = 'ปกติ (>300 วัน)';
                                             $status_class = 'expiry-normal';
                                             break;
                                     }
@@ -591,10 +679,47 @@ $(document).ready(function() {
         });
     }
 
+    const statusColumnIndex = 8;
+
+    function setActiveCard($card) {
+        $('.filter-card').removeClass('active').attr('aria-pressed', 'false');
+        if ($card && $card.length) {
+            $card.addClass('active').attr('aria-pressed', 'true');
+        }
+    }
+
+    function applyStatusFilter(filterKey) {
+        const $targetCard = $(`.filter-card[data-filter="${filterKey}"]`);
+        const searchTerm = ($targetCard.data('search') || '').toString();
+
+        if (searchTerm) {
+            expiringTable.table.column(statusColumnIndex).search(searchTerm, false, true).draw();
+        } else {
+            expiringTable.table.column(statusColumnIndex).search('', false, true).draw();
+        }
+
+        setActiveCard($targetCard.length ? $targetCard : $('.filter-card[data-filter="all"]'));
+    }
+
+    $(document).on('click', '.filter-card', function() {
+        const filterKey = $(this).data('filter') || 'all';
+        applyStatusFilter(filterKey);
+    });
+
+    $(document).on('keydown', '.filter-card', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const filterKey = $(this).data('filter') || 'all';
+            applyStatusFilter(filterKey);
+        }
+    });
+
     // Auto-filter to critical items if coming from dashboard notification
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('filter') === 'critical') {
-        expiringTable.search('วิกฤต');
+    if (urlParams.has('filter')) {
+        applyStatusFilter(urlParams.get('filter'));
+    } else {
+        applyStatusFilter('all');
     }
 
     // Auto-refresh every 60 minutes for expiry monitoring

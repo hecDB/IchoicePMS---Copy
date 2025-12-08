@@ -58,6 +58,21 @@ $stats = [
             background-color: #f8fafc;
         }
         
+        
+    /* Full-width table styling */
+    .mainwrap .table-card {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .mainwrap .table-header,
+    .mainwrap .table-body {
+        width: 100%;
+        margin: 0;
+    }
+
+    
         .product-image {
             width: 40px;
             height: 40px;
@@ -79,8 +94,8 @@ $stats = [
         }
         
         .stock-critical { 
-            background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
-            color: #c53030;
+            background: linear-gradient(135deg, #ffe7d4 0%, #ff9d42 100%);
+            color: #c2410c;
         }
         
         .stock-low { 
@@ -108,6 +123,33 @@ $stats = [
             border-radius: 8px;
             padding: 1rem;
             margin-bottom: 1.5rem;
+        }
+
+        .stats-card.filter-card {
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .stats-card.filter-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+        }
+
+        .stats-card.filter-card.active {
+            outline: 3px solid rgba(59, 130, 246, 0.35);
+            box-shadow: 0 16px 32px rgba(37, 99, 235, 0.2);
+        }
+
+        .status-filter-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.35rem 0.85rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-weight: 600;
+            border: 1px solid rgba(59, 130, 246, 0.2);
         }
 
         /* Checkbox styling */
@@ -159,6 +201,51 @@ $stats = [
             margin-bottom: 1rem;
             border: 1px solid #e5e7eb;
         }
+/* Mobile responsive adjustments */
+    @media (max-width: 768px) {
+        #receive-table {
+            width: 100%;
+        }
+        
+        #receive-table th,
+        #receive-table td {
+            padding: 0.5rem 0.25rem;
+            font-size: 0.85rem;
+        }
+        
+        .product-image {
+            width: 32px !important; 
+            height: 32px !important;
+            max-width: 32px !important; 
+            max-height: 32px !important;
+        }
+        
+        .badge {
+            font-size: 0.7rem !important;
+            padding: 0.25rem 0.4rem !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        #receive-table {
+            width: 100%;
+        }
+        
+        #receive-table th,
+        #receive-table td {
+            padding: 0.4rem 0.15rem;
+            font-size: 0.8rem;
+        }
+        
+        .product-image {
+            width: 24px !important; 
+            height: 24px !important;
+            max-width: 24px !important; 
+            max-height: 24px !important;
+        }
+    }
+    
+                
 	</style>
 </head>
 <body>
@@ -206,7 +293,7 @@ $stats = [
         <!-- Stats Cards -->
         <div class="row mb-4">
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-warning">
+                <div class="stats-card stats-warning filter-card active" data-filter="all" role="button" tabindex="0" aria-pressed="true">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -223,7 +310,7 @@ $stats = [
             </div>
 
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-danger">
+                <div class="stats-card stats-danger filter-card" data-filter="out" role="button" tabindex="0" aria-pressed="false">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -240,7 +327,7 @@ $stats = [
             </div>
 
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-danger">
+                <div class="stats-card stats-danger filter-card" data-filter="critical" role="button" tabindex="0" aria-pressed="false">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -257,7 +344,7 @@ $stats = [
             </div>
 
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-warning">
+                <div class="stats-card stats-warning filter-card" data-filter="low" role="button" tabindex="0" aria-pressed="false">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -283,6 +370,7 @@ $stats = [
                         รายการสินค้าสต็อกต่ำ (<?= count($products) ?> รายการ)
                     </h5>
                     <div class="table-actions">
+                        <span id="statusFilterLabel" class="status-filter-pill me-2">แสดง: ทั้งหมด</span>
                         <button class="btn-modern btn-modern-secondary btn-sm refresh-table me-2" onclick="location.reload()">
                             <span class="material-icons">refresh</span>
                             รีเฟรช
@@ -337,7 +425,8 @@ $stats = [
                             data-sku="<?= htmlspecialchars($row['sku']) ?>"
                             data-barcode="<?= htmlspecialchars($row['barcode']) ?>"
                             data-unit="<?= htmlspecialchars($row['unit']) ?>"
-                            data-current-qty="<?= $row['total_qty'] ?>">
+                            data-current-qty="<?= $row['total_qty'] ?>"
+                            data-stock-status="<?= htmlspecialchars($row['stock_status']) ?>">
                             <td class="text-center">
                                 <input type="checkbox" class="form-check-input product-checkbox" 
                                        value="<?= $row['product_id'] ?>">
@@ -434,6 +523,34 @@ $stats = [
 <script src="../assets/modern-table.js"></script>
 
 <script>
+let lowStockTableInstance;
+let statusFilter = 'all';
+const statusFilterLabels = {
+    all: 'แสดง: ทั้งหมด',
+    out: 'แสดง: สินค้าหมด',
+    critical: 'แสดง: สต็อกวิกฤต',
+    low: 'แสดง: สต็อกต่ำ'
+};
+
+$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+    if (!settings.nTable || settings.nTable.id !== 'product-table') {
+        return true;
+    }
+
+    if (statusFilter === 'all') {
+        return true;
+    }
+
+    const rowData = settings.aoData[dataIndex] || {};
+    const rowNode = rowData.nTr || null;
+    if (!rowNode) {
+        return true;
+    }
+
+    const rowStatus = $(rowNode).data('stock-status');
+    return rowStatus === statusFilter;
+});
+
 // Update selection UI
 function updateSelectionUI() {
     const selectedCount = $('.product-checkbox:checked:not(#selectAllProducts)').length;
@@ -466,6 +583,49 @@ function updateSelectionUI() {
 }
 
 $(document).ready(function() {
+    const $statusFilterLabel = $('#statusFilterLabel');
+
+    function updateStatusFilterLabelDisplay(filterKey) {
+        const label = statusFilterLabels[filterKey] || statusFilterLabels.all;
+        $statusFilterLabel.text(label);
+    }
+
+    function applyStatusFilter(filterKey) {
+        let key = filterKey || 'all';
+        let $targetCard = $(`.stats-card.filter-card[data-filter="${key}"]`);
+        if (!$targetCard.length) {
+            key = 'all';
+            $targetCard = $('.stats-card.filter-card[data-filter="all"]').first();
+        }
+
+        statusFilter = key;
+        $('.stats-card.filter-card').removeClass('active').attr('aria-pressed', 'false');
+        if ($targetCard.length) {
+            $targetCard.addClass('active').attr('aria-pressed', 'true');
+        }
+
+        updateStatusFilterLabelDisplay(statusFilter);
+
+        if (lowStockTableInstance && lowStockTableInstance.table) {
+            lowStockTableInstance.table.draw();
+        }
+    }
+
+    $(document).on('click', '.stats-card.filter-card', function() {
+        const filterKey = $(this).data('filter') || 'all';
+        applyStatusFilter(filterKey);
+    });
+
+    $(document).on('keydown', '.stats-card.filter-card', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const filterKey = $(this).data('filter') || 'all';
+            applyStatusFilter(filterKey);
+        }
+    });
+
+    applyStatusFilter(statusFilter);
+
     // Show alerts for critical items
     <?php if ($stats['out_of_stock'] > 0): ?>
     setTimeout(function() {
@@ -480,12 +640,17 @@ $(document).ready(function() {
 
     // Initialize low stock table with modern template - AFTER delayed to avoid event issues
     setTimeout(function() {
-        const lowStockTable = new ModernTable('product-table', {
+        lowStockTableInstance = new ModernTable('product-table', {
             pageLength: 50,
             language: 'th',
             exportButtons: true,
+            batchOperations: false,
             defaultOrder: [[5, 'asc']] // Sort by quantity (column 5 after checkbox)
         });
+
+        if (lowStockTableInstance.table) {
+            lowStockTableInstance.table.draw();
+        }
     }, 500);
 
     // Auto-refresh every 3 minutes for low stock monitoring (disabled when items selected)

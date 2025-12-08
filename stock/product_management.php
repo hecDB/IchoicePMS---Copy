@@ -57,6 +57,41 @@ $stats = [
             font-family: 'Prompt', sans-serif;
             background-color: #f8fafc;
         }
+        
+    /* Full-width table styling */
+    .mainwrap .table-card {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .mainwrap .table-header,
+    .mainwrap .table-body {
+        width: 100%;
+        margin: 0;
+    }
+
+    .mainwrap .table-body {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mainwrap .table-body table {
+        min-width: 960px;
+    }
+
+    @media (max-width: 768px) {
+        .mainwrap .table-body table {
+            min-width: 720px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .mainwrap .table-body table {
+            min-width: 680px;
+        }
+    }
+
 
         .product-image {
             width: 50px;
@@ -305,6 +340,33 @@ $stats = [
             background: #0891b2;
             transform: translateY(-2px);
         }
+
+        .stats-card.filter-card {
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .stats-card.filter-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+        }
+
+        .stats-card.filter-card.active {
+            outline: 3px solid rgba(59, 130, 246, 0.35);
+            box-shadow: 0 16px 32px rgba(37, 99, 235, 0.2);
+        }
+
+        .status-filter-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.35rem 0.85rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-weight: 600;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -330,7 +392,7 @@ $stats = [
         <!-- Stats Cards -->
         <div class="row mb-4">
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-primary">
+                <div class="stats-card stats-primary filter-card active" data-filter="all" role="button" tabindex="0" aria-pressed="true">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -347,7 +409,7 @@ $stats = [
             </div>
 
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-success">
+                <div class="stats-card stats-success filter-card" data-filter="active" role="button" tabindex="0" aria-pressed="false">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -364,7 +426,7 @@ $stats = [
             </div>
 
             <div class="col-xl-3 col-md-6 mb-4">
-                <div class="stats-card stats-danger">
+                <div class="stats-card stats-danger filter-card" data-filter="inactive" role="button" tabindex="0" aria-pressed="false">
                     <div class="stats-card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
@@ -390,6 +452,7 @@ $stats = [
                         รายการสินค้า (<?= count($products) ?> รายการ)
                     </h5>
                     <div class="table-actions">
+                        <span id="statusFilterLabel" class="status-filter-pill me-2">แสดง: ทั้งหมด</span>
                         <button class="btn-modern btn-modern-secondary btn-sm refresh-table me-2" onclick="location.reload()">
                             <span class="material-icons">refresh</span>
                             รีเฟรช
@@ -456,7 +519,7 @@ $stats = [
                         </tr>
                         <?php else: ?>
                         <?php foreach($products as $product): ?>
-                        <tr data-product-id="<?= $product['product_id'] ?>">
+                        <tr data-product-id="<?= $product['product_id'] ?>" data-status="<?= $product['is_active'] == 1 ? 'active' : 'inactive' ?>">
                             <td>
                                 <input type="checkbox" class="product-checkbox" value="<?= $product['product_id'] ?>" onchange="updateSelectionCount()" style="cursor: pointer;">
                             </td>
@@ -644,6 +707,31 @@ $stats = [
 <script>
 let currentProductId = null;
 let locationsData = [];
+let productTable;
+let statusFilter = 'all';
+const statusFilterLabels = {
+    all: 'แสดง: ทั้งหมด',
+    active: 'แสดง: สินค้าที่ขาย',
+    inactive: 'แสดง: สินค้าหยุดขาย'
+};
+
+$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+    if (!settings.nTable || settings.nTable.id !== 'product-table') {
+        return true;
+    }
+
+    if (statusFilter === 'all') {
+        return true;
+    }
+
+    const rowData = settings.aoData[dataIndex] || {};
+    const rowNode = rowData.nTr || null;
+    if (!rowNode) {
+        return true;
+    }
+
+    return $(rowNode).data('status') === statusFilter;
+});
 
 // Load locations from API
 $.ajax({
@@ -1001,8 +1089,48 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
 
 // Initialize DataTable
 $(document).ready(function() {
-    $('#product-table').DataTable({
+    const $statusFilterLabel = $('#statusFilterLabel');
+
+    function updateStatusFilterLabelDisplay(filterKey) {
+        const label = statusFilterLabels[filterKey] || statusFilterLabels.all;
+        $statusFilterLabel.text(label);
+    }
+
+    function applyStatusFilter(filterKey) {
+        const key = filterKey || 'all';
+        const $targetCard = $(`.stats-card.filter-card[data-filter="${key}"]`);
+
+        statusFilter = $targetCard.length ? key : 'all';
+
+        $('.stats-card.filter-card').removeClass('active').attr('aria-pressed', 'false');
+        const $activeCard = $(`.stats-card.filter-card[data-filter="${statusFilter}"]`).first();
+        if ($activeCard.length) {
+            $activeCard.addClass('active').attr('aria-pressed', 'true');
+        }
+
+        updateStatusFilterLabelDisplay(statusFilter);
+
+        if (productTable && typeof productTable.draw === 'function') {
+            productTable.draw();
+        }
+    }
+
+    $(document).on('click', '.stats-card.filter-card', function() {
+        const filterKey = $(this).data('filter') || 'all';
+        applyStatusFilter(filterKey);
+    });
+
+    $(document).on('keydown', '.stats-card.filter-card', function(event) {
+        if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+            event.preventDefault();
+            const filterKey = $(this).data('filter') || 'all';
+            applyStatusFilter(filterKey);
+        }
+    });
+
+    productTable = $('#product-table').DataTable({
         pageLength: 50,
+        scrollX: true,
         language: {
             url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/th.json'
         },
@@ -1010,6 +1138,8 @@ $(document).ready(function() {
             { orderable: false, targets: [0, 8] } // ปิดการจัดเรียงคอลัมน์เลือก และ จัดการ
         ]
     });
+
+    applyStatusFilter(statusFilter);
 });
 
 // ฟังก์ชั่น Checklist
