@@ -23,7 +23,8 @@ try {
 
     // ดึงข้อมูลสินค้าพัก
     $stmt = $pdo->prepare("
-        SELECT * FROM product_holding
+        SELECT *
+        FROM product_holding
         WHERE holding_id = ? AND status = 'holding'
     ");
     $stmt->execute([$holdingId]);
@@ -49,7 +50,7 @@ try {
             $holding['receive_id']
         ]);
 
-        // อัปเดต product_holding สถานะเป็น returned_to_stock
+        // อัปเดตสถานะสินค้าพัก
         $stmt = $pdo->prepare("
             UPDATE product_holding
             SET status = 'returned_to_stock'
@@ -77,4 +78,5 @@ try {
         'message' => $e->getMessage()
     ]);
 }
+
 ?>

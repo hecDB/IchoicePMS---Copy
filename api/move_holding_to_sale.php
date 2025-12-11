@@ -22,10 +22,10 @@ try {
         throw new Exception('ไม่พบ ID การพักสินค้า');
     }
 
-    // ดึงข้อมูลสินค้าพัก
+    // ดึงข้อมูลสินค้าพัก (ยอมรับสินค้าพักที่ยังอยู่หรือเพิ่งคืนสต็อก)
     $stmt = $pdo->prepare("
         SELECT * FROM product_holding
-        WHERE holding_id = ? AND status = 'holding'
+        WHERE holding_id = ? AND status IN ('holding', 'returned_to_stock')
     ");
     $stmt->execute([$holdingId]);
     $holding = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -65,10 +65,8 @@ try {
         }
 
         // 2. สร้าง receive_items ใหม่ (บันทึกการเคลื่อนไหวสินค้า) ด้วยสินค้าใหม่
-        $stmt = $pdo->prepare("
-            SELECT item_id FROM receive_items
-            WHERE receive_id = ?
-        ");
+        $stmt = $pdo->prepare("SELECT item_id FROM receive_items
+            WHERE receive_id = ? ");
         $stmt->execute([$holding['receive_id']]);
         $itemInfo = $stmt->fetch(PDO::FETCH_ASSOC);
         

@@ -52,7 +52,7 @@ try {
                 ?, ?, ?,
                 ?, ?, ?, ?, ?,
                 ?, ?, ?,
-                ?, ?, 'holding',
+                ?, ?, 'returned_to_stock',
                 NOW(), ?, ?
             )
         ");
@@ -346,7 +346,7 @@ try {
             $newItemId = $pdo->lastInsertId();
 
             // บันทึก receive_items สำหรับสินค้าโปรโมชั่น
-            $receiveRemark = "รับสินค้าโปรโมชั่นจาก {$holdingCode} (SKU: {$newSku})";
+            $receiveRemark = "สินค้าโปรโมชั่น {$holdingCode} (SKU: {$newSku})";
             $insertReceiveItemStmt->execute([
                 $newItemId,
                 $poId,

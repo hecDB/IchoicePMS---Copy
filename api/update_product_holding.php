@@ -37,17 +37,47 @@ try {
         throw new Exception('วันหมดอายุห้ามว่าง');
     }
 
+    // ตรวจสอบข้อมูลสินค้าพัก
+    $stmt = $pdo->prepare("
+        SELECT status
+        FROM product_holding
+        WHERE holding_id = ?
+    ");
+    $stmt->execute([$holdingId]);
+    $holding = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$holding) {
+        throw new Exception('ไม่พบสินค้าพักหรือถูกลบไปแล้ว');
+    }
+
+    if (!in_array($holding['status'], ['holding', 'returned_to_stock'], true)) {
+        throw new Exception('สถานะปัจจุบันไม่สามารถแก้ไขได้');
+    }
+
+    $daysToExpire = null;
+    if ($newExpiry) {
+        $expiryDate = DateTime::createFromFormat('Y-m-d', $newExpiry);
+        if (!$expiryDate) {
+            throw new Exception('รูปแบบวันหมดอายุไม่ถูกต้อง');
+        }
+
+        $today = new DateTime('today');
+        $daysToExpire = (int)$today->diff($expiryDate)->format('%r%a');
+    }
+
     // เริ่ม transaction
     $pdo->beginTransaction();
 
     try {
-        // อัปเดต product_holding
+        // อัปเดต product_holding พร้อมคำนวณจำนวนวันที่เหลือ
         $stmt = $pdo->prepare("
             UPDATE product_holding
             SET new_sku = ?,
                 sale_price = ?,
                 holding_reason = ?,
-                expiry_date = ?
+                expiry_date = ?,
+                days_to_expire = ?,
+                status = ?
             WHERE holding_id = ?
         ");
         
@@ -56,8 +86,14 @@ try {
             $newPrice,
             $reason,
             $newExpiry,
+            $daysToExpire,
+            'returned_to_stock',
             $holdingId
         ]);
+
+        if ($stmt->rowCount() === 0) {
+            throw new Exception('ไม่สามารถอัปเดตข้อมูลได้ กรุณาลองอีกครั้ง');
+        }
 
         $pdo->commit();
 

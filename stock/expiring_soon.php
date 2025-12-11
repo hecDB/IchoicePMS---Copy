@@ -8,35 +8,48 @@ $three_hundred_days_later = date('Y-m-d', strtotime('+300 days'));
 $today = date('Y-m-d');
 
 $sql_expiring_soon = "
-    SELECT 
-        p.product_id,
-        p.name,
-        p.sku,
-        p.barcode,
-        p.unit,
-        p.image,
-        ri.receive_qty AS stock_on_hand,
-        ri.expiry_date,
-        po.po_number,
-        DATEDIFF(ri.expiry_date, CURDATE()) as days_to_expire,
-        CASE 
-            WHEN DATEDIFF(ri.expiry_date, CURDATE()) < 240 THEN 'critical'
-            WHEN DATEDIFF(ri.expiry_date, CURDATE()) < 270 THEN 'warning'
-            WHEN DATEDIFF(ri.expiry_date, CURDATE()) <= 300 THEN 'caution'
-            ELSE 'normal'
-        END as expiry_status
-    FROM products p
-    LEFT JOIN purchase_order_items poi ON poi.product_id = p.product_id
-    LEFT JOIN receive_items ri ON ri.item_id = poi.item_id
-    LEFT JOIN product_holding ph ON ph.receive_id = ri.receive_id AND ph.status = 'holding'
-    LEFT JOIN product_holding ph_moved ON ph_moved.product_id = p.product_id AND ph_moved.status = 'moved_to_sale'
-    LEFT JOIN purchase_orders po ON ri.po_id = po.po_id
-    WHERE ri.expiry_date IS NOT NULL 
-        AND ri.expiry_date BETWEEN ? AND ?
-        AND ri.receive_qty > 0
-        AND ph.receive_id IS NULL
-        AND ph_moved.holding_id IS NULL
-    ORDER BY ri.expiry_date ASC, p.name ASC
+SELECT 
+    p.product_id,
+    p.name,
+    p.sku,
+    p.barcode,
+    p.unit,
+    p.image,
+    ri.receive_qty AS stock_on_hand,
+    ri.expiry_date,
+    po.po_number,
+    ri.remark,
+    DATEDIFF(ri.expiry_date, CURDATE()) AS days_to_expire,
+
+    CASE 
+        WHEN DATEDIFF(ri.expiry_date, CURDATE()) < 240 THEN 'critical'
+        WHEN DATEDIFF(ri.expiry_date, CURDATE()) BETWEEN 240 AND 269 THEN 'warning'
+        WHEN DATEDIFF(ri.expiry_date, CURDATE()) BETWEEN 270 AND 300 THEN 'caution'
+        ELSE 'normal'
+    END AS expiry_status
+
+FROM products p
+LEFT JOIN purchase_order_items poi ON poi.product_id = p.product_id
+LEFT JOIN receive_items ri ON ri.item_id = poi.item_id
+LEFT JOIN product_holding ph 
+    ON ph.receive_id = ri.receive_id 
+    AND ph.status IN ('holding', 'returned_to_stock')
+
+LEFT JOIN product_holding ph_moved 
+    ON ph_moved.receive_id = ri.receive_id 
+    AND ph_moved.status = 'moved_to_sale'
+
+LEFT JOIN purchase_orders po ON ri.po_id = po.po_id
+
+WHERE ri.expiry_date IS NOT NULL 
+    AND ri.expiry_date BETWEEN ? AND ?
+    AND ri.receive_qty > 0
+    AND ph.receive_id IS NULL            -- ไม่มีการพักสินค้า
+    AND ph_moved.holding_id IS NULL      -- ไม่ได้ถูกย้ายขาย
+    AND ri.remark NOT LIKE '%โปรโมชั่น%'
+
+ORDER BY ri.expiry_date ASC, p.name ASC;
+
 ";
 $stmt = $pdo->prepare($sql_expiring_soon);
 $stmt->execute([$today, $three_hundred_days_later]);

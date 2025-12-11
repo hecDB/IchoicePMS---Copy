@@ -25,18 +25,24 @@ $sql_holding = "
         ph.created_at
     FROM product_holding ph
     LEFT JOIN products p ON ph.product_id = p.product_id
-    WHERE ph.status = 'holding'
-    ORDER BY ph.days_to_expire ASC, ph.created_at DESC
+    WHERE ph.status IN ('holding', 'returned_to_stock')
+    ORDER BY CASE WHEN ph.status = 'holding' THEN 0 ELSE 1 END,
+             ph.days_to_expire ASC,
+             ph.created_at DESC
 ";
 $stmt = $pdo->prepare($sql_holding);
 $stmt->execute();
 $holdingProducts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// คำนวณสถิติ
+$pendingProducts = array_filter($holdingProducts, fn($p) => ($p['status'] ?? '') === 'holding');
+$returnedProducts = array_filter($holdingProducts, fn($p) => ($p['status'] ?? '') === 'returned_to_stock');
+
+// คำนวณสถิติ (สำหรับรายการที่ยังคงค้าง)
 $stats = [
-    'total_holding' => count($holdingProducts),
-    'total_qty' => array_sum(array_column($holdingProducts, 'holding_qty')),
-    'total_value' => array_reduce($holdingProducts, fn($sum, $p) => $sum + ($p['holding_qty'] * $p['cost_price']), 0)
+    'total_pending' => count($pendingProducts),
+    'pending_qty' => array_sum(array_map(fn($p) => $p['holding_qty'], $pendingProducts)),
+    'pending_value' => array_reduce($pendingProducts, fn($sum, $p) => $sum + ($p['holding_qty'] * $p['cost_price']), 0),
+    'total_returned' => count($returnedProducts)
 ];
 
 ?>
@@ -87,6 +93,7 @@ $stats = [
         .stats-card.blue { border-left-color: #3b82f6; }
         .stats-card.green { border-left-color: #10b981; }
         .stats-card.orange { border-left-color: #f59e0b; }
+        .stats-card.gray { border-left-color: #6b7280; }
         
         .stats-value {
             font-size: 2rem;
@@ -131,6 +138,10 @@ $stats = [
         .badge-holding {
             background: #e0f2fe;
             color: #0277bd;
+        }
+        .badge-returned {
+            background: #ede9fe;
+            color: #6d28d9;
         }
         
         .action-btn {
@@ -216,22 +227,28 @@ $stats = [
 
         <!-- Stats Cards -->
         <div class="row mb-4">
-            <div class="col-md-4 mb-3">
+            <div class="col-xl-3 col-md-6 mb-3">
                 <div class="stats-card blue">
-                    <div class="stats-value"><?= number_format($stats['total_holding']) ?></div>
-                    <div class="stats-label">รายการรอสร้างโปรโมชั่น</div>
+                    <div class="stats-value"><?= number_format($stats['total_pending']) ?></div>
+                    <div class="stats-label">รายการคงค้าง</div>
                 </div>
             </div>
-            <div class="col-md-4 mb-3">
+            <div class="col-xl-3 col-md-6 mb-3">
                 <div class="stats-card green">
-                    <div class="stats-value"><?= number_format($stats['total_qty']) ?></div>
-                    <div class="stats-label">จำนวนสินค้าทั้งหมด</div>
+                    <div class="stats-value"><?= number_format($stats['pending_qty']) ?></div>
+                    <div class="stats-label">จำนวนสินค้ารอจัดการ</div>
                 </div>
             </div>
-            <div class="col-md-4 mb-3">
+            <div class="col-xl-3 col-md-6 mb-3">
                 <div class="stats-card orange">
-                    <div class="stats-value">฿<?= number_format($stats['total_value'], 2) ?></div>
+                    <div class="stats-value">฿<?= number_format($stats['pending_value'], 2) ?></div>
                     <div class="stats-label">มูลค่าคงเหลือ (ต้นทุน)</div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="stats-card gray">
+                    <div class="stats-value"><?= number_format($stats['total_returned']) ?></div>
+                    <div class="stats-label">อัปเดต SKU แล้ว</div>
                 </div>
             </div>
         </div>
@@ -329,7 +346,15 @@ $stats = [
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <span class="badge-status badge-holding">พักไว้</span>
+                                    <?php
+                                    $statusLabel = 'พักไว้';
+                                    $statusClass = 'badge-holding';
+                                    if (($product['status'] ?? '') === 'returned_to_stock') {
+                                        $statusLabel = 'อัปเดต SKU แล้ว';
+                                        $statusClass = 'badge-returned';
+                                    }
+                                    ?>
+                                    <span class="badge-status <?= $statusClass ?>"><?= htmlspecialchars($statusLabel) ?></span>
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm" role="group">
