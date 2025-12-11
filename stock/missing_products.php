@@ -84,12 +84,24 @@ $user_name = $_SESSION['user_name'] ?? 'User';
             color: white;
         }
         
+        .selected-products-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
         .selected-product {
+            position: relative;
             background-color: #eff6ff;
             border-left: 4px solid #3b82f6;
             padding: 15px;
             border-radius: 4px;
-            margin-bottom: 20px;
+        }
+
+        .selected-product .remove-selected-product {
+            position: absolute;
+            top: 10px;
+            right: 10px;
         }
         
         .table-card {
@@ -142,47 +154,110 @@ $user_name = $_SESSION['user_name'] ?? 'User';
             position: relative;
         }
 
-        /* Modal fixes for proper centering without scrolling */
-        .modal {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+        #missing-stats-cards {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 4px 4px 8px;
+            scrollbar-width: thin;
         }
 
-        .modal-dialog {
-            max-height: none;
-            margin: 0;
+        #missing-stats-cards.row {
+            --bs-gutter-x: 0;
+            --bs-gutter-y: 0;
+            margin-left: 0;
+            margin-right: 0;
         }
 
-        .modal-content {
-            max-height: 90vh;
-            overflow-y: auto;
+        #missing-stats-cards::-webkit-scrollbar {
+            height: 6px;
         }
 
-        /* Ensure modal backdrop doesn't cause scroll */
-        .modal-backdrop {
-            position: fixed;
+        #missing-stats-cards::-webkit-scrollbar-thumb {
+            background: rgba(15, 23, 42, 0.18);
+            border-radius: 999px;
         }
 
-        /* Prevent body scroll when modal is open */
-        body.modal-open {
-            overflow: hidden !important;
-            padding-right: 0 !important;
-            position: fixed !important;
-            width: 100% !important;
-            top: 0 !important;
+        .stat-card-item {
+            flex: 0 0 auto;
+            width: 280px;
         }
-        
-        /* Override scrollbar padding that Bootstrap adds */
-        body.modal-open .mainwrap {
+
+        .missing-stat-card {
             position: relative;
+            border-radius: 14px;
+            padding: 16px 18px;
+            background: linear-gradient(135deg, var(--card-bg-start, #ffffff), var(--card-bg-end, #f8fafc));
+            border: 1.2px solid var(--card-border, #cbd5f5);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+            color: #0f172a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            user-select: none;
+            min-height: 110px;
         }
 
-        /* Full width layout */
-        .container-fluid {
-            padding-left: 15px;
-            padding-right: 15px;
+        .missing-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
         }
+
+        .missing-stat-card.active {
+            border-color: var(--card-border, #3b82f6);
+            box-shadow: 0 16px 32px rgba(59, 130, 246, 0.2);
+        }
+
+        .missing-stat-card .card-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .missing-stat-card .card-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: rgba(15, 23, 42, 0.74);
+        }
+
+        .missing-stat-card .card-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            line-height: 1.1;
+            color: #0f172a;
+        }
+
+        .missing-stat-card .card-subtitle {
+            font-size: 0.8rem;
+            color: rgba(15, 23, 42, 0.58);
+        }
+
+        .missing-stat-card .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--card-icon-bg, rgba(59, 130, 246, 0.12));
+            color: var(--card-icon-color, #2563eb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.45rem;
+        }
+
+        .missing-stat-card .card-icon .material-icons {
+            font-size: 1.6rem;
+        }
+
+            /* Full width layout */
+            .container-fluid {
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+
     </style>
 </head>
 <body>
@@ -201,6 +276,12 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                 <p class="text-muted mb-0">บันทึกสินค้าที่สูญหายหรือหาไม่เจอในระบบ</p>
             </div>
         </div>
+
+            <div class="row" id="missing-stats-row" style="display: none;">
+                <div class="col-12">
+                    <div class="row g-3" id="missing-stats-cards"></div>
+                </div>
+            </div>
 
         <div class="row">
             <div class="col-lg-12">
@@ -233,24 +314,8 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                             สินค้าที่เลือก
                         </div>
                         <div class="card-body">
-                            <div class="selected-product">
-                                <div class="row align-items-center">
-                                    <div class="col-auto">
-                                        <img id="product-image" src="" alt="Product" class="product-image">
-                                    </div>
-                                    <div class="col">
-                                        <div>
-                                            <strong>ชื่อสินค้า:</strong> <span id="product-name"></span>
-                                        </div>
-                                        <div>
-                                            <strong>SKU:</strong> <span id="product-sku"></span>
-                                        </div>
-                                        <div>
-                                            <strong>บาร์โค้ด:</strong> <span id="product-barcode"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                <p class="text-muted mb-3" id="selected-products-hint">เลือกสินค้าจากผลการค้นหาเพื่อเพิ่มในรายการด้านล่าง สามารถเพิ่มได้หลายรายการพร้อมกัน</p>
+                                <div id="selected-products-container" class="selected-products-list"></div>
                         </div>
                     </div>
 
@@ -261,28 +326,44 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                             กรอกจำนวนที่สูญหาย
                         </div>
                         <div class="card-body">
-                            <div class="mb-3">
-                                <label for="missing-quantity" class="form-label">จำนวนที่สูญหาย/หาไม่เจอ <span class="text-danger">*</span></label>
-                                <div class="input-group input-group-lg">
-                                    <span class="input-group-text">
-                                        <span class="material-icons">production_quantity_limits</span>
-                                    </span>
-                                    <input type="number" 
-                                           class="form-control" 
-                                           id="missing-quantity" 
-                                           min="1" 
-                                           step="0.01"
-                                           placeholder="กรอกจำนวน">
-                                    <span class="input-group-text">ชิ้น</span>
+                                <div class="mb-3">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered align-middle">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 60px;">ลำดับ</th>
+                                                    <th>สินค้า</th>
+                                                    <th style="width: 220px;">จำนวนที่สูญหาย</th>
+                                                    <th style="width: 160px;">PO</th>
+                                                    <th style="width: 160px;">วันหมดอายุ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="selected-quantity-body">
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted py-3">
+                                                        ยังไม่ได้เลือกสินค้า
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
-                            </div>
 
                             <div class="mb-3">
-                                <label for="remark" class="form-label">หมายเหตุ</label>
+                                <label for="remark-select" class="form-label">หมายเหตุ</label>
+                                <select class="form-select form-select-lg mb-2" id="remark-select">
+                                    <option value="">— เลือกหมายเหตุ —</option>
+                                    <option value="damaged">1. ชำรุด/สูญหาย</option>
+                                    <option value="substitute">2. ส่งแทนสินค้าอื่น</option>
+                                    <option value="followup">3. ส่งตาม</option>
+                                    <option value="borrow">4. ยืม</option>
+                                    <option value="other">5. อื่นๆ (ระบุ)</option>
+                                </select>
                                 <textarea class="form-control" 
                                           id="remark" 
                                           rows="3" 
-                                          placeholder="เพิ่มหมายเหตุเกี่ยวกับการสูญหาย เช่น: หาไม่เจอในตู้เก็บ, ชำรุด, ฯลฯ"></textarea>
+                                          placeholder="เพิ่มหมายเหตุเพิ่มเติม..." 
+                                          style="display: none;"></textarea>
                             </div>
 
                             <button class="btn btn-custom btn-lg w-100" id="submit-btn">
@@ -300,21 +381,40 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                         รายการสินค้าสูญหายวันนี้
                     </div>
                     <div class="card-body p-0">
+                        <div class="filter-bar p-3 border-bottom bg-light">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-3">
+                                    <label for="filter-date" class="form-label mb-1">วันที่บันทึก</label>
+                                    <input type="date" class="form-control" id="filter-date" value="<?php echo date('Y-m-d'); ?>">
+                                </div>
+                                <div class="col-md-5">
+                                    <label for="filter-keyword" class="form-label mb-1">ค้นหา (สินค้า, SKU, บาร์โค้ด, หมายเหตุ, ผู้บันทึก)</label>
+                                    <input type="text" class="form-control" id="filter-keyword" placeholder="พิมพ์คำค้นหา...">
+                                </div>
+                                <div class="col-md-2 d-grid">
+                                    <button type="button" class="btn btn-outline-primary" id="filter-apply-btn">ค้นหา</button>
+                                </div>
+                                <div class="col-md-2 d-grid">
+                                    <button type="button" class="btn btn-outline-secondary" id="filter-clear-btn">ล้างตัวกรอง</button>
+                                </div>
+                            </div>
+                        </div>
                         <div id="missing-items-list" style="min-height: 200px; overflow-x: auto;">
                             <table class="table table-hover mb-0" style="width: 100%; min-width: 100%;">
                                 <thead class="table-light">
                                     <tr>
                                         <th style="width: 50px;">ลำดับ</th>
                                         <th>สินค้า</th>
-                                        <th style="width: 80px;">จำนวน</th>
+                                        <th style="width: 90px;">จำนวน</th>
+                                        <th>หมายเหตุ</th>
                                         <th>บันทึกโดย</th>
-                                        <th style="width: 100px;">เวลา</th>
+                                        <th style="width: 150px;">วันที่บันทึก</th>
                                         <th style="width: 120px;">จัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="missing-items-tbody">
                                     <tr>
-                                        <td colspan="6" class="text-center text-muted py-4">
+                                        <td colspan="7" class="text-center text-muted py-4">
                                             <span class="material-icons">inbox</span><br>
                                             ยังไม่มีรายการสินค้าสูญหาย
                                         </td>
@@ -328,50 +428,235 @@ $user_name = $_SESSION['user_name'] ?? 'User';
         </div>
     </div>
 
-    <!-- Edit Modal -->
-    <div class="modal fade" id="editModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">แก้ไขสินค้าสูญหาย</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">สินค้า</label>
-                        <div class="form-control-plaintext fw-bold" id="edit-product-name"></div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">จำนวนที่สูญหาย <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" id="edit-quantity" min="1" step="0.01">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">หมายเหตุ</label>
-                        <textarea class="form-control" id="edit-remark" rows="3" placeholder="กรอกหมายเหตุ..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="button" class="btn btn-primary" id="save-edit-btn">
-                        <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">save</span>
-                        บันทึกการแก้ไข
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
-        let selectedProduct = null;
-        let missingItems = [];
-        let currentEditingId = null;
+        let selectedProducts = [];
+        let tableFilterTimeout = null;
+        let selectedRemarkFilter = null;
 
-        // Get current user ID
         const userId = <?php echo isset($_SESSION['user_id']) ? $_SESSION['user_id'] : '0'; ?>;
+
+        function buildSelectedProductKey(product) {
+            return [
+                product.product_id || 0,
+                product.receive_id || 0,
+                product.item_id || 0,
+                product.expiry_date || ''
+            ].join('-');
+        }
+
+        function formatReceiveQty(value) {
+            if (value === undefined || value === null || value === '') {
+                return '-';
+            }
+            const numeric = parseFloat(value);
+            if (Number.isNaN(numeric)) {
+                return '-';
+            }
+            return numeric.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        }
+
+        const htmlEscapeMap = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+            '`': '&#96;',
+            '=': '&#61;',
+            '/': '&#47;'
+        };
+
+        function escapeHtml(value) {
+            if (value === undefined || value === null) {
+                return '';
+            }
+            return String(value).replace(/[&<>"'`=\/]/g, function(match) {
+                return htmlEscapeMap[match] || match;
+            });
+        }
+
+        const presetRemarkLabels = {
+            'ชำรุด/สูญหาย': {
+                title: 'ชำรุด/สูญหาย',
+                icon: 'report_problem',
+                bgStart: '#ffe4e6',
+                bgEnd: '#fecdd3',
+                borderColor: '#fb7185',
+                iconColor: '#be123c',
+                iconBg: 'rgba(251, 113, 133, 0.18)',
+                subtitle: 'รวม {records} รายการ'
+            },
+            'ส่งแทนสินค้าอื่น': {
+                title: 'ส่งแทนสินค้าอื่น',
+                icon: 'swap_horiz',
+                bgStart: '#fef9c3',
+                bgEnd: '#fef08a',
+                borderColor: '#facc15',
+                iconColor: '#ca8a04',
+                iconBg: 'rgba(250, 204, 21, 0.18)',
+                subtitle: 'รวม {records} รายการ'
+            },
+            'ส่งตาม': {
+                title: 'ส่งตาม',
+                icon: 'local_shipping',
+                bgStart: '#dbeafe',
+                bgEnd: '#bfdbfe',
+                borderColor: '#60a5fa',
+                iconColor: '#1d4ed8',
+                iconBg: 'rgba(96, 165, 250, 0.2)',
+                subtitle: 'รวม {records} รายการ'
+            },
+            'ยืม': {
+                title: 'ยืม',
+                icon: 'shopping_bag',
+                bgStart: '#ccfbf1',
+                bgEnd: '#a7f3d0',
+                borderColor: '#34d399',
+                iconColor: '#047857',
+                iconBg: 'rgba(52, 211, 153, 0.2)',
+                subtitle: 'รวม {records} รายการ'
+            },
+            'อื่นๆ': {
+                title: 'อื่นๆ',
+                icon: 'notes',
+                bgStart: '#ede9fe',
+                bgEnd: '#ddd6fe',
+                borderColor: '#a855f7',
+                iconColor: '#7c3aed',
+                iconBg: 'rgba(168, 85, 247, 0.2)',
+                subtitle: 'รวม {records} รายการ'
+            },
+            'ไม่มีหมายเหตุ': {
+                title: 'ไม่มีหมายเหตุ',
+                icon: 'help_outline',
+                bgStart: '#e2e8f0',
+                bgEnd: '#cbd5e1',
+                borderColor: '#94a3b8',
+                iconColor: '#475569',
+                iconBg: 'rgba(148, 163, 184, 0.22)',
+                subtitle: 'รวม {records} รายการ'
+            }
+        };
+
+        const remarkCardOrder = [
+            'ชำรุด/สูญหาย',
+            'ส่งแทนสินค้าอื่น',
+            'ส่งตาม',
+            'ยืม',
+            'อื่นๆ',
+            'ไม่มีหมายเหตุ'
+        ];
+
+        function renderSelectedProducts() {
+            if (selectedProducts.length === 0) {
+                $('#selected-products-container').empty();
+                $('#selected-products-hint').show();
+                $('#selected-quantity-body').html('<tr><td colspan="5" class="text-center text-muted py-3">ยังไม่ได้เลือกสินค้า</td></tr>');
+                $('#selected-product-section').hide();
+                return;
+            }
+
+            const productCards = selectedProducts.map(product => {
+                const imageSrc = product.image_url || (product.image ? '../images/' + product.image : '../images/noimg.png');
+                const poDisplay = product.po_label || product.po_number || (product.po_id ? 'PO-' + product.po_id : '-');
+                const expiryDisplay = product.expiry_date_formatted || '-';
+                const receiveQty = formatReceiveQty(product.receive_qty);
+
+                return `
+                    <div class="selected-product" data-key="${product.uniqueKey}">
+                        <button type="button" class="btn-close remove-selected-product" data-key="${product.uniqueKey}" aria-label="Remove"></button>
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <img src="${imageSrc}" alt="Product" class="product-image" onerror="this.src='../images/noimg.png'">
+                            </div>
+                            <div class="col">
+                                <div><strong>${product.product_name}</strong></div>
+                                <small class="text-muted d-block">SKU: ${product.sku || '-'} | Barcode: ${product.barcode || '-'}</small>
+                                <small class="text-muted d-block">PO: ${poDisplay} | วันหมดอายุ: ${expiryDisplay}</small>
+                                <small class="text-muted d-block">รับเข้า: ${receiveQty} ${product.unit || 'ชิ้น'} | รับเมื่อ: ${product.receive_created_at_formatted || '-'}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            $('#selected-products-container').html(productCards);
+            $('#selected-products-hint').hide();
+
+            const quantityRows = selectedProducts.map((product, index) => {
+                const poDisplay = product.po_label || product.po_number || (product.po_id ? 'PO-' + product.po_id : '-');
+                const expiryDisplay = product.expiry_date_formatted || '-';
+                const unitLabel = product.unit || 'ชิ้น';
+                const currentQuantity = product.quantity !== undefined && product.quantity !== null ? product.quantity : '';
+                const receiveQty = formatReceiveQty(product.receive_qty);
+
+                return `
+                    <tr data-key="${product.uniqueKey}">
+                        <td>${index + 1}</td>
+                        <td>
+                            <strong>${product.product_name}</strong><br>
+                            <small class="text-muted">SKU: ${product.sku || '-'} | Barcode: ${product.barcode || '-'}</small>
+                        </td>
+                        <td>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control missing-quantity-input" data-index="${index}" min="0.01" step="0.01" value="${currentQuantity !== '' ? currentQuantity : ''}" placeholder="0.00">
+                                <span class="input-group-text">${unitLabel}</span>
+                            </div>
+                            <small class="text-muted d-block mt-1">รับเข้าไว้: ${receiveQty} ${unitLabel}</small>
+                        </td>
+                        <td>${poDisplay}</td>
+                        <td>${expiryDisplay}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            $('#selected-quantity-body').html(quantityRows);
+            $('#selected-product-section').show();
+
+            setTimeout(() => {
+                const lastInput = $('.missing-quantity-input').last();
+                if (lastInput.length) {
+                    lastInput.focus().select();
+                }
+            }, 0);
+        }
+
+        const remarkOptionMap = {
+            damaged: 'ชำรุด/สูญหาย',
+            substitute: 'ส่งแทนสินค้าอื่น',
+            followup: 'ส่งตาม',
+            borrow: 'ยืม'
+        };
+
+        function getSelectedRemark() {
+            const selectedValue = $('#remark-select').val();
+            if (!selectedValue) {
+                return { valid: false, message: 'กรุณาเลือกหมายเหตุ' };
+            }
+
+            if (selectedValue === 'other') {
+                const customText = $('#remark').val().trim();
+                if (!customText) {
+                    return { valid: false, message: 'กรุณากรอกหมายเหตุเพิ่มเติม' };
+                }
+                return { valid: true, remark: customText };
+            }
+
+            return { valid: true, remark: remarkOptionMap[selectedValue] };
+        }
+
+        $('#remark-select').on('change', function() {
+            const value = $(this).val();
+            if (value === 'other') {
+                $('#remark').show().focus();
+            } else {
+                $('#remark').hide().val('');
+            }
+        });
 
         // Search product by barcode/SKU
         let searchTimeout;
@@ -389,15 +674,23 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                     if (resp.success && resp.results.length > 0) {
                         let html = '';
                         resp.results.forEach(product => {
-                            const imagePath = product.image ? '../images/' + product.image : '../images/noimg.png';
-                            html += `<div class="product-item" data-product='${JSON.stringify(product)}'>
+                            const imagePath = product.image_url || '../images/noimg.png';
+                            const poLabel = product.po_label || product.po_number || (product.po_id ? 'PO-' + product.po_id : '-');
+                            const expiryLabel = product.expiry_date_formatted || '-';
+                            const qtyLabel = (product.receive_qty !== undefined && product.receive_qty !== null)
+                                ? parseFloat(product.receive_qty).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                                : '-';
+                            const dataset = encodeURIComponent(JSON.stringify(product));
+                            html += `<div class="product-item" data-product="${dataset}">
                                 <div class="row align-items-center g-2">
                                     <div class="col-auto">
                                         <img src="${imagePath}" alt="Product" class="product-image" onerror="this.src='../images/noimg.png'">
                                     </div>
                                     <div class="col">
                                         <div><strong>${product.product_name}</strong></div>
-                                        <small class="text-muted">SKU: ${product.sku} | Barcode: ${product.barcode}</small>
+                                        <small class="text-muted d-block">SKU: ${product.sku || '-'} | Barcode: ${product.barcode || '-'}</small>
+                                        <small class="text-muted d-block">PO: ${poLabel} | วันหมดอายุ: ${expiryLabel}</small>
+                                        <small class="text-muted d-block">รับเข้า: ${qtyLabel} ${product.unit || 'ชิ้น'} | รับเมื่อ: ${product.receive_created_at_formatted || '-'}</small>
                                     </div>
                                 </div>
                             </div>`;
@@ -416,195 +709,477 @@ $user_name = $_SESSION['user_name'] ?? 'User';
 
         // Select product from search results
         $(document).on('click', '.product-item', function() {
-            selectedProduct = JSON.parse($(this).attr('data-product'));
-            
-            // Update UI
-            $('#product-image').attr('src', '../images/' + (selectedProduct.image || 'noimg.png')).on('error', function() {
-                $(this).attr('src', '../images/noimg.png');
-            });
-            $('#product-name').text(selectedProduct.product_name);
-            $('#product-sku').text(selectedProduct.sku);
-            $('#product-barcode').text(selectedProduct.barcode);
-            
+            let productData;
+            try {
+                productData = JSON.parse(decodeURIComponent($(this).attr('data-product')));
+            } catch (error) {
+                console.error('Failed to parse product data', error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถอ่านข้อมูลสินค้าได้', 'error');
+                return;
+            }
+
+            const uniqueKey = buildSelectedProductKey(productData);
+            const existingIndex = selectedProducts.findIndex(item => item.uniqueKey === uniqueKey);
+
+            if (existingIndex !== -1) {
+                const currentQty = parseFloat(selectedProducts[existingIndex].quantity) || 0;
+                selectedProducts[existingIndex].quantity = currentQty + 1;
+            } else {
+                selectedProducts.push({
+                    ...productData,
+                    uniqueKey: uniqueKey,
+                    quantity: 1
+                });
+            }
+
+            renderSelectedProducts();
+
             // Clear search and hide results
             $('#barcode-search').val('');
             $('#search-results').removeClass('show').empty();
-            $('#missing-quantity').val('').focus();
-            
-            // Show selected product section
-            $('#selected-product-section').show();
+        });
+
+        $(document).on('input', '.missing-quantity-input', function() {
+            const index = $(this).data('index');
+            const value = parseFloat($(this).val());
+            if (index >= 0 && index < selectedProducts.length) {
+                selectedProducts[index].quantity = Number.isNaN(value) ? '' : value;
+            }
+        });
+
+        $(document).on('click', '.remove-selected-product', function(e) {
+            e.preventDefault();
+            const key = $(this).data('key');
+            selectedProducts = selectedProducts.filter(product => product.uniqueKey !== key);
+            renderSelectedProducts();
         });
 
         // Submit missing product
-        $('#submit-btn').click(function() {
-            if (!selectedProduct) {
-                Swal.fire('ข้อผิดพลาด', 'กรุณาเลือกสินค้า', 'warning');
+        $('#submit-btn').click(async function() {
+            if (selectedProducts.length === 0) {
+                Swal.fire('ข้อผิดพลาด', 'กรุณาเลือกสินค้าอย่างน้อย 1 รายการ', 'warning');
                 return;
             }
 
-            const quantity = parseFloat($('#missing-quantity').val()) || 0;
-            const remark = $('#remark').val().trim();
+            $('.missing-quantity-input').each(function() {
+                const index = $(this).data('index');
+                const value = parseFloat($(this).val());
+                if (!Number.isNaN(value)) {
+                    selectedProducts[index].quantity = value;
+                }
+            });
 
-            if (quantity <= 0) {
-                Swal.fire('ข้อผิดพลาด', 'กรุณากรอกจำนวนที่มากกว่า 0', 'warning');
+            const invalidEntry = selectedProducts.find(item => {
+                const value = parseFloat(item.quantity);
+                return Number.isNaN(value) || value <= 0;
+            });
+
+            if (invalidEntry) {
+                Swal.fire('ข้อผิดพลาด', `กรุณากรอกจำนวนที่มากกว่า 0 สำหรับสินค้า ${invalidEntry.product_name}`, 'warning');
                 return;
             }
 
-            $(this).prop('disabled', true);
-            
-            $.post('../api/record_missing_product_api.php', {
-                product_id: selectedProduct.product_id,
-                quantity_missing: quantity,
-                remark: remark,
-                reported_by: userId
-            }, function(resp) {
-                $('#submit-btn').prop('disabled', false);
-                
-                if (resp.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'บันทึกสำเร็จ',
-                        text: 'บันทึกสินค้าสูญหาย: ' + resp.product_name + ' จำนวน ' + resp.quantity + ' ชิ้น',
-                        timer: 2000
+            const button = $(this);
+
+            const remarkCheck = getSelectedRemark();
+            if (!remarkCheck.valid) {
+                Swal.fire('ข้อผิดพลาด', remarkCheck.message, 'warning');
+                return;
+            }
+            const remark = remarkCheck.remark;
+
+            const totalSelected = selectedProducts.length;
+            const productsToSubmit = [...selectedProducts];
+            const processedKeys = [];
+            let hasChanges = false;
+
+            button.prop('disabled', true);
+
+            try {
+                for (const product of productsToSubmit) {
+                    const quantity = parseFloat(product.quantity);
+
+                    await new Promise((resolve, reject) => {
+                        $.post('../api/record_missing_product_api.php', {
+                            product_id: product.product_id,
+                            item_id: product.item_id || 0,
+                            receive_id: product.receive_id || 0,
+                            po_id: product.po_id || 0,
+                            expiry_date: product.expiry_date || '',
+                            quantity_missing: quantity,
+                            remark: remark,
+                            reported_by: userId
+                        }, function(resp) {
+                            if (resp.success) {
+                                hasChanges = true;
+                                processedKeys.push(product.uniqueKey);
+                                resolve(resp);
+                            } else {
+                                reject(new Error((resp.message || 'ไม่สามารถบันทึกได้') + ' (' + product.product_name + ')'));
+                            }
+                        }, 'json').fail(function() {
+                            reject(new Error('เกิดข้อผิดพลาดในการเชื่อมต่อ (' + product.product_name + ')'));
+                        });
                     });
+                }
 
-                    // Reset form
-                    selectedProduct = null;
-                    $('#barcode-search').val('').focus();
-                    $('#missing-quantity').val('');
-                    $('#remark').val('');
-                    $('#selected-product-section').hide();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกสำเร็จ',
+                    text: 'บันทึกสินค้าสูญหาย ' + totalSelected + ' รายการเรียบร้อย',
+                    timer: 2200
+                });
 
-                    // Reload missing items list
+                selectedProducts = [];
+                $('#remark-select').val('');
+                $('#remark').hide().val('');
+                renderSelectedProducts();
+                $('#barcode-search').val('').focus();
+                if (hasChanges) {
                     loadMissingItemsList();
+                    loadMissingStats();
+                }
+            } catch (error) {
+                if (processedKeys.length > 0) {
+                    selectedProducts = selectedProducts.filter(product => !processedKeys.includes(product.uniqueKey));
+                    renderSelectedProducts();
+                    if (hasChanges) {
+                        loadMissingItemsList();
+                        loadMissingStats();
+                    }
+                }
+                const errorMessage = processedKeys.length > 0
+                    ? error.message + '\n\nบันทึกแล้ว ' + processedKeys.length + ' รายการแรก'
+                    : error.message;
+                Swal.fire('ข้อผิดพลาด', errorMessage, 'error');
+            } finally {
+                button.prop('disabled', false);
+            }
+        });
+
+        function getFilterValues() {
+            const dateValue = $('#filter-date').val();
+            const keywordValue = $('#filter-keyword').val().trim();
+            return {
+                date: dateValue,
+                keyword: keywordValue
+            };
+        }
+
+        function showLoadingRow() {
+            $('#missing-items-tbody').html(`<tr>
+                <td colspan="7" class="text-center py-4 text-muted">
+                    <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;"></div>
+                    <div class="mt-2">กำลังโหลดข้อมูล...</div>
+                </td>
+            </tr>`);
+        }
+
+        function renderStatsCards(stats) {
+            const container = $('#missing-stats-cards');
+            if (!Array.isArray(stats)) {
+                $('#missing-stats-row').hide();
+                container.empty();
+                return;
+            }
+
+            const statsMap = new Map();
+            stats.forEach(record => {
+                const key = record.remark_group || 'อื่นๆ';
+                statsMap.set(key, record);
+            });
+
+            let cardsHtml = '';
+            remarkCardOrder.forEach(groupKey => {
+                const config = presetRemarkLabels[groupKey] || presetRemarkLabels['อื่นๆ'];
+                const record = statsMap.get(groupKey) || { total_quantity: 0, total_records: 0 };
+                const totalQty = record.total_quantity !== null ? parseFloat(record.total_quantity) : 0;
+                const totalRecords = record.total_records !== null ? parseInt(record.total_records, 10) : 0;
+
+                const qtyLabel = Number.isFinite(totalQty)
+                    ? totalQty.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                    : '0';
+                const recordLabel = Number.isFinite(totalRecords)
+                    ? totalRecords.toLocaleString('th-TH')
+                    : '0';
+                const subtitleText = config.subtitle
+                    ? config.subtitle.replace('{records}', recordLabel)
+                    : `${recordLabel} รายการ`;
+                const isActive = selectedRemarkFilter === groupKey;
+
+                cardsHtml += `
+                    <div class="stat-card-item">
+                        <div class="missing-stat-card${isActive ? ' active' : ''}"
+                             data-remark="${groupKey}"
+                             style="--card-bg-start:${config.bgStart}; --card-bg-end:${config.bgEnd}; --card-border:${config.borderColor}; --card-icon-bg:${config.iconBg}; --card-icon-color:${config.iconColor};">
+                            <div class="card-content">
+                                <div class="card-title">${config.title}</div>
+                                <div class="card-value">${qtyLabel}</div>
+                                <div class="card-subtitle">${subtitleText}</div>
+                            </div>
+                            <div class="card-icon">
+                                <span class="material-icons">${config.icon}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+
+            container.html(cardsHtml);
+
+            if (!$('#missing-stats-row').is(':visible') && remarkCardOrder.length > 0) {
+                $('#missing-stats-row').slideDown(150);
+            }
+
+            updateActiveStatCards();
+        }
+
+        function updateActiveStatCards() {
+            $('.missing-stat-card').each(function() {
+                const key = $(this).data('remark');
+                if (selectedRemarkFilter && key === selectedRemarkFilter) {
+                    $(this).addClass('active');
                 } else {
-                    Swal.fire('ข้อผิดพลาด', resp.message || 'ไม่สามารถบันทึกได้', 'error');
+                    $(this).removeClass('active');
+                }
+            });
+        }
+
+        function loadMissingStats() {
+            $.get('../api/get_missing_products_stats_api.php', function(resp) {
+                if (resp.success) {
+                    renderStatsCards(resp.data || []);
+                } else {
+                    $('#missing-stats-row').hide();
+                    $('#missing-stats-cards').empty();
                 }
             }).fail(function() {
-                $('#submit-btn').prop('disabled', false);
-                Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+                $('#missing-stats-row').hide();
+                $('#missing-stats-cards').empty();
             });
-        });
+        }
 
         // Load missing items list
         function loadMissingItemsList() {
-            const today = new Date().toISOString().split('T')[0];
-            $.get('../api/get_missing_products_api.php', { date: today }, function(resp) {
+            clearTimeout(tableFilterTimeout);
+            const filters = getFilterValues();
+            const params = { limit: 200 };
+            if (filters.date) {
+                params.date = filters.date;
+            }
+            if (filters.keyword) {
+                params.search = filters.keyword;
+            }
+            if (selectedRemarkFilter) {
+                params.remark_group = selectedRemarkFilter;
+            }
+
+            showLoadingRow();
+
+            $.get('../api/get_missing_products_api.php', params, function(resp) {
                 if (resp.success && resp.data.length > 0) {
                     let html = '';
                     resp.data.forEach((item, index) => {
+                        const productName = item.product_name ? escapeHtml(item.product_name) : '-';
+                        const sku = item.sku ? escapeHtml(item.sku) : '-';
+                        const barcode = item.barcode ? escapeHtml(item.barcode) : '-';
+                        let quantityDisplay = '-';
+                        if (item.quantity_missing !== undefined && item.quantity_missing !== null && item.quantity_missing !== '') {
+                            const quantityNumber = parseFloat(item.quantity_missing);
+                            quantityDisplay = Number.isNaN(quantityNumber)
+                                ? escapeHtml(item.quantity_missing)
+                                : quantityNumber.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                        }
+
+                        let remarkHtml = item.remark && item.remark.trim() !== ''
+                            ? escapeHtml(item.remark).replace(/\r?\n/g, '<br>')
+                            : '<span class="text-muted">-</span>';
+
+                        const isReturned = Number(item.is_returned) === 1;
+                        if (isReturned) {
+                            const returnAtRaw = item.return_created_at ? String(item.return_created_at).replace(' ', 'T') : '';
+                            const returnDateObj = returnAtRaw ? new Date(returnAtRaw) : null;
+                            const returnDateLabel = returnDateObj
+                                ? returnDateObj.toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                                : '';
+                            const returnTimeLabel = returnDateObj
+                                ? returnDateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                                : '';
+                            const returnByName = item.return_created_by_name ? escapeHtml(item.return_created_by_name) : '';
+                            const infoParts = [];
+                            infoParts.push('คืนแล้ว');
+                            if (returnDateLabel) {
+                                infoParts.push(returnDateLabel + (returnTimeLabel ? ' ' + returnTimeLabel : ''));
+                            }
+                            if (returnByName) {
+                                infoParts.push('โดย ' + returnByName);
+                            }
+                            remarkHtml += `<br><small class="text-success">${infoParts.join(' ')}</small>`;
+                        }
+
+                        const createdAt = item.created_at ? new Date(item.created_at) : null;
+                        const dateLabel = createdAt
+                            ? createdAt.toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                            : '-';
+                        const timeLabel = createdAt
+                            ? createdAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                            : '-';
+                        const createdByName = item.created_by_name ? escapeHtml(item.created_by_name) : 'N/A';
+
+                        const returnDisabledAttr = isReturned ? 'disabled aria-disabled="true"' : '';
+                        const returnBtnTitle = isReturned ? 'คืนสินค้าแล้ว' : 'คืนสินค้า';
+
                         html += `<tr>
                             <td>${index + 1}</td>
                             <td>
-                                <strong>${item.product_name}</strong><br>
-                                <small class="text-muted">SKU: ${item.sku}</small>
+                                <strong>${productName}</strong><br>
+                                <small class="text-muted">SKU: ${sku} | Barcode: ${barcode}</small>
                             </td>
-                            <td class="text-center">${item.quantity_missing}</td>
-                            <td>${item.created_by_name || 'N/A'}</td>
-                            <td>${new Date(item.created_at).toLocaleTimeString('th-TH')}</td>
+                            <td class="text-center">${quantityDisplay}</td>
+                            <td class="remark-cell">${remarkHtml}</td>
+                            <td>${createdByName}</td>
+                            <td>${dateLabel}<br><small class="text-muted">${timeLabel}</small></td>
                             <td>
-                                <button class="btn btn-sm btn-outline-primary edit-missing-btn" data-id="${item.missing_id}">
-                                    <span class="material-icons" style="font-size: 1rem;">edit</span>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger delete-missing-btn" data-id="${item.missing_id}">
-                                    <span class="material-icons" style="font-size: 1rem;">delete</span>
-                                </button>
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-success return-missing-btn" data-id="${item.missing_id}" ${returnDisabledAttr} title="${returnBtnTitle}">
+                                        <span class="material-icons" style="font-size: 1rem;">undo</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger delete-missing-btn" data-id="${item.missing_id}">
+                                        <span class="material-icons" style="font-size: 1rem;">delete</span>
+                                    </button>
+                                </div>
                             </td>
                         </tr>`;
                     });
                     $('#missing-items-tbody').html(html);
+                    updateActiveStatCards();
                 } else {
                     $('#missing-items-tbody').html(`<tr>
-                        <td colspan="6" class="text-center text-muted py-4">
+                        <td colspan="7" class="text-center text-muted py-4">
                             <span class="material-icons">inbox</span><br>
                             ยังไม่มีรายการสินค้าสูญหาย
                         </td>
                     </tr>`);
+                    renderStatsCards([]);
+                    loadMissingStats();
+                    updateActiveStatCards();
                 }
+            }).fail(function() {
+                $('#missing-items-tbody').html(`<tr>
+                    <td colspan="7" class="text-center text-danger py-4">
+                        <span class="material-icons">error</span><br>
+                        ไม่สามารถโหลดข้อมูลได้ กรุณาลองอีกครั้ง
+                    </td>
+                </tr>`);
+                renderStatsCards([]);
+                updateActiveStatCards();
             });
         }
 
         // Load on page load
         $(document).ready(function() {
+            renderSelectedProducts();
+            const today = new Date().toISOString().split('T')[0];
+            if (!$('#filter-date').val()) {
+                $('#filter-date').val(today);
+            }
             loadMissingItemsList();
             $('#barcode-search').focus();
-            
-            // Store scroll position before modal opens
-            let scrollPosition = 0;
-            
-            // Handle modal show event
-            const editModalElement = document.getElementById('editModal');
-            editModalElement.addEventListener('show.bs.modal', function() {
-                scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-                $('body').css('top', -scrollPosition + 'px');
-            });
-            
-            // Handle modal hide event
-            editModalElement.addEventListener('hide.bs.modal', function() {
-                $('body').css('top', '0px');
-                window.scrollTo(0, scrollPosition);
-            });
+            loadMissingStats();
         });
 
-        // Edit button handler
-        $(document).on('click', '.edit-missing-btn', function() {
-            currentEditingId = $(this).data('id');
-            const row = $(this).closest('tr');
-            const productName = row.find('td:eq(1) strong').text();
-            const quantity = row.find('td:eq(2)').text();
-            
-            // Set modal fields
-            $('#edit-product-name').text(productName);
-            $('#edit-quantity').val(quantity);
-            $('#edit-remark').val('');
-            
-            // Show modal
-            const editModal = new bootstrap.Modal(document.getElementById('editModal'));
-            editModal.show();
+        $('#filter-date').on('change', function() {
+            loadMissingItemsList();
         });
 
-        // Save edit button handler
-        $('#save-edit-btn').click(function() {
-            if (!currentEditingId) {
-                Swal.fire('ข้อผิดพลาด', 'ไม่พบรายการที่จะแก้ไข', 'error');
+        function scheduleFilterReload() {
+            clearTimeout(tableFilterTimeout);
+            tableFilterTimeout = setTimeout(() => {
+                loadMissingItemsList();
+            }, 400);
+        }
+
+        $('#filter-keyword').on('input', function() {
+            scheduleFilterReload();
+        });
+
+        $('#filter-keyword').on('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                loadMissingItemsList();
+            }
+        });
+
+        $('#filter-apply-btn').on('click', function() {
+            loadMissingItemsList();
+        });
+
+        $('#filter-clear-btn').on('click', function() {
+            $('#filter-date').val('');
+            $('#filter-keyword').val('');
+            selectedRemarkFilter = null;
+            updateActiveStatCards();
+            loadMissingItemsList();
+        });
+
+        $('#missing-stats-cards').on('click', '.missing-stat-card', function() {
+            const remarkKey = $(this).data('remark');
+            if (!remarkKey) {
                 return;
             }
 
-            const quantity = parseFloat($('#edit-quantity').val()) || 0;
-            const remark = $('#edit-remark').val().trim();
+            if (selectedRemarkFilter === remarkKey) {
+                selectedRemarkFilter = null;
+            } else {
+                selectedRemarkFilter = remarkKey;
+            }
 
-            if (quantity <= 0) {
-                Swal.fire('ข้อผิดพลาด', 'กรุณากรอกจำนวนที่มากกว่า 0', 'warning');
+            updateActiveStatCards();
+            loadMissingItemsList();
+        });
+
+        // Return button handler
+        $(document).on('click', '.return-missing-btn', function() {
+            const button = $(this);
+            if (button.prop('disabled')) {
                 return;
             }
 
-            $(this).prop('disabled', true);
-            
-            $.post('../api/update_missing_product_api.php', {
-                missing_id: currentEditingId,
-                quantity_missing: quantity,
-                remark: remark
-            }, function(resp) {
-                $('#save-edit-btn').prop('disabled', false);
-                
-                if (resp.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'อัปเดตสำเร็จ',
-                        text: 'บันทึกการแก้ไขเรียบร้อย',
-                        timer: 1500
-                    });
-                    
-                    // Close modal and reload list
-                    bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
-                    loadMissingItemsList();
-                    currentEditingId = null;
-                } else {
-                    Swal.fire('ข้อผิดพลาด', resp.message || 'ไม่สามารถอัปเดตได้', 'error');
+            const id = button.data('id');
+
+            Swal.fire({
+                title: 'ยืนยันการคืนสินค้า?',
+                text: 'ระบบจะบันทึกการคืนสินค้าเข้าความเคลื่อนไหวสินค้า',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'คืนสินค้า',
+                cancelButtonText: 'ยกเลิก'
+            }).then(result => {
+                if (!result.isConfirmed) {
+                    return;
                 }
-            }).fail(function() {
-                $('#save-edit-btn').prop('disabled', false);
-                Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+
+                button.prop('disabled', true);
+
+                $.post('../api/return_missing_product_api.php', {
+                    missing_id: id,
+                    returned_by: userId
+                }, function(resp) {
+                    if (resp.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'คืนสินค้าเรียบร้อย',
+                            timer: 1600
+                        });
+                        loadMissingItemsList();
+                        loadMissingStats();
+                    } else {
+                        button.prop('disabled', false);
+                        Swal.fire('ข้อผิดพลาด', resp.message || 'ไม่สามารถคืนสินค้าได้', 'error');
+                    }
+                }).fail(function() {
+                    button.prop('disabled', false);
+                    Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+                });
             });
         });
 
@@ -624,6 +1199,7 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                         if (resp.success) {
                             Swal.fire('ลบสำเร็จ', '', 'success');
                             loadMissingItemsList();
+                            loadMissingStats();
                         } else {
                             Swal.fire('ข้อผิดพลาด', resp.message, 'error');
                         }

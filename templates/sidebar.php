@@ -265,10 +265,7 @@
                     <span class="material-icons">inventory_2</span>
                     <span class="submenu-text">บันทึกสินค้าสูญหาย</span>
                 </a>
-                <a href="<?= getPath('stock/missing_products_list.php') ?>" class="submenu-item<?=isActive('missing_products_list.php')?>">
-                    <span class="material-icons">warning</span>
-                    <span class="submenu-text">รายการสินค้าสูญหาย</span>
-                </a>
+          
             </div>
         </div>
 
