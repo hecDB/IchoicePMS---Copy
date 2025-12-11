@@ -335,6 +335,41 @@ $rows = $stmt->fetchAll();
         });
     });
 
+    function resolveItemImage(imageValue) {
+        if (!imageValue || typeof imageValue !== 'string') {
+            return { src: null, needsFallback: false };
+        }
+
+        const trimmed = imageValue.trim();
+        if (!trimmed) {
+            return { src: null, needsFallback: false };
+        }
+
+        if (trimmed.startsWith('data:')) {
+            return { src: trimmed, needsFallback: false };
+        }
+
+        const sanitized = trimmed.replace(/\s+/g, '');
+        const base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
+        if (sanitized.length >= 60 && sanitized.length % 4 === 0 && base64Pattern.test(sanitized)) {
+            return { src: `data:image/jpeg;base64,${sanitized}`, needsFallback: false };
+        }
+
+        if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('../') || trimmed.startsWith('/')) {
+            return { src: trimmed, needsFallback: true };
+        }
+
+        if (trimmed.startsWith('images/')) {
+            return { src: `../${trimmed}`, needsFallback: true };
+        }
+
+        if (!trimmed.includes('/')) {
+            return { src: `../images/${trimmed}`, needsFallback: true };
+        }
+
+        return { src: `../${trimmed}`, needsFallback: true };
+    }
+
     function deletePo(e, po_id) {
         e.preventDefault();
         Swal.fire({
@@ -399,11 +434,6 @@ $rows = $stmt->fetchAll();
             document.removeEventListener('keydown', poViewKeyDownHandler);
             poViewKeyDownHandler = null;
         }
-        
-        // Refresh the page to show updated data
-        setTimeout(() => {
-            location.reload();
-        }, 300);
     }
 
     function closePoEdit(e) {
@@ -537,15 +567,10 @@ $rows = $stmt->fetchAll();
             
             // Handle image display - check if it's Base64 (temp_products) or file path (regular products)
             let imageHtml = '';
-            if (item.image) {
-                // Check if it's Base64 data (starts with base64 or is very long)
-                if (item.image.startsWith('data:') || item.image.length > 100) {
-                    // Base64 image from temp_products
-                    imageHtml = `<img src="data:image/jpeg;base64,${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;">`;
-                } else {
-                    // File path from regular products
-                    imageHtml = `<img src="../${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">`;
-                }
+            const imageInfo = resolveItemImage(item.image);
+            if (imageInfo.src) {
+                const errorAttr = imageInfo.needsFallback ? " onerror=\"this.src='../images/noimg.png'\"" : '';
+                imageHtml = `<img src="${imageInfo.src}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;"${errorAttr}>`;
             } else {
                 imageHtml = `<div style="width:50px;height:50px;background:#f8f9fa;border:1px solid #ddd;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:10px;">ไม่มี<br>รูป</div>`;
             }
@@ -2120,15 +2145,10 @@ $rows = $stmt->fetchAll();
             
             // Handle image display - check if it's Base64 (temp_products) or file path (regular products)
             let imageHtml = '';
-            if (item.image) {
-                // Check if it's Base64 data (starts with base64 or is very long)
-                if (item.image.startsWith('data:') || item.image.length > 100) {
-                    // Base64 image from temp_products
-                    imageHtml = `<img src="data:image/jpeg;base64,${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;">`;
-                } else {
-                    // File path from regular products
-                    imageHtml = `<img src="../${item.image}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">`;
-                }
+            const imageInfo = resolveItemImage(item.image);
+            if (imageInfo.src) {
+                const errorAttr = imageInfo.needsFallback ? " onerror=\"this.src='../images/noimg.png'\"" : '';
+                imageHtml = `<img src="${imageInfo.src}" alt="${item.product_name || 'Product'}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #ddd;"${errorAttr}>`;
             } else {
                 imageHtml = `<div style="width:50px;height:50px;background:#f8f9fa;border:1px solid #ddd;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:10px;">ไม่มี<br>รูป</div>`;
             }

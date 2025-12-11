@@ -78,6 +78,69 @@ try {
     $error_msg = $e->getMessage();
     error_log("Query Error in transaction_view_separated.php: " . $error_msg);
 }
+
+function resolveTransactionImageSrc($imageValue) {
+    if ($imageValue === null || $imageValue === '') {
+        return '../images/noimg.png';
+    }
+
+    if (is_resource($imageValue)) {
+        $imageValue = stream_get_contents($imageValue);
+    }
+
+    if (!is_string($imageValue)) {
+        return '../images/noimg.png';
+    }
+
+    $trimmed = trim($imageValue);
+    if ($trimmed === '') {
+        return '../images/noimg.png';
+    }
+
+    if (stripos($trimmed, 'data:') === 0) {
+        return $trimmed;
+    }
+
+    if (preg_match('/^[A-Za-z0-9+\/\s]+=*$/', $trimmed)) {
+        $cleaned = preg_replace('/\s+/', '', $trimmed);
+        if (strlen($cleaned) >= 60 && strlen($cleaned) % 4 === 0) {
+            return 'data:image/jpeg;base64,' . $cleaned;
+        }
+    }
+
+    if (preg_match('/[^\x09\x0A\x0D\x20-\x7E]/', $trimmed)) {
+        return 'data:image/jpeg;base64,' . base64_encode($trimmed);
+    }
+
+    if (preg_match('/^https?:\/\//i', $trimmed)) {
+        return $trimmed;
+    }
+
+    $relativePath = $trimmed;
+    if ($trimmed[0] !== '/' && strpos($trimmed, '../') !== 0 && strpos($trimmed, './') !== 0) {
+        if (strpos($trimmed, 'images/') === 0) {
+            $relativePath = '../' . ltrim($trimmed, '/');
+        } elseif (strpos($trimmed, '/') === false) {
+            $relativePath = '../images/' . $trimmed;
+        } else {
+            $relativePath = '../' . ltrim($trimmed, '/');
+        }
+    }
+
+    $absolutePath = realpath(__DIR__ . '/' . $relativePath);
+    if ($absolutePath && is_file($absolutePath)) {
+        return $relativePath;
+    }
+
+    $altRelative = '../' . ltrim($trimmed, '/');
+    $altAbsolute = realpath(__DIR__ . '/' . $altRelative);
+    if ($altAbsolute && is_file($altAbsolute)) {
+        return $altRelative;
+    }
+
+    return '../images/noimg.png';
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -520,11 +583,8 @@ try {
                             class="<?= $row['transaction_type'] === 'issue' ? 'table-danger' : '' ?>"
                             data-type="new">
                             <td class="text-center">
-                                <?php
-                                $img_path = !empty($row['image']) ? '../images/' . $row['image'] : '../images/noimg.png';
-                                if (!file_exists($img_path)) $img_path = '../images/noimg.png';
-                                ?>
-                                <img src="<?= htmlspecialchars($img_path) ?>" class="product-image" alt="<?= htmlspecialchars($row['product_name']) ?>" title="<?= htmlspecialchars($row['product_name']) ?>">
+                                <?php $imageSrc = resolveTransactionImageSrc($row['image'] ?? null); ?>
+                                <img src="<?= htmlspecialchars($imageSrc) ?>" class="product-image" alt="<?= htmlspecialchars($row['product_name']) ?>" title="<?= htmlspecialchars($row['product_name']) ?>">
                             </td>
                             <td><strong><?= htmlspecialchars($row['product_name'] ?? '-') ?></strong></td>
                             <td>
@@ -724,12 +784,22 @@ $(document).ready(function() {
         const expiry = $(this).data('expiry');
         const provisionalSku = $(this).data('provisional-sku');
         const provisionalBarcode = $(this).data('provisional-barcode');
+        const rowImageSrc = $(this).closest('tr').find('img.product-image').attr('src');
         
         $('#tempProductId').val(tempId);
         $('#receiveId').val(receiveId);
         $('#expiryInput').val(expiry);
         $('#provisionalSkuInput').val(provisionalSku);
         $('#provisionalBarcodeInput').val(provisionalBarcode);
+        $('#productImageInput').val('');
+        
+        if (rowImageSrc) {
+            $('#previewImg').attr('src', rowImageSrc);
+            $('#imagePreview').show();
+        } else {
+            $('#previewImg').attr('src', '');
+            $('#imagePreview').hide();
+        }
         
         // ล้างฟิลด์ตำแหน่ง
         $('#locationSearchEdit').val('');

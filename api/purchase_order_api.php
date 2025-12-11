@@ -35,7 +35,7 @@ try {
                            COALESCE(p.name, tp.product_name) AS product_name, 
                            COALESCE(p.sku, '-') AS sku, 
                            COALESCE(p.barcode, '') AS barcode, 
-                           p.image, 
+                           COALESCE(p.image, tp.product_image) AS image,
                            COALESCE(p.unit, 'ชิ้น') AS unit,
                            CASE 
                                WHEN poi.price_original > 0 THEN poi.price_original

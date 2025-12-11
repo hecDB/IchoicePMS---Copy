@@ -1,163 +1,163 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
-require_once __DIR__ . '/../config/db_connect.php';
+        if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+        require_once __DIR__ . '/../config/db_connect.php';
 
-$user_name = $_SESSION['user_name'] ?? 'Guest';
-$user_role = $_SESSION['user_role'] ?? 'user';
+        $user_name = $_SESSION['user_name'] ?? 'Guest';
+        $user_role = $_SESSION['user_role'] ?? 'user';
 
-function isActive($file) {
-    return (basename($_SERVER['PHP_SELF']) === $file) ? ' active' : '';
-}
+        function isActive($file) {
+            return (basename($_SERVER['PHP_SELF']) === $file) ? ' active' : '';
+        }
 
-// ปรับเส้นทางให้เหมาะสมกับตำแหน่งของไฟล์ที่เรียกใช้
-function getPath($targetPath) {
-    $currentFile = $_SERVER['PHP_SELF'];
-    $currentDir = dirname($currentFile);
-    
-    // แปลง backslash เป็น forward slash สำหรับ Windows
-    $currentDir = str_replace('\\', '/', $currentDir);
-    
-    // ลบ leading slash
-    $currentDir = ltrim($currentDir, '/');
-    $targetPath = ltrim($targetPath, '/');
-    
-    // ถ้าอยู่ที่ root level (currentDir จะเป็น empty)
-    if (empty($currentDir)) {
-        return $targetPath;
-    } else {
-        // นับจำนวนระดับของโฟลเดอร์
-        $levels = substr_count($currentDir, '/') + 1;
-        $backPath = str_repeat('../', $levels);
-        return $backPath . $targetPath;
-    }
-}
+        // ปรับเส้นทางให้เหมาะสมกับตำแหน่งของไฟล์ที่เรียกใช้
+        function getPath($targetPath) {
+            $currentFile = $_SERVER['PHP_SELF'];
+            $currentDir = dirname($currentFile);
+            
+            // แปลง backslash เป็น forward slash สำหรับ Windows
+            $currentDir = str_replace('\\', '/', $currentDir);
+            
+            // ลบ leading slash
+            $currentDir = ltrim($currentDir, '/');
+            $targetPath = ltrim($targetPath, '/');
+            
+            // ถ้าอยู่ที่ root level (currentDir จะเป็น empty)
+            if (empty($currentDir)) {
+                return $targetPath;
+            } else {
+                // นับจำนวนระดับของโฟลเดอร์
+                $levels = substr_count($currentDir, '/') + 1;
+                $backPath = str_repeat('../', $levels);
+                return $backPath . $targetPath;
+            }
+        }
 
-// ดึงจำนวนรายการที่รอการอนุมัติ
-try {
-    $pending_count = $pdo->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetchColumn();
-} catch (PDOException $e) {
-    $pending_count = 0;
-}
+        // ดึงจำนวนรายการที่รอการอนุมัติ
+        try {
+            $pending_count = $pdo->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetchColumn();
+        } catch (PDOException $e) {
+            $pending_count = 0;
+        }
 
-// ดึงจำนวนสินค้าที่รอรับเข้า
-try {
-    $pending_po_sql = "
-        SELECT COUNT(*) 
-        FROM purchase_orders po 
-        WHERE po.status IN ('pending', 'partial')
-    ";
-    $pending_product_count = $pdo->query($pending_po_sql)->fetchColumn();
-} catch (PDOException $e) {
-    $pending_product_count = 0;
-}
+        // ดึงจำนวนสินค้าที่รอรับเข้า
+        try {
+            $pending_po_sql = "
+                SELECT COUNT(*) 
+                FROM purchase_orders po 
+                WHERE po.status IN ('pending', 'partial')
+            ";
+            $pending_product_count = $pdo->query($pending_po_sql)->fetchColumn();
+        } catch (PDOException $e) {
+            $pending_product_count = 0;
+        }
 ?>
 <style>
-body {
-    margin: 0;
-    font-family: 'Prompt', sans-serif;
-}
+        body {
+            margin: 0;
+            font-family: 'Prompt', sans-serif;
+        }
 
-/* Category Styles */
-.menu-category {
-    margin: 8px 0;
-}
+        /* Category Styles */
+        .menu-category {
+            margin: 8px 0;
+        }
 
-.category-header {
-    display: flex;
-    align-items: center;
-    padding: 12px 16px;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    background: rgba(56, 93, 250, 0.08);
-    color: #385dfa;
-    font-weight: 600;
-    user-select: none;
-}
+        .category-header {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: rgba(56, 93, 250, 0.08);
+            color: #385dfa;
+            font-weight: 600;
+            user-select: none;
+        }
 
-.category-header:hover {
-    background: rgba(56, 93, 250, 0.15);
-    transform: translateX(2px);
-}
+        .category-header:hover {
+            background: rgba(56, 93, 250, 0.15);
+            transform: translateX(2px);
+        }
 
-.category-header .material-icons:first-child {
-    margin-right: 12px;
-    font-size: 20px;
-}
+        .category-header .material-icons:first-child {
+            margin-right: 12px;
+            font-size: 20px;
+        }
 
-.category-text {
-    flex: 1;
-    font-size: 14px;
-}
+        .category-text {
+            flex: 1;
+            font-size: 14px;
+        }
 
-.category-arrow {
-    transition: transform 0.3s ease;
-    font-size: 18px;
-    color: #385dfa;
-}
+        .category-arrow {
+            transition: transform 0.3s ease;
+            font-size: 18px;
+            color: #385dfa;
+        }
 
-.category-header.expanded .category-arrow {
-    transform: rotate(180deg);
-}
+        .category-header.expanded .category-arrow {
+            transform: rotate(180deg);
+        }
 
-/* Submenu Styles */
-.submenu {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
-    padding-left: 20px;
-}
+        /* Submenu Styles */
+        .submenu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding-left: 20px;
+        }
 
-.submenu.expanded {
-    max-height: 500px;
-}
+        .submenu.expanded {
+            max-height: 500px;
+        }
 
-.submenu-item {
-    display: flex;
-    align-items: center;
-    padding: 10px 16px;
-    text-decoration: none;
-    color: #64748b;
-    border-radius: 6px;
-    margin: 2px 0;
-    transition: all 0.2s ease;
-    position: relative;
-    font-size: 13px;
-}
+        .submenu-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            text-decoration: none;
+            color: #64748b;
+            border-radius: 6px;
+            margin: 2px 0;
+            transition: all 0.2s ease;
+            position: relative;
+            font-size: 13px;
+        }
 
-.submenu-item:hover {
-    background: rgba(56, 93, 250, 0.1);
-    color: #385dfa;
-    transform: translateX(3px);
-}
+        .submenu-item:hover {
+            background: rgba(56, 93, 250, 0.1);
+            color: #385dfa;
+            transform: translateX(3px);
+        }
 
-.submenu-item.active {
-    background: linear-gradient(135deg, #385dfa 0%, #4f46e5 100%);
-    color: white;
-    box-shadow: 0 2px 8px rgba(56, 93, 250, 0.3);
-}
+        .submenu-item.active {
+            background: linear-gradient(135deg, #385dfa 0%, #4f46e5 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(56, 93, 250, 0.3);
+        }
 
-.submenu-item .material-icons {
-    margin-right: 10px;
-    font-size: 18px;
-}
+        .submenu-item .material-icons {
+            margin-right: 10px;
+            font-size: 18px;
+        }
 
-.submenu-text {
-    flex: 1;
-}
+        .submenu-text {
+            flex: 1;
+        }
 
-.pending-badge {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 10px;
-    margin-left: auto;
-    font-weight: 600;
-    min-width: 16px;
-    text-align: center;
-    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
-}
+        .pending-badge {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: auto;
+            font-weight: 600;
+            min-width: 16px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+        }
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -260,10 +260,6 @@ body {
                 <a href="<?= getPath('stock/expiring_soon.php') ?>" class="submenu-item<?=isActive('expiring_soon.php')?>">
                     <span class="material-icons">schedule</span>
                     <span class="submenu-text">สินค้าใกล้หมดอายุ</span>
-                </a>
-                <a href="<?= getPath('stock/product_holding.php') ?>" class="submenu-item<?=isActive('product_holding.php')?>">
-                    <span class="material-icons">pending_actions</span>
-                    <span class="submenu-text">สินค้ารอสร้างโปรโมชั่น</span>
                 </a>
                 <a href="<?= getPath('stock/missing_products.php') ?>" class="submenu-item<?=isActive('missing_products.php')?>">
                     <span class="material-icons">inventory_2</span>

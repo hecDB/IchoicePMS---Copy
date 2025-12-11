@@ -21,7 +21,17 @@ foreach ($suppliers as $s) {
 }
 
 // ดึงสินค้า
-$stmt2 = $pdo->query("SELECT product_id, name, sku, unit, image FROM products");
+$stmt2 = $pdo->query("
+    SELECT 
+        p.product_id,
+        p.name,
+        p.sku,
+        p.unit,
+        p.image,
+        pc.category_name
+    FROM products p
+    LEFT JOIN product_category pc ON p.product_category_id = pc.category_id
+");
 $products = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
 // ดึงสกุลเงิน
@@ -332,6 +342,54 @@ currencySelect.dispatchEvent(new Event('change'));
 let rowCount = 0;
 const productRows = document.getElementById('productRows');
 
+function populateCategorySelect(selectEl, selectedValue = '') {
+    if (!selectEl) {
+        return;
+    }
+    const normalizedSelected = selectedValue || '';
+    selectEl.innerHTML = '';
+
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'ไม่ระบุ';
+    if (normalizedSelected === '') {
+        defaultOption.selected = true;
+    }
+    selectEl.appendChild(defaultOption);
+
+    window.productCategories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.category_name || '';
+        option.textContent = cat.category_name;
+        if ((cat.category_name || '') === normalizedSelected) {
+            option.selected = true;
+        }
+        selectEl.appendChild(option);
+    });
+
+    if (normalizedSelected === '') {
+        selectEl.value = '';
+    }
+}
+
+function ensureCategoryOption(selectEl, categoryName) {
+    if (!selectEl) {
+        return;
+    }
+    if (!categoryName) {
+        selectEl.value = '';
+        return;
+    }
+    const hasOption = Array.from(selectEl.options).some(opt => opt.value === categoryName);
+    if (!hasOption) {
+        const option = document.createElement('option');
+        option.value = categoryName;
+        option.textContent = categoryName;
+        selectEl.appendChild(option);
+    }
+    selectEl.value = categoryName;
+}
+
 // สร้างแถวรายการสินค้าใหม่
 function addProductRow(detail={}) {
     rowCount++;
@@ -342,11 +400,7 @@ function addProductRow(detail={}) {
     const selectedOption = currencySelect.options[currencySelect.selectedIndex];
     const currentSymbol = selectedOption.dataset.symbol || '฿';
     
-    // สร้าง option สำหรับประเภทสินค้า
-    let categoryOptions = '<option value="">-- เลือก --</option>';
-    window.productCategories.forEach(cat => {
-        categoryOptions += `<option value="${cat.category_name}">${cat.category_name}</option>`;
-    });
+    const selectedCategory = detail.category_name || '';
     
     const row = document.createElement('div');
     row.className = "product-item-card";
@@ -372,9 +426,7 @@ function addProductRow(detail={}) {
             </div>
             <div>
                 <div class="small-label">ประเภท</div>
-                <select class="category-input" style="width:100%;padding:8px 10px;border:1px solid #d7d8e0;border-radius:6px;">
-                    ${categoryOptions}
-                </select>
+                <select class="category-input" style="width:100%;padding:8px 10px;border:1px solid #d7d8e0;border-radius:6px;"></select>
             </div>
             <div>
                 <div class="small-label">จำนวน *</div>
@@ -416,9 +468,9 @@ function addProductRow(detail={}) {
         );
         if(matches.length === 0) {autoList.style.display='none'; autoList.innerHTML=''; return;}
         autoList.innerHTML = matches.map(p =>
-            `<div data-id="${p.product_id}" data-name="${p.name}" data-unit="${p.unit}" data-price="0" data-image="${p.image||''}" style="display:flex;align-items:center;padding:8px;">
+            `<div data-id="${p.product_id}" data-name="${p.name}" data-unit="${p.unit}" data-price="0" data-image="${p.image||''}" data-category="${(p.category_name || '').replace(/"/g, '&quot;')}" style="display:flex;align-items:center;padding:8px;">
                 <img src="../${p.image ? p.image : 'images/noimg.png'}" alt="${p.name}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;margin-right:10px;border:1px solid #ddd;" onerror="this.src='../images/noimg.png'">
-                <div><b>${p.name}</b><br><small style="color:#666;">${p.sku} | ${p.unit || 'ชิ้น'}</small></div>
+                <div><b>${p.name}</b><br><small style="color:#666;">${p.sku} | ${p.unit || 'ชิ้น'} | ${(p.category_name || 'ไม่ระบุ')}</small></div>
             </div>`
         ).join('');
         autoList.style.display = "block";
@@ -432,6 +484,7 @@ function addProductRow(detail={}) {
         row.querySelector('.unit-input').value = t.dataset.unit;
         row.querySelector('.price-input').value = '0'; // ไม่มีราคาใน products table
         row.dataset.productId = t.dataset.id; // เก็บ product_id (แก้ไขจาก id เป็น id)
+        ensureCategoryOption(row.querySelector('.category-input'), t.dataset.category || '');
         
         // อัปเดตรูปภาพ
         const productImage = row.querySelector('.product-image');
@@ -499,6 +552,10 @@ function addProductRow(detail={}) {
     row.querySelector('.remove-row-btn').onclick = ()=>{ row.remove(); calcTotal(); };
 
     productRows.appendChild(row);
+
+    const categorySelect = row.querySelector('.category-input');
+    populateCategorySelect(categorySelect, selectedCategory);
+    ensureCategoryOption(categorySelect, selectedCategory);
     
     // อัปเดตการแสดงราคาในสกุลเงินฐานสำหรับแถวใหม่
     updatePriceBaseDisplay(row.querySelector('.price-input'));
@@ -563,6 +620,7 @@ document.getElementById('addProductRowBtn').onclick = ()=>addProductRow();
                                         const skuInput = lastRow.querySelector('.sku-input');
                                         const unitInput = lastRow.querySelector('.unit-input');
                                         const qtyInput = lastRow.querySelector('.qty-input');
+                                        const categorySelect = lastRow.querySelector('.category-input');
                                         const productImage = lastRow.querySelector('.product-image');
                                         const noImageText = lastRow.querySelector('.no-image-text');
                                         
@@ -570,6 +628,7 @@ document.getElementById('addProductRowBtn').onclick = ()=>addProductRow();
                                         if (skuInput) skuInput.value = product.sku || '';
                                         if (unitInput) unitInput.value = product.unit || '';
                                         if (qtyInput) qtyInput.value = suggestedQty;
+                                        ensureCategoryOption(categorySelect, (product.category_name || ''));
                                         
                                         // ค้นหาและแสดงรูปภาพ
                                         const foundProduct = window.products.find(p => p.product_id == product.product_id);
@@ -580,6 +639,7 @@ document.getElementById('addProductRowBtn').onclick = ()=>addProductRow();
                                             productImage.src = imagePath;
                                             productImage.style.display = 'block';
                                             noImageText.style.display = 'none';
+                                            ensureCategoryOption(categorySelect, foundProduct.category_name || '');
                                         }
                                     }
                                 }, index * 150);

@@ -46,8 +46,8 @@ if(isset($_POST['submit'])) {
             // ====== คำนวณยอดรวม ======
             $total_amount = 0;
             for ($i = 1; $i < count($rows); $i++) {
-                $qty = floatval($rows[$i][8] ?? 0);
-                $price = floatval($rows[$i][9] ?? 0);
+                $qty = floatval($rows[$i][9] ?? 0);      // Column J (0-indexed 9)
+                $price = floatval($rows[$i][10] ?? 0);   // Column K (0-indexed 10)
                 $total_amount += $qty * $price;
             }
 
