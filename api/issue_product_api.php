@@ -137,7 +137,10 @@ try {
         
         // Check available quantity
         $check_stmt = $pdo->prepare("
-            SELECT ri.receive_qty, p.name, p.sku 
+            SELECT 
+                ri.receive_qty,
+                p.name,
+                p.sku
             FROM receive_items ri
             INNER JOIN purchase_order_items poi ON poi.item_id = ri.item_id
             INNER JOIN products p ON p.product_id = poi.product_id
@@ -201,7 +204,7 @@ try {
             $error_messages[] = "ไม่สามารถอัปเดตสต็อกของสินค้า {$available['name']} ได้";
             continue;
         }
-        
+
         $success_count++;
         $total_amount += ($sale_price * $issue_qty);
         error_log("Successfully issued: Product ID {$product_id}, Qty {$issue_qty}, Receive ID {$receive_id}, Sale Order ID {$sale_order_id}");

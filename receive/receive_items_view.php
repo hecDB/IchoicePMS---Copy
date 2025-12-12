@@ -4,70 +4,125 @@ require '../config/db_connect.php';
 
 // Query รวมข้อมูลรับเข้าและสินค้าออก (เฉพาะสินค้าที่มีอยู่แล้ว - temp_product_id IS NULL และ product_id IS NOT NULL)
 $sql = "
-(SELECT 
-    'receive' as transaction_type,
-    r.receive_id as transaction_id, 
-    p.image, p.sku, p.barcode, 
-    u.name AS created_by, 
-    r.created_at, 
-    r.receive_qty as quantity, 
-    r.remark_color, r.remark_split, r.remark, r.expiry_date,
-    l.row_code, l.bin, l.shelf, l.description AS location_desc,
-    poi.price_per_unit, poi.sale_price,
-    r.po_id, r.item_id,
-    p.name AS product_name,
-    r.created_by AS created_by_id,
-    po.remark AS po_remark,
-    po.po_number AS po_number,
-    NULL as issue_tag,
-    NULL as platform
-FROM receive_items r
-LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
-LEFT JOIN products p ON poi.product_id = p.product_id
-LEFT JOIN locations l ON l.location_id = (
-    SELECT pl.location_id FROM product_location pl WHERE pl.product_id = p.product_id LIMIT 1
-)
-LEFT JOIN users u ON r.created_by = u.user_id
-LEFT JOIN purchase_orders po ON r.po_id = po.po_id
-WHERE poi.product_id IS NOT NULL )
+        (SELECT 
+            'receive' as transaction_type,
+            r.receive_id as transaction_id, 
+            p.image, p.sku, p.barcode, 
+            u.name AS created_by, 
+            r.created_at, 
+            r.receive_qty as quantity, 
+            r.remark_color, r.remark_split, CONVERT(r.remark USING utf8mb4) AS remark, r.expiry_date,
+            l.row_code, l.bin, l.shelf, l.description AS location_desc,
+            poi.price_per_unit, poi.sale_price,
+            r.po_id, r.item_id,
+            p.name AS product_name,
+            p.product_id,
+            r.created_by AS created_by_id,
+            po.remark AS po_remark,
+            po.po_number AS po_number,
+            NULL as issue_tag,
+            NULL as platform
+        FROM receive_items r
+        LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
+        LEFT JOIN products p ON poi.product_id = p.product_id
+        LEFT JOIN locations l ON l.location_id = (
+            SELECT pl.location_id FROM product_location pl WHERE pl.product_id = p.product_id LIMIT 1
+        )
+        LEFT JOIN users u ON r.created_by = u.user_id
+        LEFT JOIN purchase_orders po ON r.po_id = po.po_id
+        WHERE poi.product_id IS NOT NULL )
 
-UNION ALL
+        UNION ALL
 
-(SELECT 
-    'issue' as transaction_type,
-    ii.issue_id as transaction_id,
-    p.image, p.sku, p.barcode,
-    u.name AS created_by,
-    ii.created_at,
-    ii.issue_qty as quantity,
-    NULL as remark_color, NULL as remark_split, 
-    ii.remark, 
-    ri.expiry_date,
-    l.row_code, l.bin, l.shelf, l.description AS location_desc,
-    poi.price_per_unit, ii.sale_price,
-    NULL as po_id, NULL as item_id,
-    p.name AS product_name,
-    ii.issued_by AS created_by_id,
-    NULL as po_remark,
-    NULL as po_number,
-    so.issue_tag,
-    so.platform
-FROM issue_items ii
-LEFT JOIN products p ON ii.product_id = p.product_id
-LEFT JOIN receive_items ri ON ii.receive_id = ri.receive_id
-LEFT JOIN purchase_order_items poi ON ri.item_id = poi.item_id
-LEFT JOIN locations l ON l.location_id = (
-    SELECT pl.location_id FROM product_location pl WHERE pl.product_id = p.product_id LIMIT 1
-)
-LEFT JOIN users u ON ii.issued_by = u.user_id
-LEFT JOIN sales_orders so ON ii.sale_order_id = so.sale_order_id
-WHERE poi.product_id IS NOT NULL )
+        (SELECT 
+            'issue' as transaction_type,
+            ii.issue_id as transaction_id,
+            p.image, p.sku, p.barcode,
+            u.name AS created_by,
+            ii.created_at,
+            ii.issue_qty as quantity,
+            NULL as remark_color, NULL as remark_split, 
+            COALESCE(CONVERT(ii.remark USING utf8mb4), CONVERT(so.remark USING utf8mb4)) AS remark, 
+            ri.expiry_date,
+            l.row_code, l.bin, l.shelf, l.description AS location_desc,
+            poi.price_per_unit, ii.sale_price,
+            NULL as po_id, NULL as item_id,
+            p.name AS product_name,
+            p.product_id,
+            ii.issued_by AS created_by_id,
+            NULL as po_remark,
+            NULL as po_number,
+            so.issue_tag,
+            so.platform
+        FROM issue_items ii
+        LEFT JOIN products p ON ii.product_id = p.product_id
+        LEFT JOIN receive_items ri ON ii.receive_id = ri.receive_id
+        LEFT JOIN purchase_order_items poi ON ri.item_id = poi.item_id
+        LEFT JOIN locations l ON l.location_id = (
+            SELECT pl.location_id FROM product_location pl WHERE pl.product_id = p.product_id LIMIT 1
+        )
+        LEFT JOIN users u ON ii.issued_by = u.user_id
+        LEFT JOIN sales_orders so ON ii.sale_order_id = so.sale_order_id
+        WHERE poi.product_id IS NOT NULL )
 
-ORDER BY created_at DESC
-LIMIT 500
-";
+        ORDER BY created_at DESC
+        LIMIT 500";
 $stmt = $pdo->query($sql);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Normalize movement quantities and compute running totals per product
+$issueQtyStmt = $pdo->prepare("SELECT COALESCE(SUM(issue_qty), 0) FROM issue_items WHERE receive_id = ?");
+$issueQtyCache = [];
+
+foreach ($rows as $index => &$row) {
+    $row['quantity'] = isset($row['quantity']) ? (float) $row['quantity'] : 0.0;
+    $transactionType = $row['transaction_type'] ?? 'receive';
+
+    if ($transactionType === 'issue') {
+        $row['quantity_change'] = -abs($row['quantity']);
+    } else {
+        $receiveId = (int) ($row['transaction_id'] ?? 0);
+        if ($receiveId > 0) {
+            if (!array_key_exists($receiveId, $issueQtyCache)) {
+                $issueQtyStmt->execute([$receiveId]);
+                $issueQtyCache[$receiveId] = (float) $issueQtyStmt->fetchColumn();
+            }
+            $row['quantity_change'] = $row['quantity'] + $issueQtyCache[$receiveId];
+        } else {
+            $row['quantity_change'] = $row['quantity'];
+        }
+    }
+
+    $row['quantity_display'] = abs($row['quantity_change']);
+    $row['quantity_direction'] = $row['quantity_change'] < 0 ? 'minus' : 'plus';
+}
+unset($row);
+
+$sortedIndices = array_keys($rows);
+usort($sortedIndices, function ($a, $b) use ($rows) {
+    $timeA = strtotime($rows[$a]['created_at'] ?? '1970-01-01 00:00:00');
+    $timeB = strtotime($rows[$b]['created_at'] ?? '1970-01-01 00:00:00');
+    if ($timeA === $timeB) {
+        // Ensure receives are processed before issues when timestamps match
+        return strcmp($rows[$a]['transaction_type'] ?? 'receive', $rows[$b]['transaction_type'] ?? 'receive');
+    }
+    return $timeA <=> $timeB;
+});
+
+$runningTotals = [];
+foreach ($sortedIndices as $idx) {
+    $productKey = (string)($rows[$idx]['product_id'] ?? '');
+    if ($productKey === '') {
+        $productKey = ($rows[$idx]['sku'] ?? '') . '|' . ($rows[$idx]['barcode'] ?? '');
+    }
+    if ($productKey === '' || $productKey === '|') {
+        $productKey = 'unknown_' . $idx;
+    }
+    $runningTotals[$productKey] = ($runningTotals[$productKey] ?? 0) + $rows[$idx]['quantity_change'];
+    $rows[$idx]['running_qty'] = $runningTotals[$productKey];
+}
+
+unset($sortedIndices, $runningTotals);
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -88,616 +143,616 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <link href="../assets/mainwrap-modern.css" rel="stylesheet">
 
 <style>
-    body {
-        font-family: 'Prompt', sans-serif;
-        background-color: #f8fafc;
-    }
-    
-    .product-image {
-        width: 36px; 
-        height: 36px;
-        max-width: 48px; 
-        max-height: 48px;
-        object-fit: cover;
-        border-radius: 6px;
-        border: 2px solid #e5e7eb;
-    }
-    
-    .qty-plus {
-        color: #059669;
-        font-weight: 700;
-    }
-    
-    .qty-minus {
-        color: #dc2626;
-        font-weight: 700;
-    }
-    
-    .breadcrumb-modern {
-        background: none;
-        padding: 0;
-    }
-    
-    .breadcrumb-modern .breadcrumb-item {
-        color: #6b7280;
-    }
-    
-    .breadcrumb-modern .breadcrumb-item.active {
-        color: #111827;
-        font-weight: 500;
-    }
-
-    @media (max-width: 768px) {
-        .product-image { width: 28px; height: 28px; }
-    }
-    @media (max-width: 480px) {
-        .product-image { width: 20px; height: 20px; }
-    }
-
-    /* PO Selection Modal Styles */
-    .po-item {
-        transition: all 0.3s ease;
-        border-radius: 8px;
-    }
-    
-    .po-item:hover {
-        background-color: #f8f9ff;
-        border-color: #3b82f6;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-    }
-    
-    .po-item:active {
-        transform: translateY(0);
-    }
-    
-    #selectPOModal .modal-dialog {
-        max-width: 800px;
-    }
-    
-    #po-search {
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 0.75rem;
-        font-size: 1rem;
-    }
-    
-    #po-search:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    
-    .list-group-item {
-        border: 1px solid #e5e7eb;
-        margin-bottom: 0.5rem;
-    }
-    
-    .badge {
-        font-size: 0.75rem;
-        padding: 0.35rem 0.65rem;
-    }
-
-    /* Table responsive adjustments */
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-    
-/* Full-width table styling */
-        .table-card {
-            width: 100%;          /* ทำให้เต็มความกว้าง */
-            margin: 0;            /* ล้าง margin ที่ดันเข้าด้านใน */
-            padding: 0;
-            border-radius: 0;
-        }
-
-        .table-header {
-            width: 100%;
-            margin: 0;
-            padding: 1.5rem;
-        }
-
-        .table-body {
-            width: 100%;
-            margin: 0;
-            padding: 0 1.5rem;
-        }
-
+            body {
+                font-family: 'Prompt', sans-serif;
+                background-color: #f8fafc;
+            }
             
-    #receive-table {
-        width: 100%;
-        white-space: normal;
-        margin-bottom: 0;
-    }
-    
-    #receive-table th,
-    #receive-table td {
-        padding: 0.75rem 0.5rem;
-        font-size: 0.9rem;
-        vertical-align: middle;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    
-    #receive-table thead {
-        background-color: #f3f4f6;
-        border-bottom: 2px solid #d1d5db;
-    }
-    
-    #receive-table tbody tr {
-        transition: all 0.2s ease;
-    }
-    
-    #receive-table tbody tr:hover {
-        background-color: #f9fafb;
-    }
-    
-    /* Define column widths for new order - percentage-based layout */
-    #receive-table th:nth-child(1) { flex: 0 0 6.5%; } /* Image */
-    #receive-table th:nth-child(2) { flex: 0 0 9.3%; } /* Barcode */
-    #receive-table th:nth-child(3) { flex: 0 0 7.5%; } /* SKU */
-    #receive-table th:nth-child(4) { flex: 0 0 12%; } /* Date */
-    #receive-table th:nth-child(5) { flex: 0 0 9.3%; } /* Qty Changed */
-    #receive-table th:nth-child(6) { flex: 0 0 10.3%; } /* Movement Type */
-    #receive-table th:nth-child(7) { flex: 0 0 8.4%; } /* Latest Qty */
-    #receive-table th:nth-child(8) { flex: 0 0 10.3%; } /* Expiry Date */
-    #receive-table th:nth-child(9) { flex: 0 0 11.2%; } /* PO/Tag */
-    #receive-table th:nth-child(10) { flex: 0 0 10.3%; } /* Created By */
-    #receive-table th:nth-child(11) { flex: 1 1 auto; } /* Remark - flexible width */
-    #receive-table th:nth-child(12) { flex: 0 0 6.5%; } /* Actions */
-    
-    /* ปรับ text overflow สำหรับข้อความยาว */
-    #receive-table td:nth-child(11) { /* Remark */
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    
-    /* Tooltip สำหรับข้อความที่ถูกตัด */
-    #receive-table td[title] {
-        cursor: help;
-    }
-    
-    /* ปรับขนาดรูปภาพให้เล็กลง */
-    .product-image {
-        width: 48px !important; 
-        height: 48px !important;
-        max-width: 48px !important; 
-        max-height: 48px !important;
-    }
-    
-    /* ปรับขนาด badge */
-    .badge {
-        font-size: 0.8rem !important;
-        padding: 0.35rem 0.65rem !important;
-    }
-    
-    /* ปรับปุ่มจัดการ */
-    .action-btn {
-        padding: 0.375rem 0.5rem;
-        font-size: 0.9rem;
-    }
-    
-    .action-btn .material-icons {
-        font-size: 1.2rem;
-    }
-    
-    /* Mobile responsive adjustments */
-    @media (max-width: 768px) {
-        #receive-table {
-            width: 100%;
-        }
-        
-        #receive-table th,
-        #receive-table td {
-            padding: 0.5rem 0.25rem;
-            font-size: 0.85rem;
-        }
-        
-        .product-image {
-            width: 32px !important; 
-            height: 32px !important;
-            max-width: 32px !important; 
-            max-height: 32px !important;
-        }
-        
-        .badge {
-            font-size: 0.7rem !important;
-            padding: 0.25rem 0.4rem !important;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        #receive-table {
-            width: 100%;
-        }
-        
-        #receive-table th,
-        #receive-table td {
-            padding: 0.4rem 0.15rem;
-            font-size: 0.8rem;
-        }
-        
-        .product-image {
-            width: 24px !important; 
-            height: 24px !important;
-            max-width: 24px !important; 
-            max-height: 24px !important;
-        }
-    }
-    
-    /* DataTable pagination and search styling */
-    .dataTables_wrapper {
-        padding: 0;
-    }
-    
-    .dataTables_length,
-    .dataTables_filter,
-    .dataTables_info,
-    .dataTables_paginate {
-        margin: 0.5rem 0;
-    }
-    
-    .dataTables_filter input {
-        border: 1px solid #d1d5db;
-        border-radius: 0.375rem;
-        padding: 0.5rem 0.75rem;
-        margin-left: 0.5rem;
-        width: 250px;
-    }
-    
-    .dataTables_filter input:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        outline: none;
-    }
-    
-    /* Styles for issue transactions */
-    .table-danger {
-        --bs-table-bg: rgba(220, 53, 69, 0.05);
-    }
-    
-    .qty-minus {
-        font-weight: bold;
-        color: #dc3545 !important;
-    }
-    
-    .stats-danger {
-        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-        color: white;
-    }
-    
-    .stats-danger .stats-icon {
-        color: rgba(255, 255, 255, 0.8);
-    }
-    
-    .stats-card.filter-card {
-        cursor: pointer;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
+            .product-image {
+                width: 36px; 
+                height: 36px;
+                max-width: 48px; 
+                max-height: 48px;
+                object-fit: cover;
+                border-radius: 6px;
+                border: 2px solid #e5e7eb;
+            }
+            
+            .qty-plus {
+                color: #059669;
+                font-weight: 700;
+            }
+            
+            .qty-minus {
+                color: #dc2626;
+                font-weight: 700;
+            }
+            
+            .breadcrumb-modern {
+                background: none;
+                padding: 0;
+            }
+            
+            .breadcrumb-modern .breadcrumb-item {
+                color: #6b7280;
+            }
+            
+            .breadcrumb-modern .breadcrumb-item.active {
+                color: #111827;
+                font-weight: 500;
+            }
 
-    .stats-card.filter-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12);
-    }
+            @media (max-width: 768px) {
+                .product-image { width: 28px; height: 28px; }
+            }
+            @media (max-width: 480px) {
+                .product-image { width: 20px; height: 20px; }
+            }
 
-    .stats-card.filter-card.active {
-        outline: 3px solid rgba(59, 130, 246, 0.35);
-        box-shadow: 0 16px 32px rgba(37, 99, 235, 0.2);
-    }
+            /* PO Selection Modal Styles */
+            .po-item {
+                transition: all 0.3s ease;
+                border-radius: 8px;
+            }
+            
+            .po-item:hover {
+                background-color: #f8f9ff;
+                border-color: #3b82f6;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            }
+            
+            .po-item:active {
+                transform: translateY(0);
+            }
+            
+            #selectPOModal .modal-dialog {
+                max-width: 800px;
+            }
+            
+            #po-search {
+                border: 2px solid #e5e7eb;
+                border-radius: 8px;
+                padding: 0.75rem;
+                font-size: 1rem;
+            }
+            
+            #po-search:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+            
+            .list-group-item {
+                border: 1px solid #e5e7eb;
+                margin-bottom: 0.5rem;
+            }
+            
+            .badge {
+                font-size: 0.75rem;
+                padding: 0.35rem 0.65rem;
+            }
 
-    .status-filter-pill {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.35rem 0.85rem;
-        border-radius: 999px;
-        font-size: 0.85rem;
-        background: #eff6ff;
-        color: #1d4ed8;
-        font-weight: 600;
-        border: 1px solid rgba(59, 130, 246, 0.2);
-        white-space: nowrap;
-    }
+            /* Table responsive adjustments */
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+        /* Full-width table styling */
+                .table-card {
+                    width: 100%;          /* ทำให้เต็มความกว้าง */
+                    margin: 0;            /* ล้าง margin ที่ดันเข้าด้านใน */
+                    padding: 0;
+                    border-radius: 0;
+                }
 
-    .dataTables_length select {
-        border: 1px solid #d1d5db;
-        border-radius: 0.375rem;
-        padding: 0.25rem 0.5rem;
-        margin: 0 0.5rem;
-    }
-    
-    .dataTables_paginate .paginate_button {
-        border: 1px solid #d1d5db !important;
-        background: white !important;
-        color: #374151 !important;
-        padding: 0.5rem 0.75rem !important;
-        margin: 0 0.125rem !important;
-        border-radius: 0.375rem !important;
-        transition: all 0.2s ease !important;
-    }
-    
-    .dataTables_paginate .paginate_button:hover {
-        background: #f3f4f6 !important;
-        border-color: #9ca3af !important;
-        color: #111827 !important;
-    }
-    
-    .dataTables_paginate .paginate_button.current {
-        background: #3b82f6 !important;
-        border-color: #3b82f6 !important;
-        color: white !important;
-    }
-    
-    .dataTables_paginate .paginate_button.disabled {
-        opacity: 0.5 !important;
-        cursor: not-allowed !important;
-    }
-    
-    .dataTables_info {
-        color: #6b7280;
-        font-size: 0.875rem;
-    }
-    
-    .dataTables_processing {
-        background: rgba(255, 255, 255, 0.9) !important;
-        border: 1px solid #e5e7eb !important;
-        border-radius: 0.5rem !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-        color: #374151 !important;
-        font-size: 0.875rem !important;
-        padding: 1rem !important;
-    }
-    
-    /* Custom search box styling */
-    .search-box .input-group {
-        min-width: 300px;
-    }
-    
-    .search-box .input-group-text {
-        background-color: #f8f9fa;
-        border-color: #d1d5db;
-        color: #6b7280;
-    }
-    
-    .search-box .form-control {
-        border-color: #d1d5db;
-    }
-    
-    .search-box .form-control:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    
-    .table-actions {
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    
-    @media (max-width: 768px) {
-        .search-box .input-group {
-            min-width: 250px;
-        }
-        
-        .table-actions {
-            flex-direction: column;
-            align-items: stretch;
-        }
-    }
-    
-    /* Quantity Split Modal Styles */
-    #quantitySplitModal .modal-dialog {
-        max-width: 1000px;
-    }
-    
-    .additional-po-row {
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 1rem;
-        background-color: #f8f9fa;
-    }
-    
-    .additional-po-item {
-        transition: all 0.2s ease;
-        cursor: pointer;
-    }
-    
-    .additional-po-item:hover {
-        background-color: #f8f9ff;
-        border-color: #3b82f6;
-    }
-    
-    .quantity-summary-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    
-    .split-status {
-        font-size: 0.9rem;
-        padding: 0.5rem 1rem;
-        border-radius: 1rem;
-    }
-    
-    .split-main-po {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    }
-    
-    .split-additional-po {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-    }
-    
-    @media (max-width: 768px) {
-        #quantitySplitModal .modal-dialog {
-            max-width: 95%;
-            margin: 1rem;
-        }
-        
-        .additional-po-row {
-            padding: 0.5rem;
-        }
-        
-        .additional-po-row .col-md-4 {
-            margin-bottom: 0.5rem;
-        }
-    }
-    
-    /* Action Buttons Styling */
-    .action-btn {
-        padding: 0.375rem 0.5rem;
-        font-size: 0.875rem;
-        line-height: 1;
-        border-radius: 0.375rem;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 2.25rem;
-        height: 2.25rem;
-    }
-    
-    .action-btn .material-icons {
-        font-size: 1rem !important;
-        line-height: 1;
-    }
-    
-    .action-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
-    .action-btn:active {
-        transform: translateY(0);
-    }
-    
-    .btn-outline-primary:hover {
-        background-color: #3b82f6;
-        border-color: #3b82f6;
-        color: white;
-    }
-    
-    .btn-outline-danger:hover {
-        background-color: #dc3545;
-        border-color: #dc3545;
-        color: white;
-    }
-    
-    .btn-outline-secondary:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    
-    .btn-group .action-btn:first-child {
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0;
-        border-right: 0;
-    }
-    
-    .btn-group .action-btn:last-child {
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0;
-        border-left: 1px solid rgba(0, 0, 0, 0.125);
-    }
-    
-    .btn-group .action-btn:not(:first-child):not(:last-child) {
-        border-radius: 0;
-        border-left: 1px solid rgba(0, 0, 0, 0.125);
-        border-right: 0;
-    }
-    
-    /* Tooltip styling */
-    .tooltip {
-        font-size: 0.75rem;
-    }
-    
-    .tooltip-inner {
-        background-color: #1f2937;
-        color: white;
-        padding: 0.375rem 0.75rem;
-        border-radius: 0.375rem;
-    }
-    
-    /* Animation for buttons */
-    @keyframes buttonPulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
-    
-    .action-btn:focus {
-        animation: buttonPulse 0.3s ease;
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-    }
-    
-    .btn-outline-danger:focus {
-        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
-    }
-    
-    /* PO Badge Styling */
-    .badge.bg-primary {
-        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%) !important;
-        font-weight: 500;
-        letter-spacing: 0.5px;
-        padding: 0.35rem 0.65rem;
-        border-radius: 0.375rem;
-    }
-    
-    .badge.bg-primary:hover {
-        transform: scale(1.05);
-        transition: transform 0.2s ease;
-    }
-    
-    /* PO Column styling */
-    .po-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        min-height: 2rem;
-        align-items: flex-start;
-    }
-    
-    .po-remark {
-        font-size: 0.7rem;
-        color: #6b7280;
-        font-style: italic;
-        word-break: break-word;
-        max-width: 120px;
-        line-height: 1.2;
-        padding: 0.1rem 0.3rem;
-        background-color: #f8f9fa;
-        border-radius: 0.25rem;
-        border-left: 3px solid #dee2e6;
-    }
-    
-    .po-badge-icon {
-        font-size: 0.75rem !important;
-        vertical-align: middle;
-        margin-right: 0.25rem;
-    }
-    
-    .badge.bg-primary {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-    
-    /* Issue tag styling for better contrast */
-    .issue-tag-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        align-items: flex-start;
-    }
-    
-    .issue-tag-badge {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-        color: white;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.35rem 0.65rem;
-        border-radius: 0.375rem;
-    }
+                .table-header {
+                    width: 100%;
+                    margin: 0;
+                    padding: 1.5rem;
+                }
+
+                .table-body {
+                    width: 100%;
+                    margin: 0;
+                    padding: 0 1.5rem;
+                }
+
+                    
+            #receive-table {
+                width: 100%;
+                white-space: normal;
+                margin-bottom: 0;
+            }
+            
+            #receive-table th,
+            #receive-table td {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.9rem;
+                vertical-align: middle;
+                border-bottom: 1px solid #e5e7eb;
+            }
+            
+            #receive-table thead {
+                background-color: #f3f4f6;
+                border-bottom: 2px solid #d1d5db;
+            }
+            
+            #receive-table tbody tr {
+                transition: all 0.2s ease;
+            }
+            
+            #receive-table tbody tr:hover {
+                background-color: #f9fafb;
+            }
+            
+            /* Define column widths for new order - percentage-based layout */
+            #receive-table th:nth-child(1) { flex: 0 0 6.5%; } /* Image */
+            #receive-table th:nth-child(2) { flex: 0 0 9.3%; } /* Barcode */
+            #receive-table th:nth-child(3) { flex: 0 0 7.5%; } /* SKU */
+            #receive-table th:nth-child(4) { flex: 0 0 12%; } /* Date */
+            #receive-table th:nth-child(5) { flex: 0 0 9.3%; } /* Qty Changed */
+            #receive-table th:nth-child(6) { flex: 0 0 10.3%; } /* Movement Type */
+            #receive-table th:nth-child(7) { flex: 0 0 8.4%; } /* Latest Qty */
+            #receive-table th:nth-child(8) { flex: 0 0 10.3%; } /* Expiry Date */
+            #receive-table th:nth-child(9) { flex: 0 0 11.2%; } /* PO/Tag */
+            #receive-table th:nth-child(10) { flex: 0 0 10.3%; } /* Created By */
+            #receive-table th:nth-child(11) { flex: 1 1 auto; } /* Remark - flexible width */
+            #receive-table th:nth-child(12) { flex: 0 0 6.5%; } /* Actions */
+            
+            /* ปรับ text overflow สำหรับข้อความยาว */
+            #receive-table td:nth-child(11) { /* Remark */
+                max-width: 200px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            
+            /* Tooltip สำหรับข้อความที่ถูกตัด */
+            #receive-table td[title] {
+                cursor: help;
+            }
+            
+            /* ปรับขนาดรูปภาพให้เล็กลง */
+            .product-image {
+                width: 48px !important; 
+                height: 48px !important;
+                max-width: 48px !important; 
+                max-height: 48px !important;
+            }
+            
+            /* ปรับขนาด badge */
+            .badge {
+                font-size: 0.8rem !important;
+                padding: 0.35rem 0.65rem !important;
+            }
+            
+            /* ปรับปุ่มจัดการ */
+            .action-btn {
+                padding: 0.375rem 0.5rem;
+                font-size: 0.9rem;
+            }
+            
+            .action-btn .material-icons {
+                font-size: 1.2rem;
+            }
+            
+            /* Mobile responsive adjustments */
+            @media (max-width: 768px) {
+                #receive-table {
+                    width: 100%;
+                }
+                
+                #receive-table th,
+                #receive-table td {
+                    padding: 0.5rem 0.25rem;
+                    font-size: 0.85rem;
+                }
+                
+                .product-image {
+                    width: 32px !important; 
+                    height: 32px !important;
+                    max-width: 32px !important; 
+                    max-height: 32px !important;
+                }
+                
+                .badge {
+                    font-size: 0.7rem !important;
+                    padding: 0.25rem 0.4rem !important;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                #receive-table {
+                    width: 100%;
+                }
+                
+                #receive-table th,
+                #receive-table td {
+                    padding: 0.4rem 0.15rem;
+                    font-size: 0.8rem;
+                }
+                
+                .product-image {
+                    width: 24px !important; 
+                    height: 24px !important;
+                    max-width: 24px !important; 
+                    max-height: 24px !important;
+                }
+            }
+            
+            /* DataTable pagination and search styling */
+            .dataTables_wrapper {
+                padding: 0;
+            }
+            
+            .dataTables_length,
+            .dataTables_filter,
+            .dataTables_info,
+            .dataTables_paginate {
+                margin: 0.5rem 0;
+            }
+            
+            .dataTables_filter input {
+                border: 1px solid #d1d5db;
+                border-radius: 0.375rem;
+                padding: 0.5rem 0.75rem;
+                margin-left: 0.5rem;
+                width: 250px;
+            }
+            
+            .dataTables_filter input:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                outline: none;
+            }
+            
+            /* Styles for issue transactions */
+            .table-danger {
+                --bs-table-bg: rgba(220, 53, 69, 0.05);
+            }
+            
+            .qty-minus {
+                font-weight: bold;
+                color: #dc3545 !important;
+            }
+            
+            .stats-danger {
+                background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                color: white;
+            }
+            
+            .stats-danger .stats-icon {
+                color: rgba(255, 255, 255, 0.8);
+            }
+            
+            .stats-card.filter-card {
+                cursor: pointer;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .stats-card.filter-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12);
+            }
+
+            .stats-card.filter-card.active {
+                outline: 3px solid rgba(59, 130, 246, 0.35);
+                box-shadow: 0 16px 32px rgba(37, 99, 235, 0.2);
+            }
+
+            .status-filter-pill {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.35rem 0.85rem;
+                border-radius: 999px;
+                font-size: 0.85rem;
+                background: #eff6ff;
+                color: #1d4ed8;
+                font-weight: 600;
+                border: 1px solid rgba(59, 130, 246, 0.2);
+                white-space: nowrap;
+            }
+
+            .dataTables_length select {
+                border: 1px solid #d1d5db;
+                border-radius: 0.375rem;
+                padding: 0.25rem 0.5rem;
+                margin: 0 0.5rem;
+            }
+            
+            .dataTables_paginate .paginate_button {
+                border: 1px solid #d1d5db !important;
+                background: white !important;
+                color: #374151 !important;
+                padding: 0.5rem 0.75rem !important;
+                margin: 0 0.125rem !important;
+                border-radius: 0.375rem !important;
+                transition: all 0.2s ease !important;
+            }
+            
+            .dataTables_paginate .paginate_button:hover {
+                background: #f3f4f6 !important;
+                border-color: #9ca3af !important;
+                color: #111827 !important;
+            }
+            
+            .dataTables_paginate .paginate_button.current {
+                background: #3b82f6 !important;
+                border-color: #3b82f6 !important;
+                color: white !important;
+            }
+            
+            .dataTables_paginate .paginate_button.disabled {
+                opacity: 0.5 !important;
+                cursor: not-allowed !important;
+            }
+            
+            .dataTables_info {
+                color: #6b7280;
+                font-size: 0.875rem;
+            }
+            
+            .dataTables_processing {
+                background: rgba(255, 255, 255, 0.9) !important;
+                border: 1px solid #e5e7eb !important;
+                border-radius: 0.5rem !important;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+                color: #374151 !important;
+                font-size: 0.875rem !important;
+                padding: 1rem !important;
+            }
+            
+            /* Custom search box styling */
+            .search-box .input-group {
+                min-width: 300px;
+            }
+            
+            .search-box .input-group-text {
+                background-color: #f8f9fa;
+                border-color: #d1d5db;
+                color: #6b7280;
+            }
+            
+            .search-box .form-control {
+                border-color: #d1d5db;
+            }
+            
+            .search-box .form-control:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+            
+            .table-actions {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            
+            @media (max-width: 768px) {
+                .search-box .input-group {
+                    min-width: 250px;
+                }
+                
+                .table-actions {
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+            }
+            
+            /* Quantity Split Modal Styles */
+            #quantitySplitModal .modal-dialog {
+                max-width: 1000px;
+            }
+            
+            .additional-po-row {
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                padding: 1rem;
+                background-color: #f8f9fa;
+            }
+            
+            .additional-po-item {
+                transition: all 0.2s ease;
+                cursor: pointer;
+            }
+            
+            .additional-po-item:hover {
+                background-color: #f8f9ff;
+                border-color: #3b82f6;
+            }
+            
+            .quantity-summary-card {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+            
+            .split-status {
+                font-size: 0.9rem;
+                padding: 0.5rem 1rem;
+                border-radius: 1rem;
+            }
+            
+            .split-main-po {
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            }
+            
+            .split-additional-po {
+                background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            }
+            
+            @media (max-width: 768px) {
+                #quantitySplitModal .modal-dialog {
+                    max-width: 95%;
+                    margin: 1rem;
+                }
+                
+                .additional-po-row {
+                    padding: 0.5rem;
+                }
+                
+                .additional-po-row .col-md-4 {
+                    margin-bottom: 0.5rem;
+                }
+            }
+            
+            /* Action Buttons Styling */
+            .action-btn {
+                padding: 0.375rem 0.5rem;
+                font-size: 0.875rem;
+                line-height: 1;
+                border-radius: 0.375rem;
+                transition: all 0.2s ease;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 2.25rem;
+                height: 2.25rem;
+            }
+            
+            .action-btn .material-icons {
+                font-size: 1rem !important;
+                line-height: 1;
+            }
+            
+            .action-btn:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            
+            .action-btn:active {
+                transform: translateY(0);
+            }
+            
+            .btn-outline-primary:hover {
+                background-color: #3b82f6;
+                border-color: #3b82f6;
+                color: white;
+            }
+            
+            .btn-outline-danger:hover {
+                background-color: #dc3545;
+                border-color: #dc3545;
+                color: white;
+            }
+            
+            .btn-outline-secondary:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            
+            .btn-group .action-btn:first-child {
+                border-top-right-radius: 0;
+                border-bottom-right-radius: 0;
+                border-right: 0;
+            }
+            
+            .btn-group .action-btn:last-child {
+                border-top-left-radius: 0;
+                border-bottom-left-radius: 0;
+                border-left: 1px solid rgba(0, 0, 0, 0.125);
+            }
+            
+            .btn-group .action-btn:not(:first-child):not(:last-child) {
+                border-radius: 0;
+                border-left: 1px solid rgba(0, 0, 0, 0.125);
+                border-right: 0;
+            }
+            
+            /* Tooltip styling */
+            .tooltip {
+                font-size: 0.75rem;
+            }
+            
+            .tooltip-inner {
+                background-color: #1f2937;
+                color: white;
+                padding: 0.375rem 0.75rem;
+                border-radius: 0.375rem;
+            }
+            
+            /* Animation for buttons */
+            @keyframes buttonPulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+                100% { transform: scale(1); }
+            }
+            
+            .action-btn:focus {
+                animation: buttonPulse 0.3s ease;
+                outline: none;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+            }
+            
+            .btn-outline-danger:focus {
+                box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
+            }
+            
+            /* PO Badge Styling */
+            .badge.bg-primary {
+                background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%) !important;
+                font-weight: 500;
+                letter-spacing: 0.5px;
+                padding: 0.35rem 0.65rem;
+                border-radius: 0.375rem;
+            }
+            
+            .badge.bg-primary:hover {
+                transform: scale(1.05);
+                transition: transform 0.2s ease;
+            }
+            
+            /* PO Column styling */
+            .po-info {
+                display: flex;
+                flex-direction: column;
+                gap: 0.25rem;
+                min-height: 2rem;
+                align-items: flex-start;
+            }
+            
+            .po-remark {
+                font-size: 0.7rem;
+                color: #6b7280;
+                font-style: italic;
+                word-break: break-word;
+                max-width: 120px;
+                line-height: 1.2;
+                padding: 0.1rem 0.3rem;
+                background-color: #f8f9fa;
+                border-radius: 0.25rem;
+                border-left: 3px solid #dee2e6;
+            }
+            
+            .po-badge-icon {
+                font-size: 0.75rem !important;
+                vertical-align: middle;
+                margin-right: 0.25rem;
+            }
+            
+            .badge.bg-primary {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.25rem;
+            }
+            
+            /* Issue tag styling for better contrast */
+            .issue-tag-info {
+                display: flex;
+                flex-direction: column;
+                gap: 0.25rem;
+                align-items: flex-start;
+            }
+            
+            .issue-tag-badge {
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+                color: white;
+                font-weight: 600;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.25rem;
+                padding: 0.35rem 0.65rem;
+                border-radius: 0.375rem;
+            }
 </style>
 
 <?php include '../templates/sidebar.php'; ?>
@@ -853,14 +908,14 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php else: ?>
                     <?php foreach($rows as $row): ?>
                         <tr data-id="<?= $row['transaction_id'] ?>" 
-                            data-quantity="<?= abs($row['quantity']) ?>"
-                            data-quantity-type="<?= ($row['transaction_type'] === 'issue') ? 'minus' : 'plus' ?>"
+                            data-quantity="<?= abs($row['quantity'] ?? 0) ?>"
+                            data-quantity-type="<?= ($row['quantity_direction'] ?? 'plus') ?>"
                             data-location="<?= htmlspecialchars($row['location_desc'] ?? '') ?>"
                             data-expiry="<?= isset($row['expiry_date']) && $row['expiry_date'] ? date('Y-m-d', strtotime($row['expiry_date'])) : '' ?>"
                             data-po-number="<?= htmlspecialchars($row['po_number'] ?? '') ?>"
                             data-transaction-type="<?= htmlspecialchars($row['transaction_type']) ?>"
                             data-created-date="<?= date('Y-m-d', strtotime($row['created_at'])) ?>"
-                            class="<?= $row['transaction_type'] === 'issue' ? 'table-danger' : '' ?>">
+                            class="<?= ($row['quantity_direction'] ?? 'plus') === 'minus' ? 'table-danger' : '' ?>">
                             <!-- 1. Image -->
                             <td>
                                 <?php $image_path = getImagePath($row['image'] ?? ''); ?>
@@ -885,20 +940,22 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </td>
 
                             <!-- 4. Date -->
-                            <td><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></td>
+                            <td data-order="<?= strtotime($row['created_at']) ?>">
+                                <?= date('d/m/Y H:i', strtotime($row['created_at'])) ?>
+                            </td>
 
                             <!-- 5. Quantity Changed -->
                             <td class="text-center">
-                                <?php if ($row['transaction_type'] === 'issue'): ?>
-                                    <span class="qty-minus text-danger fw-bold">-<?= number_format($row['quantity']) ?></span>
+                                <?php if (($row['quantity_direction'] ?? 'plus') === 'minus'): ?>
+                                    <span class="qty-minus text-danger fw-bold">-<?= formatQuantity($row['quantity_display'] ?? 0) ?></span>
                                 <?php else: ?>
-                                    <span class="qty-plus text-success fw-bold">+<?= number_format($row['quantity']) ?></span>
+                                    <span class="qty-plus text-success fw-bold"><?= formatQuantity($row['quantity_display'] ?? 0) ?></span>
                                 <?php endif; ?>
                             </td>
 
                             <!-- 6. Movement Type -->
                             <td class="text-center">
-                                <?php if ($row['transaction_type'] === 'issue'): ?>
+                                <?php if (($row['quantity_direction'] ?? 'plus') === 'minus'): ?>
                                     <span class="badge bg-danger" title="ลดสต็อก">
                                         <span class="material-icons" style="font-size: 0.85rem; vertical-align: middle;">trending_down</span>
                                         ลด
@@ -914,7 +971,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <!-- 7. Latest Quantity -->
                             <td class="text-center">
                                 <span class="fw-bold text-primary">
-                                    <?= number_format(getCurrentQty($row['sku'], $row['barcode'], $row['created_at'], $pdo)) ?>
+                                    <?= formatQuantity(max($row['running_qty'] ?? 0, 0)) ?>
                                 </span>
                             </td>
 
@@ -978,10 +1035,34 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                             <!-- 11. Remark / Additional Info -->
                             <td>
-                                <?php if ($row['transaction_type'] === 'receive' && !empty($row['remark'])): ?>
-                                    <small class="text-muted d-block" title="<?= htmlspecialchars($row['remark']) ?>">
-                                        <span class="material-icons" style="font-size: 0.75rem; vertical-align: middle;">note</span>
-                                        <?= htmlspecialchars(substr($row['remark'], 0, 50)) . (strlen($row['remark']) > 50 ? '...' : '') ?>
+                                <?php
+                                    $rawRemark = isset($row['remark']) ? trim((string)$row['remark']) : '';
+                                    if ($rawRemark === '' && ($row['transaction_type'] ?? '') === 'receive' && !empty($row['po_remark'])) {
+                                        $rawRemark = trim((string)$row['po_remark']);
+                                    }
+
+                                    $remarkPreview = $rawRemark;
+                                    $shortened = false;
+                                    if ($rawRemark !== '') {
+                                        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+                                            if (mb_strlen($rawRemark) > 80) {
+                                                $remarkPreview = mb_substr($rawRemark, 0, 80);
+                                                $shortened = true;
+                                            }
+                                        } else {
+                                            if (strlen($rawRemark) > 80) {
+                                                $remarkPreview = substr($rawRemark, 0, 80);
+                                                $shortened = true;
+                                            }
+                                        }
+                                    }
+                                ?>
+                                <?php if ($rawRemark !== ''): ?>
+                                    <small class="text-muted d-block" title="<?= htmlspecialchars($rawRemark) ?>">
+                                        <span class="material-icons" style="font-size: 0.75rem; vertical-align: middle;">
+                                            <?= ($row['transaction_type'] ?? '') === 'issue' ? 'receipt_long' : 'note' ?>
+                                        </span>
+                                        <?= htmlspecialchars($remarkPreview) ?><?= $shortened ? '...' : '' ?>
                                     </small>
                                 <?php else: ?>
                                     <span class="text-muted">-</span>
@@ -1126,7 +1207,7 @@ $(document).ready(function() {
             { orderable: false, targets: 'no-sort' },
             { className: "text-center", targets: 'text-center' }
         ],
-        order: [[5, 'desc']], // Sort by created date
+        order: [[3, 'desc']], // Sort by created date (latest first)
         scrollX: true,
         scrollCollapse: true,
         searching: true,
@@ -2375,6 +2456,13 @@ function getImagePath($imageName) {
     
     // หากไม่พบไฟล์ใดๆ ใช้ noimg.png
     return '../images/noimg.png';
+}
+
+function formatQuantity($value) {
+    $value = (float) $value;
+    $rounded = round($value);
+    $decimals = (abs($value - $rounded) < 0.00001) ? 0 : 2;
+    return number_format($value, $decimals);
 }
 
 function getPrevQty($sku, $barcode, $current_created_at, $pdo) {

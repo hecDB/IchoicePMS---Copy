@@ -353,20 +353,27 @@ function displaySearchResults(products) {
     
     let html = '';
     products.forEach(function(product) {
+        const sanitizedProduct = Object.assign({}, product, {
+            image: product.image && product.image !== 'null' && product.image !== 'undefined' ? product.image : null,
+            image_url: product.image_url && product.image_url !== 'null' && product.image_url !== 'undefined' ? product.image_url : null,
+            unit: product.unit || 'ชิ้น'
+        });
+        const productData = encodeURIComponent(JSON.stringify(sanitizedProduct));
+        const imageSource = sanitizedProduct.image_url || (sanitizedProduct.image ? `../images/${sanitizedProduct.image}` : '../images/noimg.png');
         html += `
-            <div class="search-item" onclick="selectProduct(${product.product_id}, '${product.name}', '${product.sku}', '${product.barcode}', ${product.available_qty}, '${product.receive_id}', '${product.expiry_date || ''}', '${product.lot_info || ''}', ${product.sale_price || 0})">
+            <div class="search-item" data-product="${productData}">
                 <div class="d-flex align-items-center">
-                    <img src="../images/${product.image || 'noimg.png'}" 
+                    <img src="${imageSource}" 
                          class="product-image me-3" 
-                         alt="${product.name}"
+                         alt="${sanitizedProduct.name}"
                          onerror="this.src='../images/noimg.png'">
                     <div class="flex-grow-1">
-                        <h6 class="mb-1">${product.name}</h6>
-                        <small class="text-muted">SKU: ${product.sku} | บาร์โค้ด: ${product.barcode}</small>
+                        <h6 class="mb-1">${sanitizedProduct.name}</h6>
+                        <small class="text-muted">SKU: ${sanitizedProduct.sku} | บาร์โค้ด: ${sanitizedProduct.barcode}</small>
                         <br>
-                        <small class="text-success">คงเหลือ: ${product.available_qty} ${product.unit} | ราคาขาย: ${product.sale_price || 0} บาท</small>
-                        ${product.lot_info ? `<br><small class="text-info">${product.lot_info}</small>` : ''}
-                        ${product.expiry_date ? `<br><small class="text-warning">หมดอายุ: ${formatDateThai(product.expiry_date)}</small>` : ''}
+                        <small class="text-success">คงเหลือ: ${sanitizedProduct.available_qty} ${sanitizedProduct.unit} | ราคาขาย: ${sanitizedProduct.sale_price || 0} บาท</small>
+                        ${sanitizedProduct.lot_info ? `<br><small class="text-info">${sanitizedProduct.lot_info}</small>` : ''}
+                        ${sanitizedProduct.expiry_date ? `<br><small class="text-warning">หมดอายุ: ${formatDateThai(sanitizedProduct.expiry_date)}</small>` : ''}
                     </div>
                     <span class="fifo-badge">FIFO</span>
                 </div>
@@ -375,12 +382,33 @@ function displaySearchResults(products) {
     });
     
     resultsDiv.html(html).show();
+    resultsDiv.find('.search-item').off('click').on('click', function() {
+        const encoded = $(this).attr('data-product');
+        if (!encoded) {
+            return;
+        }
+        try {
+            const product = JSON.parse(decodeURIComponent(encoded));
+            selectProduct(product);
+        } catch (error) {
+            console.error('Product parse error:', error);
+            Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลสินค้าได้', 'error');
+        }
+    });
 }
 
 // เลือกสินค้า
-function selectProduct(productId, name, sku, barcode, availableQty, receiveId, expiryDate, lotInfo, salePrice) {
+function selectProduct(productData) {
     $('#search-results').hide();
     $('#product-search').val('');
+
+    if (!productData || !productData.product_id || !productData.receive_id) {
+        Swal.fire('เกิดข้อผิดพลาด', 'ข้อมูลสินค้าไม่ครบถ้วน', 'error');
+        return;
+    }
+
+    const productId = productData.product_id;
+    const receiveId = productData.receive_id;
     
     // ตรวจสอบว่าสินค้านี้เลือกแล้วหรือยัง
     const existingIndex = selectedProducts.findIndex(p => p.product_id === productId && p.receive_id === receiveId);
@@ -393,13 +421,15 @@ function selectProduct(productId, name, sku, barcode, availableQty, receiveId, e
     const product = {
         product_id: productId,
         receive_id: receiveId,
-        name: name,
-        sku: sku,
-        barcode: barcode,
-        available_qty: availableQty,
-        expiry_date: expiryDate,
-        lot_info: lotInfo,
-        sale_price: parseFloat(salePrice) || 0,
+        name: productData.name,
+        sku: productData.sku,
+        barcode: productData.barcode,
+        available_qty: productData.available_qty,
+        expiry_date: productData.expiry_date,
+        lot_info: productData.lot_info,
+        sale_price: parseFloat(productData.sale_price) || 0,
+        image: productData.image && productData.image !== 'null' && productData.image !== 'undefined' ? productData.image : '',
+        image_url: productData.image_url && productData.image_url !== 'null' && productData.image_url !== 'undefined' ? productData.image_url : '',
         issue_qty: 1 // จำนวนเริ่มต้น
     };
     
@@ -422,10 +452,11 @@ function updateSelectedProductsDisplay() {
     let html = '<h5 class="mb-3"><span class="material-icons align-middle me-2">shopping_cart</span>สินค้าที่เลือก</h5>';
     
     selectedProducts.forEach(function(product, index) {
+        const imageSrc = product.image_url || (product.image ? `../images/${product.image}` : '../images/noimg.png');
         html += `
             <div class="product-card">
                 <div class="d-flex align-items-center">
-                    <img src="../images/${product.image || 'noimg.png'}" 
+                    <img src="${imageSrc}" 
                          class="product-image me-3" 
                          onerror="this.src='../images/noimg.png'">
                     <div class="flex-grow-1">

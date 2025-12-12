@@ -261,10 +261,7 @@
                     <span class="material-icons">schedule</span>
                     <span class="submenu-text">สินค้าใกล้หมดอายุ</span>
                 </a>
-                <a href="<?= getPath('stock/missing_products.php') ?>" class="submenu-item<?=isActive('missing_products.php')?>">
-                    <span class="material-icons">inventory_2</span>
-                    <span class="submenu-text">บันทึกสินค้าสูญหาย</span>
-                </a>
+              
           
             </div>
         </div>
@@ -273,13 +270,13 @@
         <div class="menu-category">
             <div class="category-header" onclick="toggleCategory('borrow')">
                 <span class="material-icons">card_giftcard</span>
-                <span class="category-text">ยืมสินค้า</span>
+                <span class="category-text">สินค้านำออก</span>
                 <span class="material-icons category-arrow">keyboard_arrow_down</span>
             </div>
             <div class="submenu" id="borrow-submenu">
-                <a href="<?= getPath('borrow/borrow_items.php') ?>" class="submenu-item<?=isActive('borrow_items.php')?>">
-                    <span class="material-icons">assignment</span>
-                    <span class="submenu-text">รายการยืมสินค้า</span>
+               <a href="<?= getPath('stock/missing_products.php') ?>" class="submenu-item<?=isActive('missing_products.php')?>">
+                    <span class="material-icons">inventory_2</span>
+                    <span class="submenu-text">สินค้าออกกรณีอื่นๆ</span>
                 </a>
             </div>
         </div>
@@ -303,6 +300,25 @@
                 <a href="<?= getPath('sales/tag_management.php') ?>" class="submenu-item<?=isActive('tag_management.php')?>">
                     <span class="material-icons">label</span>
                     <span class="submenu-text">จัดการเลขแท็ก</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- หมวดหมู่: สินค้าตีกลับ -->
+        <div class="menu-category">
+            <div class="category-header" onclick="toggleCategory('returns')">
+                <span class="material-icons">assignment_return</span>
+                <span class="category-text">สินค้าตีกลับ</span>
+                <span class="material-icons category-arrow">keyboard_arrow_down</span>
+            </div>
+            <div class="submenu" id="returns-submenu">
+                <a href="<?= getPath('returns/return_items.php') ?>" class="submenu-item<?=isActive('return_items.php')?>">
+                    <span class="material-icons">add_circle</span>
+                    <span class="submenu-text">บันทึกสินค้าตีกลับ</span>
+                </a>
+                <a href="<?= getPath('returns/return_dashboard.php') ?>" class="submenu-item<?=isActive('return_dashboard.php')?>">
+                    <span class="material-icons">dashboard</span>
+                    <span class="submenu-text">จัดการสินค้าตีกลับ</span>
                 </a>
             </div>
         </div>
@@ -372,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function(){
 function toggleCategory(categoryName) {
     const header = document.querySelector(`[onclick="toggleCategory('${categoryName}')"]`);
     const submenu = document.getElementById(categoryName + '-submenu');
-    const categories = ['orders', 'products', 'stock', 'borrow', 'sales', 'admin'];
+    const categories = ['orders', 'products', 'stock', 'borrow', 'sales', 'returns', 'admin'];
     
     if (submenu.classList.contains('expanded')) {
         // ปิดหมวดหมู่นี้
@@ -402,7 +418,7 @@ function toggleCategory(categoryName) {
 }
 
 function initializeActiveCategory() {
-    const categories = ['orders', 'products', 'stock', 'sales', 'admin'];
+    const categories = ['orders', 'products', 'stock', 'sales', 'returns', 'admin'];
     
     // ปิดหมวดหมู่ทั้งหมดก่อน
     categories.forEach(categoryName => {

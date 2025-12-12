@@ -16,6 +16,57 @@ ini_set('display_errors', 0); // Don't display errors in JSON response
 ini_set('log_errors', 1);
 ini_set('error_log', '../logs/api_errors.log');
 
+function resolveImageUrl($value) {
+    if ($value === null || $value === '') {
+        return '../images/noimg.png';
+    }
+
+    if (is_resource($value)) {
+        $value = stream_get_contents($value);
+    }
+
+    if (!is_string($value)) {
+        return '../images/noimg.png';
+    }
+
+    $trimmed = trim($value);
+    if ($trimmed === '') {
+        return '../images/noimg.png';
+    }
+
+    if (stripos($trimmed, 'data:') === 0) {
+        return $trimmed;
+    }
+
+    $sanitized = preg_replace('/\s+/', '', $trimmed);
+    $isBase64 = preg_match('/^[A-Za-z0-9+\/]+=*$/', $sanitized) && strlen($sanitized) >= 60 && strlen($sanitized) % 4 === 0;
+    if ($isBase64) {
+        return 'data:image/jpeg;base64,' . $sanitized;
+    }
+
+    if (preg_match('/[^\x09\x0A\x0D\x20-\x7E]/', $trimmed)) {
+        return 'data:image/jpeg;base64,' . base64_encode($trimmed);
+    }
+
+    if (preg_match('/^https?:\/\//i', $trimmed)) {
+        return $trimmed;
+    }
+
+    if (strpos($trimmed, '../') === 0 || strpos($trimmed, './') === 0 || $trimmed[0] === '/') {
+        return $trimmed;
+    }
+
+    if (strpos($trimmed, 'images/') === 0) {
+        return '../' . ltrim($trimmed, '/');
+    }
+
+    if (strpos($trimmed, '/') === false) {
+        return '../images/' . $trimmed;
+    }
+
+    return '../' . ltrim($trimmed, '/');
+}
+
 // Debug: Log incoming request
 $query_param = $_GET['q'] ?? 'empty';
 error_log('=== product_search_api.php START ===');
@@ -135,6 +186,7 @@ try {
 
     // เพิ่มข้อมูลเพิ่มเติมสำหรับการแสดงผล
     foreach ($results as &$product) {
+        $product['image_url'] = resolveImageUrl($product['image'] ?? '');
         if ($type === 'issue' && $available_only) {
             // สำหรับการยิงสินค้า - ข้อมูลมาจาก query ที่ join แล้ว
             $product['unit'] = $product['unit'] ?? 'ชิ้น';
