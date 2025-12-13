@@ -23,6 +23,7 @@ if (!$user_id) {
     <link rel="stylesheet" href="../assets/base.css">
     <link rel="stylesheet" href="../assets/sidebar.css">
     <link rel="stylesheet" href="../assets/components.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     
     <style>
         body {
@@ -101,6 +102,10 @@ if (!$user_id) {
         
         .detail-value {
             color: #1f2937;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            border-radius: 6px;
         }
     </style>
 </head>
@@ -237,11 +242,14 @@ if (!$user_id) {
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
     <script>
         const API_URL = '../api/returned_items_api.php';
         let confirmModalInstance = null;
         let pendingConfirmAction = null;
+        let returnsTable = null;
 
         // Show Alert Modal
         function showAlert(type, title, message) {
@@ -316,13 +324,18 @@ if (!$user_id) {
         function loadReturns() {
             $.get(`${API_URL}?action=get_returns&limit=100`, function(response) {
                 if (response.status === 'success') {
+                    if (returnsTable) {
+                        returnsTable.destroy();
+                        returnsTable = null;
+                    }
+
                     let html = '';
                     
                     if (response.data.length === 0) {
                         html = '<p class="text-muted text-center p-3">ไม่พบข้อมูลสินค้าตีกลับ</p>';
                     } else {
                         html = `
-                            <table class="table table-hover mb-0" style="font-size: 0.95rem;">
+                            <table class="table table-hover mb-0" style="font-size: 0.95rem;" id="returns-table">
                                 <thead class="table-light sticky-top">
                                     <tr>
                                         <th>เลขที่</th>
@@ -375,6 +388,33 @@ if (!$user_id) {
                     }
                     
                     $('#returns-container').html(html);
+                    initializeReturnsTable();
+                }
+            });
+        }
+
+        function initializeReturnsTable() {
+            const tableElement = $('#returns-table');
+            if (!tableElement.length) {
+                return;
+            }
+
+            returnsTable = tableElement.DataTable({
+                orderCellsTop: true,
+                pageLength: 25,
+                lengthMenu: [10, 25, 50, 100],
+                language: {
+                    search: 'ค้นหา:',
+                    lengthMenu: 'แสดง _MENU_ รายการ',
+                    info: 'แสดง _START_ ถึง _END_ จากทั้งหมด _TOTAL_ รายการ',
+                    paginate: {
+                        first: 'หน้าแรก',
+                        last: 'หน้าสุดท้าย',
+                        next: 'ถัดไป',
+                        previous: 'ก่อนหน้า'
+                    },
+                    infoEmpty: 'ไม่มีข้อมูล',
+                    zeroRecords: 'ไม่พบข้อมูลที่ค้นหา'
                 }
             });
         }

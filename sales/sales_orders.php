@@ -575,7 +575,7 @@ require_once '../auth/auth_check.php';
         // ฟังก์ชันตรวจสอบแพลตฟอร์มจากแท็ค
         function detectPlatformFromTag(tag) {
             if (!tag) return 'General';
-            
+
             // Shopee: 14 หลัก, 6 ตัวแรกเป็นตัวเลข + ตัวที่ 7 เป็นตัวอักษร
             if (tag.length === 14) {
                 const firstSix = tag.substring(0, 6);
@@ -583,18 +583,26 @@ require_once '../auth/auth_check.php';
                 if (/^\d{6}$/.test(firstSix) && /^[a-zA-Z]$/.test(seventhChar)) {
                     return 'Shopee';
                 }
+                if (/^\d{14}$/.test(tag)) {
+                    return 'Lazada';
+                }
             }
-            
+
             // Lazada: 16 หลัก, ตัวเลขทั้งหมด
-            if (tag.length === 16 && /^\d{16}$/.test(tag)) {
+            if (/^\d{16}$/.test(tag)) {
                 return 'Lazada';
             }
-            
+
+            // Lazada LZ format
+            if (/^LZ\d{7}$/.test(tag)) {
+                return 'Lazada';
+            }
+
             // TikTok: รูปแบบต่างๆ (เพิ่มตามต้องการ)
             if (tag.includes('TT') || tag.includes('tk') || tag.toLowerCase().includes('tiktok')) {
                 return 'TikTok';
             }
-            
+
             return 'General';
         }
         
@@ -736,7 +744,7 @@ require_once '../auth/auth_check.php';
             const orderId = order.sale_order_id;
             
             // ตรวจสอบแพลตฟอร์มจากแท็ค
-            const platform = detectPlatformFromTag(order.issue_tag) || order.platform || 'General';
+            const platform = (order.platform && order.platform.trim()) ? order.platform : detectPlatformFromTag(order.issue_tag);
             
             // สร้าง HTML สำหรับรายการสินค้า
             let itemsHtml = '';

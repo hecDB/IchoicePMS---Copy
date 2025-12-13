@@ -711,3 +711,223 @@
 [12-Dec-2025 17:32:35 Europe/Berlin] PDO Error in sales_orders_api: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'u.name' in 'where clause'
 [12-Dec-2025 17:32:35 Europe/Berlin] PDO Error in sales_orders_api: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'u.name' in 'where clause'
 [12-Dec-2025 17:32:35 Europe/Berlin] PDO Error in sales_orders_api: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'u.name' in 'where clause'
+[13-Dec-2025 04:15:31 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 04:15:31 Europe/Berlin] Request query: ;bm
+[13-Dec-2025 04:15:31 Europe/Berlin] Request method: GET
+[13-Dec-2025 04:15:31 Europe/Berlin] Request URI: /api/product_search_api.php?q=%3Bbm&type=issue&available_only=true
+[13-Dec-2025 04:15:31 Europe/Berlin] Searching for: ';bm' with limit: 10
+[13-Dec-2025 04:15:31 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 04:15:31 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 04:15:31 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 04:15:33 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 04:15:33 Europe/Berlin] Request query: วิต
+[13-Dec-2025 04:15:33 Europe/Berlin] Request method: GET
+[13-Dec-2025 04:15:33 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A7%E0%B8%B4%E0%B8%95&type=issue&available_only=true
+[13-Dec-2025 04:15:33 Europe/Berlin] Searching for: 'วิต' with limit: 10
+[13-Dec-2025 04:15:33 Europe/Berlin] About to encode 9 results for type: issue
+[13-Dec-2025 04:15:33 Europe/Berlin] Sent JSON response length: 8498
+[13-Dec-2025 04:15:33 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 04:15:45 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 04:15:45 Europe/Berlin] Request query: ลิปสติกแมตต์สีชมพู
+[13-Dec-2025 04:15:45 Europe/Berlin] Request method: GET
+[13-Dec-2025 04:15:45 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B4%E0%B8%9B%E0%B8%AA%E0%B8%95%E0%B8%B4%E0%B8%81%E0%B9%81%E0%B8%A1%E0%B8%95%E0%B8%95%E0%B9%8C%E0%B8%AA%E0%B8%B5%E0%B8%8A%E0%B8%A1%E0%B8%9E%E0%B8%B9&type=issue&available_only=true
+[13-Dec-2025 04:15:45 Europe/Berlin] Searching for: 'ลิปสติกแมตต์สีชมพู' with limit: 10
+[13-Dec-2025 04:15:45 Europe/Berlin] About to encode 1 results for type: issue
+[13-Dec-2025 04:15:45 Europe/Berlin] Sent JSON response length: 869
+[13-Dec-2025 04:15:45 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 04:16:01 Europe/Berlin] Issue request: Tag=15478965425874, Products=1, User=1
+[13-Dec-2025 04:16:01 Europe/Berlin] Created sale_order_id: 7
+[13-Dec-2025 04:16:01 Europe/Berlin] Successfully issued: Product ID 9, Qty 5, Receive ID 19, Sale Order ID 7
+[13-Dec-2025 04:16:01 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[13-Dec-2025 04:35:40 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 04:35:40 Europe/Berlin] Request query: ม้า
+[13-Dec-2025 04:35:40 Europe/Berlin] Request method: GET
+[13-Dec-2025 04:35:40 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A1%E0%B9%89%E0%B8%B2&type=issue&available_only=true
+[13-Dec-2025 04:35:40 Europe/Berlin] Searching for: 'ม้า' with limit: 10
+[13-Dec-2025 04:35:40 Europe/Berlin] About to encode 1 results for type: issue
+[13-Dec-2025 04:35:40 Europe/Berlin] Sent JSON response length: 737
+[13-Dec-2025 04:35:40 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 04:35:48 Europe/Berlin] Issue request: Tag=000123ABC12345, Products=1, User=1
+[13-Dec-2025 04:35:48 Europe/Berlin] Created sale_order_id: 8
+[13-Dec-2025 04:35:48 Europe/Berlin] Successfully issued: Product ID 14, Qty 8, Receive ID 40, Sale Order ID 8
+[13-Dec-2025 04:35:48 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[13-Dec-2025 05:16:38 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:16:38 Europe/Berlin] Request query: ลิห
+[13-Dec-2025 05:16:38 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:16:38 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B4%E0%B8%AB&type=issue&available_only=true
+[13-Dec-2025 05:16:38 Europe/Berlin] Searching for: 'ลิห' with limit: 10
+[13-Dec-2025 05:16:38 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:16:38 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:16:38 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:16:39 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:16:39 Europe/Berlin] Request query: ลิป
+[13-Dec-2025 05:16:39 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:16:39 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B4%E0%B8%9B&type=issue&available_only=true
+[13-Dec-2025 05:16:39 Europe/Berlin] Searching for: 'ลิป' with limit: 10
+[13-Dec-2025 05:16:39 Europe/Berlin] About to encode 1 results for type: issue
+[13-Dec-2025 05:16:39 Europe/Berlin] Sent JSON response length: 869
+[13-Dec-2025 05:16:39 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:16:56 Europe/Berlin] Issue request: Tag=12365479955874, Products=1, User=1
+[13-Dec-2025 05:16:56 Europe/Berlin] Created sale_order_id: 9
+[13-Dec-2025 05:16:56 Europe/Berlin] Successfully issued: Product ID 9, Qty 2, Receive ID 19, Sale Order ID 9
+[13-Dec-2025 05:16:56 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[13-Dec-2025 05:20:53 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:20:53 Europe/Berlin] Request query: ลอป
+[13-Dec-2025 05:20:53 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:20:53 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%AD%E0%B8%9B&type=issue&available_only=true
+[13-Dec-2025 05:20:53 Europe/Berlin] Searching for: 'ลอป' with limit: 10
+[13-Dec-2025 05:20:53 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:20:53 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:20:53 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:20:55 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:20:55 Europe/Berlin] Request query: สย
+[13-Dec-2025 05:20:55 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:20:55 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA%E0%B8%A2&type=issue&available_only=true
+[13-Dec-2025 05:20:55 Europe/Berlin] Searching for: 'สย' with limit: 10
+[13-Dec-2025 05:20:55 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:20:55 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:20:55 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:20:56 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:20:56 Europe/Berlin] Request query: สยู
+[13-Dec-2025 05:20:56 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:20:56 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA%E0%B8%A2%E0%B8%B9&type=issue&available_only=true
+[13-Dec-2025 05:20:56 Europe/Berlin] Searching for: 'สยู' with limit: 10
+[13-Dec-2025 05:20:56 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:20:56 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:20:56 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:20:56 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:20:56 Europe/Berlin] Request query: สย
+[13-Dec-2025 05:20:56 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:20:56 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA%E0%B8%A2&type=issue&available_only=true
+[13-Dec-2025 05:20:56 Europe/Berlin] Searching for: 'สย' with limit: 10
+[13-Dec-2025 05:20:56 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:20:56 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:20:56 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:20:57 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:20:57 Europe/Berlin] Request query: สบ
+[13-Dec-2025 05:20:57 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:20:57 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA%E0%B8%9A&type=issue&available_only=true
+[13-Dec-2025 05:20:57 Europe/Berlin] Searching for: 'สบ' with limit: 10
+[13-Dec-2025 05:20:57 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:20:57 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:20:57 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:20:58 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:20:58 Europe/Berlin] Request query: สบู
+[13-Dec-2025 05:20:58 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:20:58 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA%E0%B8%9A%E0%B8%B9&type=issue&available_only=true
+[13-Dec-2025 05:20:58 Europe/Berlin] Searching for: 'สบู' with limit: 10
+[13-Dec-2025 05:20:58 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:20:58 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:20:58 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:21:02 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:21:02 Europe/Berlin] Request query: ลิป
+[13-Dec-2025 05:21:02 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:21:02 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B4%E0%B8%9B&type=issue&available_only=true
+[13-Dec-2025 05:21:02 Europe/Berlin] Searching for: 'ลิป' with limit: 10
+[13-Dec-2025 05:21:02 Europe/Berlin] About to encode 1 results for type: issue
+[13-Dec-2025 05:21:02 Europe/Berlin] Sent JSON response length: 869
+[13-Dec-2025 05:21:02 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:21:13 Europe/Berlin] Issue request: Tag=12365478965847, Products=1, User=1
+[13-Dec-2025 05:21:13 Europe/Berlin] Created sale_order_id: 10
+[13-Dec-2025 05:21:13 Europe/Berlin] Successfully issued: Product ID 9, Qty 5, Receive ID 19, Sale Order ID 10
+[13-Dec-2025 05:21:13 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[13-Dec-2025 05:22:49 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:22:49 Europe/Berlin] Request query: 58749
+[13-Dec-2025 05:22:49 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:22:49 Europe/Berlin] Request URI: /api/product_search_api.php?q=58749&type=issue&available_only=true
+[13-Dec-2025 05:22:49 Europe/Berlin] Searching for: '58749' with limit: 10
+[13-Dec-2025 05:22:49 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:22:49 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:22:49 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:23:01 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:23:01 Europe/Berlin] Request query: 5555555555
+[13-Dec-2025 05:23:01 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:23:01 Europe/Berlin] Request URI: /api/product_search_api.php?q=5555555555&type=issue&available_only=true
+[13-Dec-2025 05:23:01 Europe/Berlin] Searching for: '5555555555' with limit: 10
+[13-Dec-2025 05:23:01 Europe/Berlin] About to encode 1 results for type: issue
+[13-Dec-2025 05:23:01 Europe/Berlin] Sent JSON response length: 748
+[13-Dec-2025 05:23:01 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:23:07 Europe/Berlin] Issue request: Tag=987654ZZZZ9999, Products=1, User=1
+[13-Dec-2025 05:23:07 Europe/Berlin] Created sale_order_id: 11
+[13-Dec-2025 05:23:07 Europe/Berlin] Successfully issued: Product ID 12, Qty 4, Receive ID 24, Sale Order ID 11
+[13-Dec-2025 05:23:07 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[13-Dec-2025 05:28:42 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:28:42 Europe/Berlin] Request query: ห๔
+[13-Dec-2025 05:28:42 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:28:42 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AB%E0%B9%94&type=issue&available_only=true
+[13-Dec-2025 05:28:42 Europe/Berlin] Searching for: 'ห๔' with limit: 10
+[13-Dec-2025 05:28:42 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:28:42 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:28:42 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:28:43 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:28:43 Europe/Berlin] Request query: หู
+[13-Dec-2025 05:28:43 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:28:43 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AB%E0%B8%B9&type=issue&available_only=true
+[13-Dec-2025 05:28:43 Europe/Berlin] Searching for: 'หู' with limit: 10
+[13-Dec-2025 05:28:43 Europe/Berlin] About to encode 1 results for type: issue
+[13-Dec-2025 05:28:43 Europe/Berlin] Sent JSON response length: 787
+[13-Dec-2025 05:28:43 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:28:49 Europe/Berlin] Issue request: Tag=58745986574586, Products=1, User=1
+[13-Dec-2025 05:28:49 Europe/Berlin] Created sale_order_id: 12
+[13-Dec-2025 05:28:49 Europe/Berlin] Successfully issued: Product ID 8, Qty 2, Receive ID 18, Sale Order ID 12
+[13-Dec-2025 05:28:49 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[13-Dec-2025 05:34:23 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:34:23 Europe/Berlin] Request query: sdfsd
+[13-Dec-2025 05:34:23 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:34:23 Europe/Berlin] Request URI: /api/product_search_api.php?q=sdfsd&type=issue&available_only=true
+[13-Dec-2025 05:34:23 Europe/Berlin] Searching for: 'sdfsd' with limit: 10
+[13-Dec-2025 05:34:23 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:34:23 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:34:23 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:34:25 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:34:25 Europe/Berlin] Request query: l[
+[13-Dec-2025 05:34:25 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:34:25 Europe/Berlin] Request URI: /api/product_search_api.php?q=l%5B&type=issue&available_only=true
+[13-Dec-2025 05:34:25 Europe/Berlin] Searching for: 'l[' with limit: 10
+[13-Dec-2025 05:34:25 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:34:25 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:34:25 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:34:26 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:34:26 Europe/Berlin] Request query: l[^j
+[13-Dec-2025 05:34:26 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:34:26 Europe/Berlin] Request URI: /api/product_search_api.php?q=l%5B%5Ej&type=issue&available_only=true
+[13-Dec-2025 05:34:26 Europe/Berlin] Searching for: 'l[^j' with limit: 10
+[13-Dec-2025 05:34:26 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:34:26 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:34:26 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:34:28 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:34:28 Europe/Berlin] Request query: สบ
+[13-Dec-2025 05:34:28 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:34:28 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA%E0%B8%9A&type=issue&available_only=true
+[13-Dec-2025 05:34:28 Europe/Berlin] Searching for: 'สบ' with limit: 10
+[13-Dec-2025 05:34:28 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:34:28 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:34:28 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:34:28 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:34:28 Europe/Berlin] Request query: สบู
+[13-Dec-2025 05:34:28 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:34:28 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA%E0%B8%9A%E0%B8%B9&type=issue&available_only=true
+[13-Dec-2025 05:34:28 Europe/Berlin] Searching for: 'สบู' with limit: 10
+[13-Dec-2025 05:34:28 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:34:28 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:34:28 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:34:29 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:34:29 Europe/Berlin] Request query: สบู่
+[13-Dec-2025 05:34:29 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:34:29 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AA%E0%B8%9A%E0%B8%B9%E0%B9%88&type=issue&available_only=true
+[13-Dec-2025 05:34:29 Europe/Berlin] Searching for: 'สบู่' with limit: 10
+[13-Dec-2025 05:34:29 Europe/Berlin] About to encode 0 results for type: issue
+[13-Dec-2025 05:34:29 Europe/Berlin] Sent JSON response length: 15
+[13-Dec-2025 05:34:29 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:34:34 Europe/Berlin] === product_search_api.php START ===
+[13-Dec-2025 05:34:34 Europe/Berlin] Request query: หู
+[13-Dec-2025 05:34:34 Europe/Berlin] Request method: GET
+[13-Dec-2025 05:34:34 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AB%E0%B8%B9&type=issue&available_only=true
+[13-Dec-2025 05:34:34 Europe/Berlin] Searching for: 'หู' with limit: 10
+[13-Dec-2025 05:34:34 Europe/Berlin] About to encode 1 results for type: issue
+[13-Dec-2025 05:34:34 Europe/Berlin] Sent JSON response length: 787
+[13-Dec-2025 05:34:34 Europe/Berlin] === product_search_api.php END ===
+[13-Dec-2025 05:34:40 Europe/Berlin] Issue request: Tag=pomo-5874455887445876, Products=1, User=1
+[13-Dec-2025 05:34:40 Europe/Berlin] Created sale_order_id: 13
+[13-Dec-2025 05:34:40 Europe/Berlin] Successfully issued: Product ID 8, Qty 2, Receive ID 18, Sale Order ID 13
+[13-Dec-2025 05:34:40 Europe/Berlin] Issue completed: 1 successful, 0 errors

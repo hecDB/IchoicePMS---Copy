@@ -304,6 +304,29 @@
             </div>
         </div>
 
+        <!-- หมวดหมู่: รายงาน -->
+        <div class="menu-category">
+            <div class="category-header" onclick="toggleCategory('reports')">
+                <span class="material-icons">insights</span>
+                <span class="category-text">รายงาน</span>
+                <span class="material-icons category-arrow">keyboard_arrow_down</span>
+            </div>
+            <div class="submenu" id="reports-submenu">
+                <a href="<?= getPath('reports/category_report.php') ?>" class="submenu-item<?=isActive('category_report.php')?>">
+                    <span class="material-icons">category</span>
+                    <span class="submenu-text">รายงานประเภทสินค้า</span>
+                </a>
+                <a href="<?= getPath('reports/order_report.php') ?>" class="submenu-item<?=isActive('order_report.php')?>">
+                    <span class="material-icons">assignment</span>
+                    <span class="submenu-text">รายงานคำสั่งซื้อ</span>
+                </a>
+                <a href="<?= getPath('reports/product_report.php') ?>" class="submenu-item<?=isActive('product_report.php')?>">
+                    <span class="material-icons">inventory_2</span>
+                    <span class="submenu-text">รายงานสินค้า</span>
+                </a>
+            </div>
+        </div>
+
         <!-- หมวดหมู่: สินค้าตีกลับ -->
         <div class="menu-category">
             <div class="category-header" onclick="toggleCategory('returns')">
@@ -388,7 +411,7 @@ document.addEventListener('DOMContentLoaded', function(){
 function toggleCategory(categoryName) {
     const header = document.querySelector(`[onclick="toggleCategory('${categoryName}')"]`);
     const submenu = document.getElementById(categoryName + '-submenu');
-    const categories = ['orders', 'products', 'stock', 'borrow', 'sales', 'returns', 'admin'];
+    const categories = ['orders', 'products', 'stock', 'borrow', 'sales', 'reports', 'returns', 'admin'];
     
     if (submenu.classList.contains('expanded')) {
         // ปิดหมวดหมู่นี้
@@ -418,7 +441,7 @@ function toggleCategory(categoryName) {
 }
 
 function initializeActiveCategory() {
-    const categories = ['orders', 'products', 'stock', 'sales', 'returns', 'admin'];
+    const categories = ['orders', 'products', 'stock', 'sales', 'reports', 'returns', 'admin'];
     
     // ปิดหมวดหมู่ทั้งหมดก่อน
     categories.forEach(categoryName => {

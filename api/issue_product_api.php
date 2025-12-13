@@ -23,8 +23,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    include __DIR__ . '/../config/db_connect.php';
-    
+    require_once __DIR__ . '/../config/db_connect.php';
+    require_once __DIR__ . '/../includes/tag_validator.php';
+
     // Check if PDO connection exists
     if (!isset($pdo)) {
         throw new Exception('PDO connection not established');
@@ -74,19 +75,37 @@ try {
     // Start transaction
     $pdo->beginTransaction();
     
-    // ตรวจสอบรูปแบบแท็คส่งออก
+    // ตรวจสอบรูปแบบแท็คส่งออกผ่านระบบ pattern กลาง หากไม่พบให้ fallback ไปตรรกะเดิม
     $platform = '';
-    if (strlen($issue_tag) == 14) {
-        // ตรวจสอบว่า 6 ตัวแรกเป็นตัวเลข และตัวที่ 7 เป็นภาษาอังกฤษ
-        $first_six = substr($issue_tag, 0, 6);
-        $seventh_char = substr($issue_tag, 6, 1);
-        
-        if (ctype_digit($first_six) && ctype_alpha($seventh_char)) {
-            $platform = 'Shopee';
+    $patternName = '';
+    try {
+        $validation = validateTagNumber($issue_tag);
+        if (!empty($validation['valid'])) {
+            $platform = $validation['platform'] ?? '';
+            $patternName = $validation['pattern_name'] ?? '';
         }
-    } elseif (strlen($issue_tag) == 16 && ctype_digit($issue_tag)) {
-        // ตรวจสอบว่าเป็นตัวเลข 16 หลัก
-        $platform = 'Lazada';
+    } catch (Throwable $t) {
+        error_log('Tag validator unavailable: ' . $t->getMessage());
+    }
+
+    if ($platform === '') {
+        if (strlen($issue_tag) == 14) {
+            $first_six = substr($issue_tag, 0, 6);
+            $seventh_char = substr($issue_tag, 6, 1);
+
+            if (ctype_digit($first_six) && ctype_alpha($seventh_char)) {
+                $platform = 'Shopee';
+            }
+            if ($platform === '' && ctype_digit($issue_tag)) {
+                $platform = 'Lazada';
+            }
+        } elseif (strlen($issue_tag) == 16 && ctype_digit($issue_tag)) {
+            $platform = 'Lazada';
+        }
+    }
+
+    if ($platform === '') {
+        $platform = 'Internal';
     }
     
     // สร้าง Sales Order ก่อน
@@ -103,7 +122,14 @@ try {
     ");
     
     $total_items = count($products);
-    $remark = $platform ? "แท็คส่งออก: {$issue_tag} ({$platform})" : "แท็คส่งออก: {$issue_tag}";
+    $remarkParts = ["แท็คส่งออก: {$issue_tag}"];
+    if (!empty($platform)) {
+        $remarkParts[] = "แพลตฟอร์ม: {$platform}";
+    }
+    if (!empty($patternName)) {
+        $remarkParts[] = "รูปแบบ: {$patternName}";
+    }
+    $remark = implode(' | ', $remarkParts);
     
     $sale_order_result = $insert_sale_order->execute([
         $issue_tag,
@@ -140,7 +166,8 @@ try {
             SELECT 
                 ri.receive_qty,
                 p.name,
-                p.sku
+                p.sku,
+                poi.price_per_unit AS cost_price
             FROM receive_items ri
             INNER JOIN purchase_order_items poi ON poi.item_id = ri.item_id
             INNER JOIN products p ON p.product_id = poi.product_id
@@ -163,17 +190,19 @@ try {
         $insert_issue = $pdo->prepare("
             INSERT INTO issue_items (
                 product_id, 
-                receive_id, 
+                receive_id,
                 sale_order_id,
                 issue_qty, 
                 sale_price,
+                cost_price,
                 issued_by, 
                 remark, 
                 created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         
-        $sale_price = $product['sale_price'] ?? null;
+        $sale_price = isset($product['sale_price']) && $product['sale_price'] !== '' ? (float) $product['sale_price'] : 0.0;
+        $cost_price = isset($available['cost_price']) && $available['cost_price'] !== '' ? (float) $available['cost_price'] : 0.0;
         $item_remark = "ยิงสินค้าจากแท็ค: {$issue_tag}";
         
         $insert_result = $insert_issue->execute([
@@ -182,6 +211,7 @@ try {
             $sale_order_id,
             $issue_qty,
             $sale_price,
+            $cost_price,
             $user_id,
             $item_remark
         ]);

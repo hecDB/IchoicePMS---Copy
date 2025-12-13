@@ -17,8 +17,9 @@ ini_set('log_errors', 1);
 ini_set('error_log', '../logs/api_errors.log');
 
 try {
-    include __DIR__ . '/../config/db_connect.php';
-    
+    require_once __DIR__ . '/../config/db_connect.php';
+    require_once __DIR__ . '/../includes/tag_validator.php';
+
     // Check if PDO connection exists
     if (!isset($pdo)) {
         throw new Exception('PDO connection not established');
@@ -33,28 +34,17 @@ try {
 // ฟังก์ชันตรวจสอบแพลตฟอร์มจากเลขแท็คด้วยระบบใหม่
 function detectPlatformFromTag($tag) {
     if (empty($tag)) return '';
-    
-    // ใช้ระบบ tag validation ใหม่จากฐานข้อมูล
+
     try {
-        global $pdo;
-        
-        // ดึงรูปแบบทั้งหมดที่เปิดใช้งาน
-        $stmt = $pdo->query("SELECT platform, regex_pattern FROM tag_patterns WHERE is_active = 1 ORDER BY created_at DESC");
-        $patterns = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        foreach ($patterns as $pattern) {
-            if (preg_match('/' . $pattern['regex_pattern'] . '/', $tag)) {
-                return $pattern['platform'];
-            }
+        $validation = validateTagNumber($tag);
+        if (!empty($validation['valid'])) {
+            return $validation['platform'] ?? '';
         }
-        
-        // Fallback ถ้าไม่มีรูปแบบที่ตรงกัน
-        return detectPlatformFallback($tag);
-        
-    } catch (Exception $e) {
-        error_log('Platform detection error: ' . $e->getMessage());
-        return detectPlatformFallback($tag);
+    } catch (Throwable $t) {
+        error_log('Platform detection error (validator): ' . $t->getMessage());
     }
+
+    return detectPlatformFallback($tag);
 }
 
 // ระบบ fallback สำหรับตรวจสอบแพลตฟอร์ม
@@ -84,6 +74,11 @@ function detectPlatformFallback($tag) {
     
     // Lazada LZ format
     if (preg_match('/^LZ[0-9]{7}$/', $tag)) {
+        return 'Lazada';
+    }
+
+    // Lazada modern: 14-16 ตัวเลขทั้งหมด
+    if (($tagLength == 14 || $tagLength == 16) && ctype_digit($tag)) {
         return 'Lazada';
     }
     
