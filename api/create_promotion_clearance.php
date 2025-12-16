@@ -230,8 +230,20 @@ try {
                 $daysToExpire = (int) floor((strtotime($expiryDate) - strtotime(date('Y-m-d'))) / 86400);
             }
 
-            $originalSku = $receiveItem['sku'] ?? '';
-            $baseSku = $originalSku ? ('Exp' . $originalSku) : ('Exp' . $productId);
+            $monthPart = '00';
+            $yearPart = date('y');
+            if (!empty($expiryDate) && $expiryDate !== '0000-00-00') {
+                $expiryDateObj = DateTime::createFromFormat('Y-m-d', $expiryDate);
+                if ($expiryDateObj !== false) {
+                    $monthPart = $expiryDateObj->format('m');
+                    $yearPart = $expiryDateObj->format('y');
+                }
+            }
+
+            $originalSku = isset($receiveItem['sku']) ? trim((string) $receiveItem['sku']) : '';
+            $skuTail = $originalSku !== '' ? $originalSku : ('ID' . $productId);
+            // New SKU format: EXP{MM}-{YY}-{original SKU}
+            $baseSku = sprintf('EXP%s-%s-%s', $monthPart, $yearPart, $skuTail);
             $newSku = $baseSku;
             $attempt = 1;
             while (true) {

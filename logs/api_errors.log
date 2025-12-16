@@ -931,3 +931,195 @@
 [13-Dec-2025 05:34:40 Europe/Berlin] Created sale_order_id: 13
 [13-Dec-2025 05:34:40 Europe/Berlin] Successfully issued: Product ID 8, Qty 2, Receive ID 18, Sale Order ID 13
 [13-Dec-2025 05:34:40 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[16-Dec-2025 15:38:15 Europe/Berlin] update_po_section.php called with: {"po_id":"8","item_id":"29","product_id":"16","product_name":"\u0e25\u0e39\u0e01\u0e2d\u0e21","qty":"2","price_per_unit":"741","currency_id":"2","price_original":"19","exchange_rate":"39","update_type":"item"}
+[16-Dec-2025 15:38:15 Europe/Berlin] Processing update: po_id=8, type=item
+[16-Dec-2025 15:38:21 Europe/Berlin] update_po_section.php called with: {"po_id":"8","item_id":"30","product_id":"3","product_name":"\u0e04\u0e23\u0e35\u0e21\u0e01\u0e31\u0e19\u0e41\u0e14\u0e14 SPF50","qty":"5","price_per_unit":"195","currency_id":"2","price_original":"5","exchange_rate":"39","update_type":"item"}
+[16-Dec-2025 15:38:21 Europe/Berlin] Processing update: po_id=8, type=item
+[16-Dec-2025 15:40:12 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 15:40:12 Europe/Berlin] Request query: cans
+[16-Dec-2025 15:40:12 Europe/Berlin] Request method: GET
+[16-Dec-2025 15:40:12 Europe/Berlin] Request URI: /api/product_search_api.php?q=cans&type=issue&available_only=true
+[16-Dec-2025 15:40:12 Europe/Berlin] Searching for: 'cans' with limit: 10
+[16-Dec-2025 15:40:12 Europe/Berlin] About to encode 0 results for type: issue
+[16-Dec-2025 15:40:12 Europe/Berlin] Sent JSON response length: 15
+[16-Dec-2025 15:40:12 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 15:40:12 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 15:40:12 Europe/Berlin] Request query: cand
+[16-Dec-2025 15:40:12 Europe/Berlin] Request method: GET
+[16-Dec-2025 15:40:12 Europe/Berlin] Request URI: /api/product_search_api.php?q=cand&type=issue&available_only=true
+[16-Dec-2025 15:40:12 Europe/Berlin] Searching for: 'cand' with limit: 10
+[16-Dec-2025 15:40:12 Europe/Berlin] About to encode 2 results for type: issue
+[16-Dec-2025 15:40:12 Europe/Berlin] Sent JSON response length: 1430
+[16-Dec-2025 15:40:12 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 15:40:13 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 15:40:13 Europe/Berlin] Request query: candy
+[16-Dec-2025 15:40:13 Europe/Berlin] Request method: GET
+[16-Dec-2025 15:40:13 Europe/Berlin] Request URI: /api/product_search_api.php?q=candy&type=issue&available_only=true
+[16-Dec-2025 15:40:13 Europe/Berlin] Searching for: 'candy' with limit: 10
+[16-Dec-2025 15:40:13 Europe/Berlin] About to encode 2 results for type: issue
+[16-Dec-2025 15:40:13 Europe/Berlin] Sent JSON response length: 1430
+[16-Dec-2025 15:40:13 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 15:42:03 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 15:42:03 Europe/Berlin] Request query: ca
+[16-Dec-2025 15:42:03 Europe/Berlin] Request method: GET
+[16-Dec-2025 15:42:03 Europe/Berlin] Request URI: /api/product_search_api.php?q=ca&type=issue&available_only=true
+[16-Dec-2025 15:42:03 Europe/Berlin] Searching for: 'ca' with limit: 10
+[16-Dec-2025 15:42:03 Europe/Berlin] About to encode 2 results for type: issue
+[16-Dec-2025 15:42:03 Europe/Berlin] Sent JSON response length: 1430
+[16-Dec-2025 15:42:03 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 15:42:04 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 15:42:04 Europe/Berlin] Request query: can
+[16-Dec-2025 15:42:04 Europe/Berlin] Request method: GET
+[16-Dec-2025 15:42:04 Europe/Berlin] Request URI: /api/product_search_api.php?q=can&type=issue&available_only=true
+[16-Dec-2025 15:42:04 Europe/Berlin] Searching for: 'can' with limit: 10
+[16-Dec-2025 15:42:04 Europe/Berlin] About to encode 2 results for type: issue
+[16-Dec-2025 15:42:04 Europe/Berlin] Sent JSON response length: 1430
+[16-Dec-2025 15:42:04 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 15:50:06 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 15:50:06 Europe/Berlin] Request query: แฟืก
+[16-Dec-2025 15:50:06 Europe/Berlin] Request method: GET
+[16-Dec-2025 15:50:06 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B9%81%E0%B8%9F%E0%B8%B7%E0%B8%81&type=issue&available_only=true
+[16-Dec-2025 15:50:06 Europe/Berlin] Searching for: 'แฟืก' with limit: 10
+[16-Dec-2025 15:50:06 Europe/Berlin] About to encode 0 results for type: issue
+[16-Dec-2025 15:50:06 Europe/Berlin] Sent JSON response length: 15
+[16-Dec-2025 15:50:06 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 15:50:10 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 15:50:10 Europe/Berlin] Request query: ล๔
+[16-Dec-2025 15:50:10 Europe/Berlin] Request method: GET
+[16-Dec-2025 15:50:10 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B9%94&type=issue&available_only=true
+[16-Dec-2025 15:50:10 Europe/Berlin] Searching for: 'ล๔' with limit: 10
+[16-Dec-2025 15:50:10 Europe/Berlin] About to encode 0 results for type: issue
+[16-Dec-2025 15:50:10 Europe/Berlin] Sent JSON response length: 15
+[16-Dec-2025 15:50:10 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 15:50:11 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 15:50:11 Europe/Berlin] Request query: ลูก
+[16-Dec-2025 15:50:11 Europe/Berlin] Request method: GET
+[16-Dec-2025 15:50:11 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B9%E0%B8%81&type=issue&available_only=true
+[16-Dec-2025 15:50:11 Europe/Berlin] Searching for: 'ลูก' with limit: 10
+[16-Dec-2025 15:50:11 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 15:50:11 Europe/Berlin] Sent JSON response length: 740
+[16-Dec-2025 15:50:11 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 15:50:41 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 15:50:41 Europe/Berlin] Request query: ลูกฏ
+[16-Dec-2025 15:50:41 Europe/Berlin] Request method: GET
+[16-Dec-2025 15:50:41 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B9%E0%B8%81%E0%B8%8F&type=issue&available_only=true
+[16-Dec-2025 15:50:41 Europe/Berlin] Searching for: 'ลูกฏ' with limit: 10
+[16-Dec-2025 15:50:41 Europe/Berlin] About to encode 0 results for type: issue
+[16-Dec-2025 15:50:41 Europe/Berlin] Sent JSON response length: 15
+[16-Dec-2025 15:50:41 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 15:50:45 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 15:50:45 Europe/Berlin] Request query: ลูก
+[16-Dec-2025 15:50:45 Europe/Berlin] Request method: GET
+[16-Dec-2025 15:50:45 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B9%E0%B8%81&type=issue&available_only=true
+[16-Dec-2025 15:50:45 Europe/Berlin] Searching for: 'ลูก' with limit: 10
+[16-Dec-2025 15:50:45 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 15:50:45 Europe/Berlin] Sent JSON response length: 740
+[16-Dec-2025 15:50:45 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 15:53:10 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 15:53:10 Europe/Berlin] Request query: ลู
+[16-Dec-2025 15:53:10 Europe/Berlin] Request method: GET
+[16-Dec-2025 15:53:10 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B9&type=issue&available_only=true
+[16-Dec-2025 15:53:10 Europe/Berlin] Searching for: 'ลู' with limit: 10
+[16-Dec-2025 15:53:10 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 15:53:10 Europe/Berlin] Sent JSON response length: 740
+[16-Dec-2025 15:53:10 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:15:36 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:15:36 Europe/Berlin] Request query: ลูก
+[16-Dec-2025 16:15:36 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:15:36 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B9%E0%B8%81&type=issue&available_only=true
+[16-Dec-2025 16:15:36 Europe/Berlin] Searching for: 'ลูก' with limit: 10
+[16-Dec-2025 16:15:36 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 16:15:36 Europe/Berlin] Sent JSON response length: 1106
+[16-Dec-2025 16:15:36 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:18:16 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:18:16 Europe/Berlin] Request query: ลูก
+[16-Dec-2025 16:18:16 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:18:16 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B9%E0%B8%81&type=issue&available_only=true
+[16-Dec-2025 16:18:16 Europe/Berlin] Searching for: 'ลูก' with limit: 10
+[16-Dec-2025 16:18:16 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 16:18:16 Europe/Berlin] Sent JSON response length: 1106
+[16-Dec-2025 16:18:16 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:29:39 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:29:39 Europe/Berlin] Request query: ลูก
+[16-Dec-2025 16:29:39 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:29:39 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B9%E0%B8%81&type=issue&available_only=true
+[16-Dec-2025 16:29:39 Europe/Berlin] Searching for: 'ลูก' with limit: 10
+[16-Dec-2025 16:29:39 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 16:29:39 Europe/Berlin] Sent JSON response length: 1058
+[16-Dec-2025 16:29:39 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:30:08 Europe/Berlin] Issue request: Tag=5463, Products=1, User=1
+[16-Dec-2025 16:30:08 Europe/Berlin] Created sale_order_id: 14
+[16-Dec-2025 16:30:08 Europe/Berlin] Successfully issued: Product ID 16, Qty 1, Receive ID 42, Sale Order ID 14
+[16-Dec-2025 16:30:08 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[16-Dec-2025 16:30:14 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:30:14 Europe/Berlin] Request query: ลูก
+[16-Dec-2025 16:30:14 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:30:14 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B9%E0%B8%81&type=issue&available_only=true
+[16-Dec-2025 16:30:14 Europe/Berlin] Searching for: 'ลูก' with limit: 10
+[16-Dec-2025 16:30:14 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 16:30:14 Europe/Berlin] Sent JSON response length: 1058
+[16-Dec-2025 16:30:14 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:30:15 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:30:15 Europe/Berlin] Request query: ลูกอม
+[16-Dec-2025 16:30:15 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:30:15 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B9%E0%B8%81%E0%B8%AD%E0%B8%A1&type=issue&available_only=true
+[16-Dec-2025 16:30:15 Europe/Berlin] Searching for: 'ลูกอม' with limit: 10
+[16-Dec-2025 16:30:15 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 16:30:15 Europe/Berlin] Sent JSON response length: 1058
+[16-Dec-2025 16:30:15 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:31:16 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:31:16 Europe/Berlin] Request query: ลุก
+[16-Dec-2025 16:31:16 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:31:16 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B8%E0%B8%81&type=issue&available_only=true
+[16-Dec-2025 16:31:16 Europe/Berlin] Searching for: 'ลุก' with limit: 10
+[16-Dec-2025 16:31:16 Europe/Berlin] About to encode 0 results for type: issue
+[16-Dec-2025 16:31:16 Europe/Berlin] Sent JSON response length: 15
+[16-Dec-2025 16:31:16 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:31:18 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:31:18 Europe/Berlin] Request query: ลู
+[16-Dec-2025 16:31:18 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:31:18 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B9&type=issue&available_only=true
+[16-Dec-2025 16:31:18 Europe/Berlin] Searching for: 'ลู' with limit: 10
+[16-Dec-2025 16:31:18 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 16:31:18 Europe/Berlin] Sent JSON response length: 1058
+[16-Dec-2025 16:31:18 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:31:18 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:31:18 Europe/Berlin] Request query: ลูก
+[16-Dec-2025 16:31:18 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:31:18 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A5%E0%B8%B9%E0%B8%81&type=issue&available_only=true
+[16-Dec-2025 16:31:18 Europe/Berlin] Searching for: 'ลูก' with limit: 10
+[16-Dec-2025 16:31:18 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 16:31:18 Europe/Berlin] Sent JSON response length: 1058
+[16-Dec-2025 16:31:18 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:48:08 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:48:08 Europe/Berlin] Request query: cai
+[16-Dec-2025 16:48:08 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:48:08 Europe/Berlin] Request URI: /api/product_search_api.php?q=cai&type=issue&available_only=true
+[16-Dec-2025 16:48:08 Europe/Berlin] Searching for: 'cai' with limit: 10
+[16-Dec-2025 16:48:08 Europe/Berlin] About to encode 0 results for type: issue
+[16-Dec-2025 16:48:08 Europe/Berlin] Sent JSON response length: 15
+[16-Dec-2025 16:48:08 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:48:10 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:48:10 Europe/Berlin] Request query: ca
+[16-Dec-2025 16:48:10 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:48:10 Europe/Berlin] Request URI: /api/product_search_api.php?q=ca&type=issue&available_only=true
+[16-Dec-2025 16:48:10 Europe/Berlin] Searching for: 'ca' with limit: 10
+[16-Dec-2025 16:48:10 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 16:48:10 Europe/Berlin] Sent JSON response length: 1304
+[16-Dec-2025 16:48:10 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:48:11 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:48:11 Europe/Berlin] Request query: can
+[16-Dec-2025 16:48:11 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:48:11 Europe/Berlin] Request URI: /api/product_search_api.php?q=can&type=issue&available_only=true
+[16-Dec-2025 16:48:11 Europe/Berlin] Searching for: 'can' with limit: 10
+[16-Dec-2025 16:48:11 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 16:48:11 Europe/Berlin] Sent JSON response length: 1304
+[16-Dec-2025 16:48:11 Europe/Berlin] === product_search_api.php END ===
+[16-Dec-2025 16:48:15 Europe/Berlin] === product_search_api.php START ===
+[16-Dec-2025 16:48:15 Europe/Berlin] Request query: ca
+[16-Dec-2025 16:48:15 Europe/Berlin] Request method: GET
+[16-Dec-2025 16:48:15 Europe/Berlin] Request URI: /api/product_search_api.php?q=ca&type=issue&available_only=true
+[16-Dec-2025 16:48:15 Europe/Berlin] Searching for: 'ca' with limit: 10
+[16-Dec-2025 16:48:15 Europe/Berlin] About to encode 1 results for type: issue
+[16-Dec-2025 16:48:15 Europe/Berlin] Sent JSON response length: 1304
+[16-Dec-2025 16:48:15 Europe/Berlin] === product_search_api.php END ===

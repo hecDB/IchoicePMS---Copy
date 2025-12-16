@@ -93,12 +93,30 @@ $temp_product_id = isset($_POST['temp_product_id']) ? (int)$_POST['temp_product_
 $provisional_sku = isset($_POST['provisional_sku']) ? trim($_POST['provisional_sku']) : '';
 $provisional_barcode = isset($_POST['provisional_barcode']) ? trim($_POST['provisional_barcode']) : '';
 $expiry_date = isset($_POST['expiry_date']) ? $_POST['expiry_date'] : null;
+$sale_price_raw = isset($_POST['sale_price']) ? trim($_POST['sale_price']) : null;
+$sale_price = ($sale_price_raw !== null && $sale_price_raw !== '' && is_numeric($sale_price_raw)) ? (float)$sale_price_raw : null;
+$remark = isset($_POST['remark']) ? trim($_POST['remark']) : '';
+$row_code = isset($_POST['row_code']) ? trim($_POST['row_code']) : '';
+$bin_value = isset($_POST['bin']) ? trim($_POST['bin']) : '';
+$shelf_value = isset($_POST['shelf']) ? trim($_POST['shelf']) : '';
+$location_id_raw = isset($_POST['location_id']) ? trim($_POST['location_id']) : '';
+$location_id = ($location_id_raw !== '' && is_numeric($location_id_raw)) ? (int)$location_id_raw : null;
+
+// Normalize bin/shelf as strings for consistent storage
+$bin = $bin_value === '' ? '' : (string)$bin_value;
+$shelf = $shelf_value === '' ? '' : (string)$shelf_value;
 
 // Debug logging
 error_log("=== UPDATE_TEMP_PRODUCT START ===");
 error_log("temp_product_id: " . $temp_product_id);
 error_log("Files received: " . count($_FILES));
 error_log("POST keys: " . implode(', ', array_keys($_POST)));
+error_log("sale_price_raw: " . var_export($sale_price_raw, true));
+error_log("remark_length: " . strlen($remark));
+error_log("row_code: " . $row_code);
+error_log("bin: " . $bin);
+error_log("shelf: " . $shelf);
+error_log("location_id_raw: " . var_export($location_id_raw, true));
 
 if (!$temp_product_id) {
     echo json_encode(['success' => false, 'message' => 'ไม่พบ ID สินค้า']);
@@ -326,9 +344,10 @@ if ($stored_image_path === null) {
 
 try {
     // อัปเดต temp_products - บันทึก provisional_sku, provisional_barcode และชื่อไฟล์รูปภาพ
-    $sql = "UPDATE temp_products SET 
+        $sql = "UPDATE temp_products SET 
             provisional_sku = :provisional_sku,
-            provisional_barcode = :provisional_barcode";
+            provisional_barcode = :provisional_barcode,
+            remark = :remark";
     
     if ($stored_image_path !== null) {
         $sql .= ", product_image = :product_image";
@@ -341,6 +360,7 @@ try {
     $params = [
         ':provisional_sku' => $provisional_sku,
         ':provisional_barcode' => $provisional_barcode,
+        ':remark' => $remark,
         ':temp_product_id' => $temp_product_id
     ];
     
@@ -351,6 +371,65 @@ try {
     $result = $stmt->execute($params);
     error_log("Update query result: " . ($result ? 'true' : 'false'));
     error_log("Rows affected: " . $stmt->rowCount());
+
+    if ($location_id !== null || $row_code !== '' || $bin !== '' || $shelf !== '') {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS temp_product_locations (
+            temp_product_id INT PRIMARY KEY,
+            location_id INT DEFAULT NULL,
+            row_code VARCHAR(50) DEFAULT NULL,
+            bin VARCHAR(50) DEFAULT NULL,
+            shelf VARCHAR(50) DEFAULT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $stmtPending = $pdo->prepare("INSERT INTO temp_product_locations (temp_product_id, location_id, row_code, bin, shelf)
+            VALUES (:temp_product_id, :location_id, :row_code, :bin, :shelf)
+            ON DUPLICATE KEY UPDATE location_id = VALUES(location_id), row_code = VALUES(row_code), bin = VALUES(bin), shelf = VALUES(shelf)");
+        $stmtPending->execute([
+            ':temp_product_id' => $temp_product_id,
+            ':location_id' => $location_id,
+            ':row_code' => $row_code ?: null,
+            ':bin' => $bin ?: null,
+            ':shelf' => $shelf ?: null
+        ]);
+        error_log("Pending temp product location saved (rows: " . $stmtPending->rowCount() . ")");
+
+        if ($location_id !== null) {
+            $stmtProductIds = $pdo->prepare("SELECT DISTINCT poi.product_id
+                                             FROM purchase_order_items poi
+                                             WHERE poi.temp_product_id = :temp_product_id
+                                               AND poi.product_id IS NOT NULL");
+            $stmtProductIds->execute([':temp_product_id' => $temp_product_id]);
+            $productIds = $stmtProductIds->fetchAll(PDO::FETCH_COLUMN);
+
+            if ($productIds) {
+                $selectExisting = $pdo->prepare("SELECT id FROM product_location WHERE product_id = :product_id LIMIT 1");
+                $updateExisting = $pdo->prepare("UPDATE product_location SET location_id = :location_id WHERE id = :id");
+                $insertLocation = $pdo->prepare("INSERT INTO product_location (product_id, location_id) VALUES (:product_id, :location_id)");
+
+                foreach ($productIds as $productId) {
+                    $selectExisting->execute([':product_id' => $productId]);
+                    $existingId = $selectExisting->fetchColumn();
+                    if ($existingId) {
+                        $updateExisting->execute([':location_id' => $location_id, ':id' => $existingId]);
+                    } else {
+                        $insertLocation->execute([':product_id' => $productId, ':location_id' => $location_id]);
+                    }
+                }
+                error_log("Product location updates applied for converted products: " . count($productIds));
+            }
+        }
+    }
+
+    if ($sale_price !== null) {
+        $sqlSalePrice = "UPDATE purchase_order_items SET sale_price = :sale_price WHERE temp_product_id = :temp_product_id";
+        $stmtSalePrice = $pdo->prepare($sqlSalePrice);
+        $stmtSalePrice->execute([
+            ':sale_price' => $sale_price,
+            ':temp_product_id' => $temp_product_id
+        ]);
+        error_log("Sale price updated rows: " . $stmtSalePrice->rowCount());
+    }
     
     // หากมี expiry_date ให้อัปเดต receive_items
         if ($stored_image_path !== null) {
@@ -392,7 +471,13 @@ try {
         'message' => 'บันทึกสำเร็จ',
         'compression_info' => $compression_info,
         'image_filename' => $image_filename,
-        'image_path' => $stored_image_path
+        'image_path' => $stored_image_path,
+        'sale_price' => $sale_price,
+        'remark' => $remark,
+        'location_id' => $location_id,
+        'row_code' => $row_code,
+        'bin' => $bin,
+        'shelf' => $shelf
     ]);
     
 } catch (Exception $e) {

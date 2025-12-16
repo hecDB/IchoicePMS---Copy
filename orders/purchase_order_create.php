@@ -20,6 +20,35 @@ foreach ($suppliers as $s) {
     ];
 }
 
+// ดึงราคาล่าสุดจากใบสั่งซื้อสำหรับแต่ละสินค้า
+$latestPrices = [];
+try {
+    $latestStmt = $pdo->query("
+        SELECT 
+            poi.product_id,
+            poi.price_original,
+            poi.price_base,
+            poi.price_per_unit,
+            poi.currency_id,
+            po.order_date,
+            c.symbol AS currency_symbol,
+            c.code AS currency_code
+        FROM purchase_order_items poi
+        INNER JOIN purchase_orders po ON poi.po_id = po.po_id
+        LEFT JOIN currencies c ON poi.currency_id = c.currency_id
+        ORDER BY poi.product_id ASC, po.order_date DESC, poi.item_id DESC
+    ");
+
+    while ($row = $latestStmt->fetch(PDO::FETCH_ASSOC)) {
+        $productId = $row['product_id'];
+        if (!isset($latestPrices[$productId])) {
+            $latestPrices[$productId] = $row;
+        }
+    }
+} catch (Exception $e) {
+    error_log('Failed to load latest PO prices: ' . $e->getMessage());
+}
+
 // ดึงสินค้า
 $stmt2 = $pdo->query("
     SELECT 
@@ -34,8 +63,21 @@ $stmt2 = $pdo->query("
 ");
 $products = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
+foreach ($products as &$product) {
+    $pid = $product['product_id'];
+    $latest = $latestPrices[$pid] ?? null;
+    $product['last_price_original'] = $latest['price_original'] ?? null;
+    $product['last_price_base'] = $latest['price_base'] ?? null;
+    $product['last_price_per_unit'] = $latest['price_per_unit'] ?? null;
+    $product['last_currency_id'] = $latest['currency_id'] ?? null;
+    $product['last_currency_symbol'] = $latest['currency_symbol'] ?? null;
+    $product['last_currency_code'] = $latest['currency_code'] ?? null;
+    $product['last_order_date'] = $latest['order_date'] ?? null;
+}
+unset($product);
+
 // ดึงสกุลเงิน
-$stmt3 = $pdo->query("SELECT currency_id, code, name, symbol, exchange_rate FROM currencies WHERE is_active = 1 ORDER BY is_base DESC, code ASC");
+$stmt3 = $pdo->query("SELECT currency_id, code, name, symbol, exchange_rate, is_base FROM currencies WHERE is_active = 1 ORDER BY is_base DESC, code ASC");
 $currencies = $stmt3->fetchAll(PDO::FETCH_ASSOC);
 
 // ดึงประเภทสินค้า
@@ -47,6 +89,18 @@ window.allSuppliers = <?php echo json_encode($all_suppliers, JSON_UNESCAPED_UNIC
 window.products = <?php echo json_encode($products, JSON_UNESCAPED_UNICODE); ?>;
 window.currencies = <?php echo json_encode($currencies, JSON_UNESCAPED_UNICODE); ?>;
 window.productCategories = <?php echo json_encode($categories, JSON_UNESCAPED_UNICODE); ?>;
+window.productsMap = {};
+window.products.forEach(function(prod) {
+    window.productsMap[prod.product_id] = prod;
+});
+window.currencyMap = {};
+window.baseCurrencyId = null;
+window.currencies.forEach(function(cur) {
+    window.currencyMap[cur.currency_id] = cur;
+    if (cur.is_base === 1 || cur.is_base === '1' || (window.baseCurrencyId === null && (cur.code === 'THB' || cur.code === 'thb'))) {
+        window.baseCurrencyId = parseInt(cur.currency_id, 10);
+    }
+});
 </script>
 
 <!DOCTYPE html>
@@ -144,8 +198,8 @@ window.productCategories = <?php echo json_encode($categories, JSON_UNESCAPED_UN
         <div>
           <label class="label">สกุลเงิน *</label>
           <select name="currency_id" id="currencySelect" required>
-            <?php foreach($currencies as $curr): ?>
-              <option value="<?=$curr['currency_id']?>" data-rate="<?=$curr['exchange_rate']?>" data-symbol="<?=$curr['symbol']?>" <?=$curr['code']=='THB'?'selected':''?>>
+                        <?php foreach($currencies as $curr): ?>
+                            <option value="<?=$curr['currency_id']?>" data-rate="<?=$curr['exchange_rate']?>" data-symbol="<?=$curr['symbol']?>" data-code="<?=$curr['code']?>" <?=$curr['code']=='THB'?'selected':''?>>
                 <?=$curr['symbol']?> <?=$curr['name']?> (<?=$curr['code']?>)
               </option>
             <?php endforeach; ?>
@@ -332,6 +386,7 @@ currencySelect.addEventListener('change', function(){
         updatePriceBaseDisplay(priceInput);
     });
     
+    refreshLastPriceNotes();
     calcTotal();
 });
 
@@ -443,6 +498,7 @@ function addProductRow(detail={}) {
                     <input type="number" class="price-input" min="0" step="0.01" value="${detail.price||0}" required style="width:95px;">
                 </div>
                 <div class="price-base-display" style="font-size:12px;color:#666;margin-top:2px;">≈ ฿0.00</div>
+                <div class="last-price-note" style="font-size:12px;color:#0f172a;margin-top:4px;display:none;"></div>
             </div>
         </div>
     `;
@@ -482,8 +538,9 @@ function addProductRow(detail={}) {
         if(!t) return;
         input.value = t.dataset.name;
         row.querySelector('.unit-input').value = t.dataset.unit;
-        row.querySelector('.price-input').value = '0'; // ไม่มีราคาใน products table
-        row.dataset.productId = t.dataset.id; // เก็บ product_id (แก้ไขจาก id เป็น id)
+        const priceInputEl = row.querySelector('.price-input');
+        priceInputEl.value = '0';
+        row.dataset.productId = t.dataset.id;
         ensureCategoryOption(row.querySelector('.category-input'), t.dataset.category || '');
         
         // อัปเดตรูปภาพ
@@ -515,11 +572,16 @@ function addProductRow(detail={}) {
             productImage.style.display = 'block';
             noImageText.style.display = 'none';
         }
+
+        const mappedProduct = window.productsMap ? window.productsMap[t.dataset.id] : null;
+        const priceSet = mappedProduct ? applyLatestPriceFromProduct(row, mappedProduct, { setPrice: true }) : false;
+        if (!priceSet) {
+            updatePriceBaseDisplay(priceInputEl);
+            calcTotal();
+        }
         
         autoList.innerHTML = "";
         autoList.style.display = "none";
-        updatePriceBaseDisplay(row.querySelector('.price-input'));
-        calcTotal();
     }
 
     // ปิด autocomplete เมื่อคลิกนอก
@@ -538,6 +600,17 @@ function addProductRow(detail={}) {
             productImage.style.display = 'none';
             noImageText.style.display = 'block';
             row.dataset.productId = '';
+            row.dataset.lastPriceBase = '';
+            row.dataset.lastPriceOriginal = '';
+            row.dataset.lastCurrencySymbol = '';
+            row.dataset.lastCurrencyCode = '';
+            row.dataset.lastOrderDate = '';
+            row.dataset.lastCurrencyId = '';
+            const noteEl = row.querySelector('.last-price-note');
+            if (noteEl) {
+                noteEl.textContent = '';
+                noteEl.style.display = 'none';
+            }
         }
     });
 
@@ -556,11 +629,23 @@ function addProductRow(detail={}) {
     const categorySelect = row.querySelector('.category-input');
     populateCategorySelect(categorySelect, selectedCategory);
     ensureCategoryOption(categorySelect, selectedCategory);
+
+    let priceUpdatedFromLatest = false;
+    if (row.dataset.productId && window.productsMap && window.productsMap[row.dataset.productId]) {
+        const hasCustomPrice = detail.price && parseFloat(detail.price) > 0;
+        priceUpdatedFromLatest = applyLatestPriceFromProduct(
+            row,
+            window.productsMap[row.dataset.productId],
+            { setPrice: !hasCustomPrice }
+        );
+    }
+
+    const priceField = row.querySelector('.price-input');
+    updatePriceBaseDisplay(priceField);
     
-    // อัปเดตการแสดงราคาในสกุลเงินฐานสำหรับแถวใหม่
-    updatePriceBaseDisplay(row.querySelector('.price-input'));
-    
-    calcTotal();
+    if (!priceUpdatedFromLatest) {
+        calcTotal();
+    }
 }
 
 // ปุ่มเพิ่มแถวสินค้า
@@ -673,6 +758,146 @@ function updatePriceBaseDisplay(priceInput) {
     const rate = parseFloat(exchangeRateInput.value) || 1;
     const priceBase = price * rate;
     priceBaseDisplay.textContent = `≈ ฿${priceBase.toFixed(2)}`;
+}
+
+function formatThaiDate(dateStr) {
+    if (!dateStr) {
+        return '';
+    }
+    const normalized = dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`;
+    const dt = new Date(normalized);
+    return Number.isNaN(dt.getTime()) ? '' : dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function applyLatestPriceFromProduct(row, productInfo, options) {
+    if (!row) {
+        return false;
+    }
+
+    const config = Object.assign({ setPrice: true }, options || {});
+    const priceInput = row.querySelector('.price-input');
+    const noteEl = row.querySelector('.last-price-note');
+    let priceUpdated = false;
+
+    if (!productInfo) {
+        if (noteEl) {
+            noteEl.textContent = '';
+            noteEl.style.display = 'none';
+        }
+        return priceUpdated;
+    }
+
+    const rate = parseFloat(exchangeRateInput.value) || 1;
+    const currencyOption = currencySelect.options[currencySelect.selectedIndex];
+    const currentSymbol = currencyOption ? (currencyOption.dataset.symbol || '฿') : '฿';
+    const parsedCurrentCurrencyId = currencySelect.value ? parseInt(currencySelect.value, 10) : NaN;
+    const currentCurrencyId = Number.isNaN(parsedCurrentCurrencyId) ? null : parsedCurrentCurrencyId;
+
+    const lastPriceBase = parseFloat(productInfo.last_price_base);
+    const lastPriceOriginal = parseFloat(productInfo.last_price_original);
+    const lastPricePerUnit = parseFloat(productInfo.last_price_per_unit);
+    const lastSymbol = productInfo.last_currency_symbol || '';
+    const lastCode = productInfo.last_currency_code || '';
+    const lastDate = productInfo.last_order_date || '';
+    let lastCurrencyId = null;
+    if (productInfo.last_currency_id !== undefined && productInfo.last_currency_id !== null && productInfo.last_currency_id !== '') {
+        const parsed = parseInt(productInfo.last_currency_id, 10);
+        lastCurrencyId = Number.isNaN(parsed) ? null : parsed;
+    }
+
+    row.dataset.lastPriceBase = Number.isNaN(lastPriceBase) ? '' : lastPriceBase;
+    row.dataset.lastPriceOriginal = Number.isNaN(lastPriceOriginal) ? '' : lastPriceOriginal;
+    row.dataset.lastPricePerUnit = Number.isNaN(lastPricePerUnit) ? '' : lastPricePerUnit;
+    row.dataset.lastCurrencySymbol = lastSymbol || '';
+    row.dataset.lastCurrencyCode = lastCode || '';
+    row.dataset.lastOrderDate = lastDate;
+    row.dataset.lastCurrencyId = lastCurrencyId ?? '';
+
+    const baseCurrencyId = (typeof window.baseCurrencyId === 'number' && !Number.isNaN(window.baseCurrencyId))
+        ? window.baseCurrencyId
+        : null;
+    const currencyInfo = (lastCurrencyId !== null && window.currencyMap)
+        ? window.currencyMap[lastCurrencyId]
+        : null;
+    const currencyInfoIsBase = currencyInfo ? (currencyInfo.is_base === 1 || currencyInfo.is_base === '1') : false;
+    const isLastCurrencyBase = currencyInfoIsBase || (baseCurrencyId !== null && lastCurrencyId === baseCurrencyId);
+    const resolvedSymbol = currencyInfo && currencyInfo.symbol ? currencyInfo.symbol : (lastSymbol || currentSymbol);
+    let resolvedCode = currencyInfo && currencyInfo.code ? currencyInfo.code : lastCode;
+    if (!resolvedCode && isLastCurrencyBase && currencyOption) {
+        resolvedCode = currencyOption.dataset.code || '';
+    }
+
+    const lastCurrencyMatchesCurrent = lastCurrencyId !== null && currentCurrencyId !== null && lastCurrencyId === currentCurrencyId;
+    const currentIsBase = baseCurrencyId !== null && currentCurrencyId !== null && currentCurrencyId === baseCurrencyId;
+
+    let noteValue = null;
+    let populateValue = null;
+
+    if (isLastCurrencyBase || (lastCurrencyId === null && baseCurrencyId !== null)) {
+        if (!Number.isNaN(lastPricePerUnit) && lastPricePerUnit > 0) {
+            noteValue = lastPricePerUnit;
+        } else if (!Number.isNaN(lastPriceBase) && lastPriceBase > 0) {
+            noteValue = lastPriceBase;
+        }
+
+        if ((lastCurrencyMatchesCurrent || (currentIsBase && (isLastCurrencyBase || lastCurrencyId === null))) && noteValue !== null) {
+            populateValue = noteValue;
+        }
+    } else {
+        if (!Number.isNaN(lastPriceOriginal) && lastPriceOriginal > 0) {
+            noteValue = lastPriceOriginal;
+        } else if (!Number.isNaN(lastPricePerUnit) && lastPricePerUnit > 0) {
+            noteValue = lastPricePerUnit;
+        } else if (!Number.isNaN(lastPriceBase) && lastPriceBase > 0 && rate > 0) {
+            noteValue = lastPriceBase / rate;
+        }
+
+        if (lastCurrencyMatchesCurrent && noteValue !== null) {
+            populateValue = noteValue;
+        }
+    }
+
+    if (config.setPrice && priceInput && populateValue !== null) {
+        priceInput.value = populateValue.toFixed(2);
+        updatePriceBaseDisplay(priceInput);
+        calcTotal();
+        priceUpdated = true;
+    }
+
+    if (noteEl) {
+        if (noteValue !== null) {
+            const symbolForNote = resolvedSymbol || currentSymbol;
+            const codeForNote = resolvedCode ? resolvedCode.toUpperCase() : '';
+            const dateText = formatThaiDate(lastDate);
+            const displayText = `${symbolForNote}${noteValue.toFixed(2)}${codeForNote ? ' (' + codeForNote + ')' : ''}`;
+            const segments = [`PO ล่าสุด: ${displayText}`];
+            if (dateText) {
+                segments.push(dateText);
+            }
+            noteEl.textContent = segments.join(' • ');
+            noteEl.style.display = 'block';
+        } else {
+            noteEl.textContent = 'ยังไม่เคยสั่งซื้อ';
+            noteEl.style.display = 'block';
+        }
+    }
+
+    return priceUpdated;
+}
+
+function refreshLastPriceNotes() {
+    document.querySelectorAll('#productRows .product-item-card').forEach(card => {
+        const productId = card.dataset.productId;
+        if (productId && window.productsMap && window.productsMap[productId]) {
+            applyLatestPriceFromProduct(card, window.productsMap[productId], { setPrice: false });
+        } else {
+            const noteEl = card.querySelector('.last-price-note');
+            if (noteEl) {
+                noteEl.textContent = '';
+                noteEl.style.display = 'none';
+            }
+        }
+    });
 }
 
 // คำนวณราคาสุทธิ

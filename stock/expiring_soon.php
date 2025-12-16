@@ -15,6 +15,8 @@ SELECT
     p.barcode,
     p.unit,
     p.image,
+    poi.price_per_unit AS cost_price,
+    poi.sale_price AS sale_price,
     ri.receive_qty AS stock_on_hand,
     ri.expiry_date,
     po.po_number,
@@ -405,7 +407,14 @@ $stats = [
                         </tr>
                         <?php else: ?>
                         <?php foreach ($products as $product): ?>
-                            <tr data-id="<?= $product['product_id'] ?>" data-sku="<?= htmlspecialchars($product['sku']) ?>" data-name="<?= htmlspecialchars($product['name']) ?>" data-stock="<?= $product['stock_on_hand'] ?>" data-expiry="<?= $product['expiry_date'] ?>">
+                            <tr data-id="<?= $product['product_id'] ?>"
+                                data-sku="<?= htmlspecialchars($product['sku']) ?>"
+                                data-name="<?= htmlspecialchars($product['name']) ?>"
+                                data-stock="<?= $product['stock_on_hand'] ?>"
+                                data-expiry="<?= $product['expiry_date'] ?>"
+                                data-cost="<?= isset($product['cost_price']) ? htmlspecialchars($product['cost_price']) : '' ?>"
+                                data-sale="<?= isset($product['sale_price']) ? htmlspecialchars($product['sale_price']) : '' ?>"
+                                data-unit="<?= htmlspecialchars($product['unit']) ?>">
                                 <td>
                                     <input type="checkbox" class="form-check-input product-checkbox" value="<?= $product['product_id'] ?>">
                                 </td>
@@ -498,6 +507,37 @@ $stats = [
 
 <script>
 $(document).ready(function() {
+    const currencyFormatter = new Intl.NumberFormat('th-TH', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    const PROMO_DEFAULT_DISCOUNT = 20;
+
+    function formatCurrency(value) {
+        const numeric = typeof value === 'number' ? value : parseFloat(value);
+        if (!Number.isFinite(numeric)) {
+            return '0.00';
+        }
+        return currencyFormatter.format(numeric);
+    }
+
+    function sanitizeNumeric(value) {
+        const numeric = typeof value === 'number' ? value : parseFloat(value);
+        return Number.isFinite(numeric) ? numeric : 0;
+    }
+
+    function escapeHtml(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     // ========== Checkbox Selection Functionality ==========
     
     // Prevent ModernTable from initializing if we have checkboxes
@@ -545,12 +585,19 @@ $(document).ready(function() {
         const selectedProducts = [];
         $('.product-checkbox:checked').each(function() {
             const row = $(this).closest('tr');
+            const stockQty = sanitizeNumeric(row.data('stock'));
+            const costPrice = sanitizeNumeric(row.data('cost'));
+            const salePrice = sanitizeNumeric(row.data('sale'));
+            const unitLabel = row.data('unit') || '';
             selectedProducts.push({
                 product_id: row.data('id'),
                 sku: row.data('sku'),
                 name: row.data('name'),
-                stock: row.data('stock'),
-                expiry_date: row.data('expiry')
+                stock: stockQty,
+                expiry_date: row.data('expiry'),
+                cost_price: costPrice,
+                sale_price: salePrice,
+                unit: unitLabel
             });
         });
         
@@ -564,22 +611,86 @@ $(document).ready(function() {
     
     // Show promotion modal
     function showPromotionModal(products) {
+        const initialDiscount = PROMO_DEFAULT_DISCOUNT;
         let productsList = '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem;">';
-        
-        let totalStock = 0;
-        products.forEach(product => {
-            totalStock += parseInt(product.stock) || 0;
+        const summaryLineParts = [];
+
+        products.forEach((product, index) => {
+            const quantity = sanitizeNumeric(product.stock);
+            const costPrice = sanitizeNumeric(product.cost_price);
+            const salePrice = sanitizeNumeric(product.sale_price);
+            const basePrice = salePrice > 0 ? salePrice : costPrice;
+            const unitLabel = product.unit && product.unit !== '' ? product.unit : 'หน่วย';
+            const rawExpiry = product.expiry_date;
+            let expiryLabel = '-';
+            if (rawExpiry && rawExpiry !== '0000-00-00') {
+                const expiryDate = new Date(rawExpiry);
+                expiryLabel = Number.isNaN(expiryDate.getTime()) ? '-' : expiryDate.toLocaleDateString('th-TH');
+            }
+            const fractionDigits = quantity % 1 === 0 ? 0 : 2;
+            const quantityLabel = quantity.toLocaleString('th-TH', {
+                minimumFractionDigits: fractionDigits,
+                maximumFractionDigits: 2
+            });
+
+            const saleLabel = salePrice > 0 ? `฿${formatCurrency(salePrice)}` : 'ไม่มี (ใช้ต้นทุน)';
+            const discountedUnit = Math.max(0, basePrice * (1 - (initialDiscount / 100)));
+
+            const safeProductName = escapeHtml(product.name);
+            const safeSku = escapeHtml(product.sku);
+            const safeUnitText = escapeHtml(unitLabel);
+            const safeExpiryText = escapeHtml(expiryLabel);
+            const safeSaleLabel = escapeHtml(saleLabel);
+            const safeQuantityLabel = escapeHtml(quantityLabel);
+
             productsList += `
-                <div class="d-flex justify-content-between align-items-center mb-2 pb-2" style="border-bottom: 1px solid #f0f0f0;">
+                <div class="promo-product-row mb-3 pb-3" style="border-bottom: 1px solid #f0f0f0;"
+                     data-index="${index}"
+                     data-cost="${costPrice}"
+                     data-sale="${salePrice}"
+                     data-qty="${quantity}">
                     <div>
-                        <strong>${product.name}</strong><br>
-                        <small class="text-muted">SKU: ${product.sku} | จำนวน: ${product.stock} | หมดอายุ: ${new Date(product.expiry_date).toLocaleDateString('th-TH')}</small>
+                        <strong>${safeProductName}</strong><br>
+                        <small class="text-muted">SKU: ${safeSku} | จำนวน: ${safeQuantityLabel} ${safeUnitText} | หมดอายุ: ${safeExpiryText}</small>
                     </div>
                 </div>
             `;
+
+            summaryLineParts.push(`
+                <div class="promo-summary-line mb-1" data-base="${basePrice}" data-cost="${costPrice}" data-sale="${salePrice}" data-unit="${safeUnitText}">
+                    <small class="text-muted">
+                        ${safeProductName}: ต้นทุน <span class="summary-cost">฿${formatCurrency(costPrice)}</span> ต่อ ${safeUnitText}
+                        | ราคาขายเดิม <span class="summary-sale">${safeSaleLabel}</span>
+                        | หลังลด <span class="summary-discounted">฿${formatCurrency(discountedUnit)}</span>
+                    </small>
+                </div>
+            `);
         });
         productsList += '</div>';
-        
+
+        const summaryBlock = `
+            <div class="promo-pricing-summary border rounded-3 p-3 bg-light">
+                ${summaryLineParts.join('')}
+            </div>
+        `;
+
+        const updatePricingPreview = (discountValue) => {
+            const popup = Swal.getPopup();
+            if (!popup) {
+                return;
+            }
+
+            const discount = Math.max(0, Math.min(100, sanitizeNumeric(discountValue)));
+            popup.querySelectorAll('.promo-summary-line').forEach((line) => {
+                const baseValue = sanitizeNumeric(line.getAttribute('data-base'));
+                const discountedUnitPrice = Math.max(0, baseValue * (1 - (discount / 100)));
+                const discountedSpan = line.querySelector('.summary-discounted');
+                if (discountedSpan) {
+                    discountedSpan.textContent = `฿${formatCurrency(discountedUnitPrice)}`;
+                }
+            });
+        };
+
         Swal.fire({
             title: '📦 สร้างโปรโมชั่นขายสินค้าใกล้หมดอายุ',
             html: `
@@ -596,7 +707,11 @@ $(document).ready(function() {
                     
                     <div class="mb-3">
                         <label for="promo_discount" class="form-label">ส่วนลด (%)</label>
-                        <input type="number" class="form-control" id="promo_discount" min="0" max="100" value="20" placeholder="กรอกเปอร์เซ็นต์ส่วนลด">
+                        <input type="number" class="form-control" id="promo_discount" min="0" max="100" value="${initialDiscount}" placeholder="กรอกเปอร์เซ็นต์ส่วนลด">
+                        <small class="text-muted d-block mt-2">ระบบจะคำนวณราคาหลังลดให้โดยอัตโนมัติ</small>
+                        <div class="mt-3">
+                            ${summaryBlock}
+                        </div>
                     </div>
                     
                     <div class="mb-3">
@@ -613,10 +728,30 @@ $(document).ready(function() {
             confirmButtonText: '✅ สร้างโปรโมชั่นและพักสินค้า',
             cancelButtonText: '❌ ยกเลิก',
             confirmButtonColor: '#dc3545',
-            width: '600px',
+            width: '640px',
+            didOpen: () => {
+                const popup = Swal.getPopup();
+                if (!popup) {
+                    return;
+                }
+                const discountInput = popup.querySelector('#promo_discount');
+                if (!discountInput) {
+                    return;
+                }
+
+                const handleInput = () => {
+                    const rawValue = parseFloat(discountInput.value);
+                    const safeValue = Number.isFinite(rawValue) ? rawValue : 0;
+                    updatePricingPreview(safeValue);
+                };
+
+                discountInput.addEventListener('input', handleInput);
+                handleInput();
+            },
             preConfirm: () => {
                 const promoName = document.getElementById('promotion_name').value;
-                const promoDiscount = parseFloat(document.getElementById('promo_discount').value) || 0;
+                const promoDiscountRaw = parseFloat(document.getElementById('promo_discount').value);
+                const promoDiscount = Number.isFinite(promoDiscountRaw) ? promoDiscountRaw : 0;
                 const promoReason = document.getElementById('promo_reason').value;
                 
                 if (!promoName) {

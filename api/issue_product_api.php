@@ -146,66 +146,243 @@ try {
     $sale_order_id = $pdo->lastInsertId();
     error_log("Created sale_order_id: {$sale_order_id}");
     
+    $stockCheckStmt = $pdo->prepare("
+        SELECT 
+            ri.receive_qty,
+            p.name,
+            p.sku,
+            poi.price_per_unit AS cost_price
+        FROM receive_items ri
+        INNER JOIN purchase_order_items poi ON poi.item_id = ri.item_id
+        INNER JOIN products p ON p.product_id = poi.product_id
+        WHERE ri.receive_id = ? AND poi.product_id = ?
+    ");
+
+    $insertIssueStmt = $pdo->prepare("
+        INSERT INTO issue_items (
+            product_id, 
+            receive_id,
+            sale_order_id,
+            issue_qty, 
+            sale_price,
+            cost_price,
+            issued_by, 
+            remark, 
+            created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    ");
+
+    $updateReceiveStmt = $pdo->prepare("
+        UPDATE receive_items 
+        SET receive_qty = receive_qty - ? 
+        WHERE receive_id = ?
+    ");
+
     $success_count = 0;
     $error_messages = [];
     $total_amount = 0;
     
     foreach ($products as $product) {
-        // Validate product data
-        $product_id = $product['product_id'] ?? 0;
-        $receive_id = $product['receive_id'] ?? 0;
-        $issue_qty = $product['issue_qty'] ?? 0;
-        
-        if (!$product_id || !$receive_id || !$issue_qty) {
-            $error_messages[] = "ข้อมูลสินค้า {$product['name']} ไม่ครบถ้วน";
-            continue;
-        }
-        
-        // Check available quantity
-        $check_stmt = $pdo->prepare("
-            SELECT 
-                ri.receive_qty,
-                p.name,
-                p.sku,
-                poi.price_per_unit AS cost_price
-            FROM receive_items ri
-            INNER JOIN purchase_order_items poi ON poi.item_id = ri.item_id
-            INNER JOIN products p ON p.product_id = poi.product_id
-            WHERE ri.receive_id = ? AND poi.product_id = ?
-        ");
-        $check_stmt->execute([$receive_id, $product_id]);
-        $available = $check_stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$available) {
-            $error_messages[] = "ไม่พบข้อมูลสต็อกของสินค้า {$product['name']}";
-            continue;
-        }
-        
-        if ($available['receive_qty'] < $issue_qty) {
-            $error_messages[] = "สินค้า {$available['name']} มีสต็อกไม่เพียงพอ (คงเหลือ: {$available['receive_qty']}, ต้องการ: {$issue_qty})";
-            continue;
-        }
-        
-        // Insert into issue_items with sale_order_id
-        $insert_issue = $pdo->prepare("
-            INSERT INTO issue_items (
-                product_id, 
-                receive_id,
-                sale_order_id,
-                issue_qty, 
-                sale_price,
-                cost_price,
-                issued_by, 
-                remark, 
-                created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        ");
-        
-        $sale_price = isset($product['sale_price']) && $product['sale_price'] !== '' ? (float) $product['sale_price'] : 0.0;
-        $cost_price = isset($available['cost_price']) && $available['cost_price'] !== '' ? (float) $available['cost_price'] : 0.0;
+        $product_id = isset($product['product_id']) ? (int)$product['product_id'] : 0;
+        $receive_id = isset($product['receive_id']) ? (int)$product['receive_id'] : 0;
+        $issue_qty = isset($product['issue_qty']) ? (float)$product['issue_qty'] : 0.0;
+        $sale_price = isset($product['sale_price']) && $product['sale_price'] !== '' ? (float)$product['sale_price'] : 0.0;
+        $product_name = $product['name'] ?? 'ไม่ทราบชื่อ';
         $item_remark = "ยิงสินค้าจากแท็ค: {$issue_tag}";
-        
-        $insert_result = $insert_issue->execute([
+        $receive_batches = isset($product['receive_batches']) && is_array($product['receive_batches']) ? $product['receive_batches'] : [];
+
+        if (!$product_id || $issue_qty <= 0) {
+            $error_messages[] = "ข้อมูลสินค้า {$product_name} ไม่ครบถ้วน";
+            continue;
+        }
+
+        if (!empty($receive_batches)) {
+            $normalized_batches = [];
+            foreach ($receive_batches as $batch) {
+                $batchReceiveId = isset($batch['receive_id']) ? (int)$batch['receive_id'] : 0;
+                if ($batchReceiveId <= 0) {
+                    continue;
+                }
+                $createdAt = $batch['created_at'] ?? null;
+                $available_hint = isset($batch['available_qty']) ? (float)$batch['available_qty'] : (isset($batch['receive_qty']) ? (float)$batch['receive_qty'] : 0.0);
+                if (!isset($normalized_batches[$batchReceiveId])) {
+                    $normalized_batches[$batchReceiveId] = [
+                        'receive_id' => $batchReceiveId,
+                        'created_at' => $createdAt,
+                        'hint_qty' => $available_hint
+                    ];
+                } else {
+                    if ($available_hint > $normalized_batches[$batchReceiveId]['hint_qty']) {
+                        $normalized_batches[$batchReceiveId]['hint_qty'] = $available_hint;
+                    }
+                    if ($createdAt !== null) {
+                        $currentCreated = $normalized_batches[$batchReceiveId]['created_at'];
+                        if ($currentCreated === null || strtotime($createdAt) < strtotime($currentCreated)) {
+                            $normalized_batches[$batchReceiveId]['created_at'] = $createdAt;
+                        }
+                    }
+                }
+            }
+
+            if (!empty($normalized_batches)) {
+                $normalized_batches = array_values($normalized_batches);
+                usort($normalized_batches, function ($a, $b) {
+                    $timeA = isset($a['created_at']) ? strtotime($a['created_at']) : 0;
+                    $timeB = isset($b['created_at']) ? strtotime($b['created_at']) : 0;
+                    if ($timeA === $timeB) {
+                        return ($a['receive_id'] ?? 0) <=> ($b['receive_id'] ?? 0);
+                    }
+                    return $timeA <=> $timeB;
+                });
+            }
+
+            $batchHints = [];
+            foreach ($normalized_batches as $batchEntry) {
+                $batchHints[$batchEntry['receive_id']] = max(0.0, isset($batchEntry['hint_qty']) ? (float) $batchEntry['hint_qty'] : 0.0);
+            }
+
+            $batchDetails = [];
+            $totalAvailable = 0.0;
+
+            foreach ($normalized_batches as $batch) {
+                $batchReceiveId = $batch['receive_id'];
+                if (!isset($batchDetails[$batchReceiveId])) {
+                    $stockCheckStmt->execute([$batchReceiveId, $product_id]);
+                    $available = $stockCheckStmt->fetch(PDO::FETCH_ASSOC);
+                    $stockCheckStmt->closeCursor();
+                    if (!$available) {
+                        continue;
+                    }
+                    $availableQty = isset($available['receive_qty']) ? (float) $available['receive_qty'] : 0.0;
+                    $hintQty = $batchHints[$batchReceiveId] ?? null;
+                    if ($hintQty !== null) {
+                        $availableQty = min($availableQty, max(0.0, $hintQty));
+                    }
+                    if ($availableQty <= 0) {
+                        $batchDetails[$batchReceiveId] = [
+                            'receive_qty' => 0.0,
+                            'name' => $available['name'] ?? $product_name,
+                            'sku' => $available['sku'] ?? '',
+                            'cost_price' => isset($available['cost_price']) ? (float) $available['cost_price'] : 0.0
+                        ];
+                    } else {
+                        $batchDetails[$batchReceiveId] = [
+                            'receive_qty' => $availableQty,
+                            'name' => $available['name'] ?? $product_name,
+                            'sku' => $available['sku'] ?? '',
+                            'cost_price' => isset($available['cost_price']) ? (float) $available['cost_price'] : 0.0
+                        ];
+                    }
+                }
+                $totalAvailable += max(0.0, $batchDetails[$batchReceiveId]['receive_qty']);
+            }
+
+            if ($totalAvailable < $issue_qty) {
+                $formattedTotal = number_format($totalAvailable, 2);
+                $formattedNeed = number_format($issue_qty, 2);
+                $error_messages[] = "สินค้า {$product_name} มีสต็อกไม่เพียงพอ (รวมคงเหลือ: {$formattedTotal}, ต้องการ: {$formattedNeed})";
+                continue;
+            }
+
+            $operations = [];
+            $remainingQty = $issue_qty;
+
+            foreach ($normalized_batches as $batch) {
+                if ($remainingQty <= 0) {
+                    break;
+                }
+                $batchReceiveId = $batch['receive_id'];
+                if (!isset($batchDetails[$batchReceiveId])) {
+                    continue;
+                }
+                $batchAvailable = max(0.0, $batchDetails[$batchReceiveId]['receive_qty']);
+                if ($batchAvailable <= 0) {
+                    continue;
+                }
+                $deductQty = min($batchAvailable, $remainingQty);
+                if ($deductQty <= 0) {
+                    continue;
+                }
+                $operations[] = [
+                    'receive_id' => $batchReceiveId,
+                    'quantity' => $deductQty,
+                    'cost_price' => $batchDetails[$batchReceiveId]['cost_price'],
+                    'name' => $batchDetails[$batchReceiveId]['name']
+                ];
+                $remainingQty -= $deductQty;
+                $batchDetails[$batchReceiveId]['receive_qty'] -= $deductQty;
+            }
+
+            if ($remainingQty > 0) {
+                $formattedNeed = number_format($remainingQty, 2);
+                $error_messages[] = "สินค้า {$product_name} มีสต็อกไม่เพียงพอ (ขาดอีก {$formattedNeed})";
+                continue;
+            }
+
+            $allocationFailed = false;
+            foreach ($operations as $operation) {
+                $insert_result = $insertIssueStmt->execute([
+                    $product_id,
+                    $operation['receive_id'],
+                    $sale_order_id,
+                    $operation['quantity'],
+                    $sale_price,
+                    $operation['cost_price'],
+                    $user_id,
+                    $item_remark
+                ]);
+
+                if (!$insert_result) {
+                    $error_messages[] = "ไม่สามารถบันทึกการยิงสินค้า {$operation['name']} ได้";
+                    $allocationFailed = true;
+                    break;
+                }
+
+                $update_result = $updateReceiveStmt->execute([$operation['quantity'], $operation['receive_id']]);
+                if (!$update_result) {
+                    $error_messages[] = "ไม่สามารถอัปเดตสต็อกของสินค้า {$operation['name']} ได้";
+                    $allocationFailed = true;
+                    break;
+                }
+
+                $total_amount += ($sale_price * $operation['quantity']);
+                $success_count++;
+                error_log("Successfully issued: Product ID {$product_id}, Qty {$operation['quantity']}, Receive ID {$operation['receive_id']}, Sale Order ID {$sale_order_id}");
+            }
+
+            if ($allocationFailed) {
+                continue;
+            }
+
+            continue;
+        }
+
+        if (!$receive_id) {
+            $error_messages[] = "ข้อมูลสินค้า {$product_name} ไม่ครบถ้วน (ไม่มี receive_id)";
+            continue;
+        }
+
+        $stockCheckStmt->execute([$receive_id, $product_id]);
+        $available = $stockCheckStmt->fetch(PDO::FETCH_ASSOC);
+        $stockCheckStmt->closeCursor();
+
+        if (!$available) {
+            $error_messages[] = "ไม่พบข้อมูลสต็อกของสินค้า {$product_name}";
+            continue;
+        }
+
+        $available_qty = isset($available['receive_qty']) ? (float)$available['receive_qty'] : 0.0;
+
+        if ($available_qty < $issue_qty) {
+            $formattedAvailable = number_format($available_qty, 2);
+            $formattedNeed = number_format($issue_qty, 2);
+            $error_messages[] = "สินค้า {$available['name']} มีสต็อกไม่เพียงพอ (คงเหลือ: {$formattedAvailable}, ต้องการ: {$formattedNeed})";
+            continue;
+        }
+
+        $cost_price = isset($available['cost_price']) && $available['cost_price'] !== '' ? (float)$available['cost_price'] : 0.0;
+
+        $insert_result = $insertIssueStmt->execute([
             $product_id,
             $receive_id,
             $sale_order_id,
@@ -215,21 +392,14 @@ try {
             $user_id,
             $item_remark
         ]);
-        
+
         if (!$insert_result) {
             $error_messages[] = "ไม่สามารถบันทึกการยิงสินค้า {$available['name']} ได้";
             continue;
         }
-        
-        // Update receive_items quantity
-        $update_receive = $pdo->prepare("
-            UPDATE receive_items 
-            SET receive_qty = receive_qty - ? 
-            WHERE receive_id = ?
-        ");
-        
-        $update_result = $update_receive->execute([$issue_qty, $receive_id]);
-        
+
+        $update_result = $updateReceiveStmt->execute([$issue_qty, $receive_id]);
+
         if (!$update_result) {
             $error_messages[] = "ไม่สามารถอัปเดตสต็อกของสินค้า {$available['name']} ได้";
             continue;

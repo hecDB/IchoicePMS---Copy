@@ -353,10 +353,16 @@ function displaySearchResults(products) {
     
     let html = '';
     products.forEach(function(product) {
+        const availableQty = parseFloat(product.available_qty);
+        const salePrice = parseFloat(product.sale_price);
         const sanitizedProduct = Object.assign({}, product, {
             image: product.image && product.image !== 'null' && product.image !== 'undefined' ? product.image : null,
             image_url: product.image_url && product.image_url !== 'null' && product.image_url !== 'undefined' ? product.image_url : null,
-            unit: product.unit || 'ชิ้น'
+            available_qty: Number.isFinite(availableQty) ? availableQty : 0,
+            sale_price: Number.isFinite(salePrice) ? salePrice : 0,
+            unit: product.unit || 'ชิ้น',
+            receive_batches: Array.isArray(product.receive_batches) ? product.receive_batches : [],
+            batch_count: Array.isArray(product.receive_batches) ? product.receive_batches.length : (parseInt(product.batch_count, 10) || 0)
         });
         const productData = encodeURIComponent(JSON.stringify(sanitizedProduct));
         const imageSource = sanitizedProduct.image_url || (sanitizedProduct.image ? `../images/${sanitizedProduct.image}` : '../images/noimg.png');
@@ -371,9 +377,12 @@ function displaySearchResults(products) {
                         <h6 class="mb-1">${sanitizedProduct.name}</h6>
                         <small class="text-muted">SKU: ${sanitizedProduct.sku} | บาร์โค้ด: ${sanitizedProduct.barcode}</small>
                         <br>
-                        <small class="text-success">คงเหลือ: ${sanitizedProduct.available_qty} ${sanitizedProduct.unit} | ราคาขาย: ${sanitizedProduct.sale_price || 0} บาท</small>
+                        <small class="text-primary">Item ID: ${sanitizedProduct.receive_item_id || 'N/A'} | PO: ${sanitizedProduct.po_id || 'N/A'}</small>
+                        <br>
+                        <small class="text-success">คงเหลือ: ${sanitizedProduct.available_qty} ${sanitizedProduct.unit} | ราคาขาย: ${sanitizedProduct.sale_price ? sanitizedProduct.sale_price.toFixed(2) : '0.00'} บาท</small>
                         ${sanitizedProduct.lot_info ? `<br><small class="text-info">${sanitizedProduct.lot_info}</small>` : ''}
                         ${sanitizedProduct.expiry_date ? `<br><small class="text-warning">หมดอายุ: ${formatDateThai(sanitizedProduct.expiry_date)}</small>` : ''}
+                        ${sanitizedProduct.batch_count > 1 ? `<br><small class="text-secondary">ล็อตย่อย: ${sanitizedProduct.batch_count}</small>` : ''}
                     </div>
                     <span class="fifo-badge">FIFO</span>
                 </div>
@@ -421,15 +430,19 @@ function selectProduct(productData) {
     const product = {
         product_id: productId,
         receive_id: receiveId,
+        receive_item_id: productData.receive_item_id || null,
+        po_id: productData.po_id || null,
         name: productData.name,
         sku: productData.sku,
         barcode: productData.barcode,
-        available_qty: productData.available_qty,
+        available_qty: parseFloat(productData.available_qty) || 0,
         expiry_date: productData.expiry_date,
         lot_info: productData.lot_info,
         sale_price: parseFloat(productData.sale_price) || 0,
         image: productData.image && productData.image !== 'null' && productData.image !== 'undefined' ? productData.image : '',
         image_url: productData.image_url && productData.image_url !== 'null' && productData.image_url !== 'undefined' ? productData.image_url : '',
+        batch_count: parseInt(productData.batch_count, 10) || (Array.isArray(productData.receive_batches) ? productData.receive_batches.length : 0),
+        receive_batches: Array.isArray(productData.receive_batches) ? productData.receive_batches : [],
         issue_qty: 1 // จำนวนเริ่มต้น
     };
     
@@ -462,8 +475,10 @@ function updateSelectedProductsDisplay() {
                     <div class="flex-grow-1">
                         <h6 class="mb-1">${product.name}</h6>
                         <small class="text-muted">SKU: ${product.sku}</small>
+                        <div class="lot-info"><strong>Item ID:</strong> ${product.receive_item_id ? product.receive_item_id : 'N/A'}${product.po_id ? ` | PO: ${product.po_id}` : ''}</div>
                         ${product.lot_info ? `<div class="lot-info"><strong>ล็อต:</strong> ${product.lot_info}</div>` : ''}
                         ${product.expiry_date ? `<div class="lot-info"><strong>วันหมดอายุ:</strong> ${formatDateThai(product.expiry_date)}</div>` : ''}
+                        ${product.batch_count > 1 ? `<div class="lot-info"><strong>ล็อตย่อย:</strong> ${product.batch_count}</div>` : ''}
                         <div class="lot-info"><strong>คงเหลือ:</strong> ${product.available_qty} ชิ้น</div>
                         <div class="lot-info"><strong>ราคาขาย:</strong> ${product.sale_price ? product.sale_price.toFixed(2) : '0.00'} บาท</div>
                     </div>

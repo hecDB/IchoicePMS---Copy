@@ -71,6 +71,47 @@ try {
     ]);
     
     $new_product_id = $pdo->lastInsertId();
+
+    // Apply pending location information if available
+    $pdo->exec("CREATE TABLE IF NOT EXISTS temp_product_locations (
+        temp_product_id INT PRIMARY KEY,
+        location_id INT DEFAULT NULL,
+        row_code VARCHAR(50) DEFAULT NULL,
+        bin VARCHAR(50) DEFAULT NULL,
+        shelf VARCHAR(50) DEFAULT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $stmtPendingLocation = $pdo->prepare("SELECT location_id, row_code, bin, shelf FROM temp_product_locations WHERE temp_product_id = :temp_product_id LIMIT 1");
+    $stmtPendingLocation->execute([':temp_product_id' => $temp_product_id]);
+    $pendingLocation = $stmtPendingLocation->fetch(PDO::FETCH_ASSOC);
+
+    if ($pendingLocation && !empty($pendingLocation['location_id'])) {
+        $locationId = (int)$pendingLocation['location_id'];
+
+        $stmtExistingLocation = $pdo->prepare("SELECT id FROM product_location WHERE product_id = :product_id LIMIT 1");
+        $stmtExistingLocation->execute([':product_id' => $new_product_id]);
+        $existingLocationId = $stmtExistingLocation->fetchColumn();
+
+        if ($existingLocationId) {
+            $stmtUpdateLocation = $pdo->prepare("UPDATE product_location SET location_id = :location_id WHERE id = :id");
+            $stmtUpdateLocation->execute([':location_id' => $locationId, ':id' => $existingLocationId]);
+        } else {
+            $stmtInsertLocation = $pdo->prepare("INSERT INTO product_location (product_id, location_id) VALUES (:product_id, :location_id)");
+            $stmtInsertLocation->execute([':product_id' => $new_product_id, ':location_id' => $locationId]);
+        }
+
+        // Optional: update the selected location metadata if user provided new coordinates
+        if (!empty($pendingLocation['row_code']) || !empty($pendingLocation['bin']) || !empty($pendingLocation['shelf'])) {
+            $stmtUpdateMeta = $pdo->prepare("UPDATE locations SET row_code = COALESCE(:row_code, row_code), bin = COALESCE(:bin, bin), shelf = COALESCE(:shelf, shelf) WHERE location_id = :location_id");
+            $stmtUpdateMeta->execute([
+                ':row_code' => $pendingLocation['row_code'] !== null ? $pendingLocation['row_code'] : null,
+                ':bin' => $pendingLocation['bin'] !== null ? $pendingLocation['bin'] : null,
+                ':shelf' => $pendingLocation['shelf'] !== null ? $pendingLocation['shelf'] : null,
+                ':location_id' => $locationId
+            ]);
+        }
+    }
     
     // อัพเดทสถานะ temp_products เป็น 'converted'
     $sql_update_status = "UPDATE temp_products 
@@ -105,7 +146,9 @@ try {
     ]);
     
 } catch (Exception $e) {
-    $pdo->rollBack();
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

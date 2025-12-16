@@ -22,7 +22,9 @@ $sql = "
     tp.temp_product_id,
     tp.provisional_sku,
     tp.provisional_barcode,
-    tp.status as temp_product_status
+    tp.status as temp_product_status,
+    poi.sale_price as sale_price,
+    tp.remark as temp_product_remark
 FROM receive_items r
 LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
 LEFT JOIN temp_products tp ON poi.temp_product_id = tp.temp_product_id
@@ -44,7 +46,9 @@ UNION ALL
     tp.temp_product_id,
     tp.provisional_sku,
     tp.provisional_barcode,
-    tp.status as temp_product_status
+    tp.status as temp_product_status,
+    poi.sale_price as sale_price,
+    tp.remark as temp_product_remark
 FROM issue_items ii
 LEFT JOIN receive_items ri ON ii.receive_id = ri.receive_id
 LEFT JOIN purchase_order_items poi ON ri.item_id = poi.item_id
@@ -675,7 +679,7 @@ function resolveTransactionImageSrc($imageValue) {
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" title="แก้ไข SKU/Barcode/รูปภาพ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
+                                    <button class="btn btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" title="แก้ไข SKU/Barcode/รูปภาพ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
                                         <span class="material-icons" style="font-size: 1rem;">edit</span>
                                     </button>
                                     <button class="btn btn-outline-success approve-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-name="<?= htmlspecialchars($row['product_name']) ?>" title="อนุมัติและย้ายไปคลังปกติ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
@@ -703,6 +707,15 @@ function resolveTransactionImageSrc($imageValue) {
 
 <script>
 let transactionTable;
+
+function decodeHtml(value) {
+    if (value === undefined || value === null) {
+        return '';
+    }
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = value;
+    return textarea.value;
+}
 
 $(document).ready(function() {
     // Debug Info
@@ -784,6 +797,8 @@ $(document).ready(function() {
         const expiry = $(this).data('expiry');
         const provisionalSku = $(this).data('provisional-sku');
         const provisionalBarcode = $(this).data('provisional-barcode');
+        const salePrice = $(this).attr('data-sale-price');
+        const remarkRaw = $(this).attr('data-remark');
         const rowImageSrc = $(this).closest('tr').find('img.product-image').attr('src');
         
         $('#tempProductId').val(tempId);
@@ -791,6 +806,15 @@ $(document).ready(function() {
         $('#expiryInput').val(expiry);
         $('#provisionalSkuInput').val(provisionalSku);
         $('#provisionalBarcodeInput').val(provisionalBarcode);
+        $('#salePriceInput').val('');
+        $('#remarkInput').val('');
+        if (salePrice !== undefined && salePrice !== null && salePrice !== '') {
+            const numericSalePrice = Number(salePrice);
+            $('#salePriceInput').val(!Number.isNaN(numericSalePrice) ? numericSalePrice.toFixed(2) : salePrice);
+        }
+        if (remarkRaw) {
+            $('#remarkInput').val(decodeHtml(remarkRaw));
+        }
         $('#productImageInput').val('');
         
         if (rowImageSrc) {
@@ -891,6 +915,9 @@ $(document).ready(function() {
         const rowCode = $('#editRowCodeInput').val().trim();
         const bin = $('#editBinInput').val().trim();
         const shelf = $('#editShelfInput').val().trim();
+        const salePrice = $('#salePriceInput').val();
+        const remark = $('#remarkInput').val().trim();
+        const locationId = $('#editProductLocation').val();
         const imageFile = $('#productImageInput')[0].files[0];
         
         if (!tempId) {
@@ -898,6 +925,15 @@ $(document).ready(function() {
                 icon: 'error',
                 title: 'ข้อผิดพลาด',
                 text: 'ข้อมูลไม่ถูกต้อง'
+            });
+            return;
+        }
+
+        if (salePrice !== '' && !isNaN(salePrice) && Number(salePrice) < 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'ข้อมูลราคาขายไม่ถูกต้อง',
+                text: 'กรุณากรอกราคาขายที่เป็นจำนวนไม่ติดลบ'
             });
             return;
         }
@@ -914,14 +950,14 @@ $(document).ready(function() {
         
         // Process image compression if exists
         if (imageFile) {
-            compressAndSendImage(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf);
+            compressAndSendImage(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf, salePrice, remark, locationId);
         } else {
-            sendFormData(null, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf);
+            sendFormData(null, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf, salePrice, remark, locationId);
         }
     });
     
     // Compress image and send
-    function compressAndSendImage(file, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf) {
+    function compressAndSendImage(file, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf, salePrice, remark, locationId) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = new Image();
@@ -960,7 +996,7 @@ $(document).ready(function() {
                     console.log(`Image Compressed: ${originalSize}KB → ${compressedSize}KB`);
                     console.log('Sending file:', compressedFile.name, compressedFile.type, compressedFile.size);
                     
-                    sendFormData(compressedFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf);
+                    sendFormData(compressedFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf, salePrice, remark, locationId);
                 }, 'image/jpeg', 0.85);
             };
             img.src = e.target.result;
@@ -969,7 +1005,7 @@ $(document).ready(function() {
     }
     
     // Send form data to server
-    function sendFormData(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf) {
+    function sendFormData(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf, salePrice, remark, locationId) {
         const formData = new FormData();
         formData.append('temp_product_id', tempId);
         formData.append('expiry_date', expiryDate);
@@ -978,6 +1014,9 @@ $(document).ready(function() {
         formData.append('row_code', rowCode);
         formData.append('bin', bin);
         formData.append('shelf', shelf);
+        formData.append('sale_price', salePrice ?? '');
+        formData.append('remark', remark ?? '');
+        formData.append('location_id', locationId ?? '');
         if (imageFile) {
             formData.append('product_image', imageFile);
             console.log('FormData entries:');
@@ -1311,8 +1350,19 @@ function selectLocationEdit(locationId, rowCode, bin, shelf) {
                     </div>
                     
                     <div class="mb-3">
+                        <label for="salePriceInput" class="form-label">ราคาขาย (บาท)</label>
+                        <input type="number" class="form-control" id="salePriceInput" name="sale_price" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+                    </div>
+                    
+                    <div class="mb-3">
                         <label for="expiryInput" class="form-label">วันหมดอายุ</label>
                         <input type="date" class="form-control" id="expiryInput" name="expiry_date">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="remarkInput" class="form-label">หมายเหตุการบันทึก</label>
+                        <textarea class="form-control" id="remarkInput" name="remark" rows="3" placeholder="ระบุรายละเอียดน้ำหนักและขนาด (กว้าง x ยาว x สูง)"></textarea>
+                        <small class="text-muted">กรุณาบันทึกน้ำหนักสินค้า และขนาด (กว้าง x ยาว x สูง) เพื่อใช้ในการขึ้นระบบหลัก</small>
                     </div>
                     
                     <!-- ส่วนตำแหน่งเก็บสินค้า -->

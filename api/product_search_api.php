@@ -107,7 +107,6 @@ $like = "%$q%";
 try {
     // ถ้าเป็นการค้นหาสำหรับยิงสินค้า จะใช้ query ที่แตกต่าง
     if ($type === 'issue' && $available_only) {
-        // Query สำหรับยิงสินค้าออก - แสดงเฉพาะสินค้าที่มีสต็อกและเรียงตาม FIFO
         $stmt = $pdo->prepare("
             SELECT 
                 p.product_id,
@@ -116,24 +115,25 @@ try {
                 p.barcode,
                 p.unit,
                 p.image,
-                ri.receive_id,
-                ri.receive_qty as available_qty,
-                ri.expiry_date,
-                ri.created_at as receive_date,
-                ri.remark_color,
-                ri.remark_split,
-                poi.sale_price,
-                CASE 
-                    WHEN ri.expiry_date IS NOT NULL 
-                    THEN CONCAT('ล็อตรับ: ', DATE_FORMAT(ri.created_at, '%d/%m/%Y'), ' | หมดอายุ: ', DATE_FORMAT(ri.expiry_date, '%d/%m/%Y'))
-                    ELSE CONCAT('ล็อตรับ: ', DATE_FORMAT(ri.created_at, '%d/%m/%Y'))
-                END as lot_info,
-                poi.item_id
-            FROM products p
-            INNER JOIN purchase_order_items poi ON poi.product_id = p.product_id
-            INNER JOIN receive_items ri ON ri.item_id = poi.item_id
+                poi.item_id AS receive_item_id,
+                poi.po_id,
+                SUM(ri.receive_qty) AS total_qty,
+                poi.sale_price
+            FROM purchase_order_items poi
+            INNER JOIN products p ON p.product_id = poi.product_id
+            INNER JOIN receive_items ri ON ri.item_id = poi.item_id AND ri.po_id = poi.po_id
             WHERE (p.name LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?)
-              AND ri.receive_qty > 0
+            GROUP BY 
+                p.product_id,
+                p.name,
+                p.sku,
+                p.barcode,
+                p.unit,
+                p.image,
+                poi.item_id,
+                poi.po_id,
+                poi.sale_price
+            HAVING SUM(ri.receive_qty) > 0
             ORDER BY 
                 CASE 
                     WHEN p.name LIKE ? THEN 1 
@@ -141,15 +141,114 @@ try {
                     WHEN p.barcode LIKE ? THEN 3
                     ELSE 4 
                 END,
-                p.name ASC,
-                ri.expiry_date ASC,  -- หมดอายุเร็วก่อน
-                ri.created_at ASC    -- รับเข้าเก่าก่อน (FIFO)
+                p.name ASC
             LIMIT ?
         ");
-        
+
         $stmt->execute([$like, $like, $like, $like, $like, $like, $limit]);
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+        $rawResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $results = [];
+        $movementStmt = $pdo->prepare("
+            SELECT 
+                receive_id,
+                receive_qty,
+                expiry_date,
+                created_at,
+                remark_color,
+                remark_split
+            FROM receive_items
+            WHERE item_id = ? AND po_id = ?
+            ORDER BY created_at ASC, receive_id ASC
+        ");
+
+        foreach ($rawResults as $row) {
+            $movementStmt->execute([$row['receive_item_id'], $row['po_id']]);
+            $movements = $movementStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($movements)) {
+                continue;
+            }
+
+            $fifoQueue = [];
+            foreach ($movements as $movement) {
+                $qty = isset($movement['receive_qty']) ? (float) $movement['receive_qty'] : 0.0;
+                if ($qty > 0) {
+                    $fifoQueue[] = [
+                        'receive_id' => isset($movement['receive_id']) ? (int) $movement['receive_id'] : null,
+                        'available_qty' => $qty,
+                        'expiry_date' => $movement['expiry_date'] ?? null,
+                        'created_at' => $movement['created_at'] ?? null,
+                        'remark_color' => $movement['remark_color'] ?? null,
+                        'remark_split' => $movement['remark_split'] ?? null
+                    ];
+                } elseif ($qty < 0) {
+                    $need = abs($qty);
+                    $queueCount = count($fifoQueue);
+                    for ($i = 0; $i < $queueCount && $need > 0; $i++) {
+                        $available = isset($fifoQueue[$i]['available_qty']) ? (float)$fifoQueue[$i]['available_qty'] : 0.0;
+                        if ($available <= 0) {
+                            continue;
+                        }
+                        $deduct = min($available, $need);
+                        $fifoQueue[$i]['available_qty'] = $available - $deduct;
+                        $need -= $deduct;
+                    }
+                }
+            }
+
+            $remainingBatches = [];
+            $totalAvailable = 0.0;
+            foreach ($fifoQueue as $batch) {
+                $available = isset($batch['available_qty']) ? (float) $batch['available_qty'] : 0.0;
+                if ($available <= 0) {
+                    continue;
+                }
+                $batch['available_qty'] = $available;
+                $remainingBatches[] = $batch;
+                $totalAvailable += $available;
+            }
+
+            if ($totalAvailable <= 0) {
+                continue;
+            }
+
+            $row['available_qty'] = $totalAvailable;
+            $row['batch_count'] = count($remainingBatches);
+            $row['receive_batches'] = array_values($remainingBatches);
+
+            $row['receive_id'] = null;
+            $row['receive_date'] = null;
+            $row['expiry_date'] = null;
+            $row['remark_color'] = null;
+            $row['remark_split'] = null;
+            $row['lot_info'] = null;
+
+            if (!empty($remainingBatches)) {
+                $latestBatch = $remainingBatches[count($remainingBatches) - 1];
+                $row['receive_id'] = $latestBatch['receive_id'];
+                $row['receive_date'] = $latestBatch['created_at'];
+                $row['expiry_date'] = $latestBatch['expiry_date'];
+                $row['remark_color'] = $latestBatch['remark_color'];
+                $row['remark_split'] = $latestBatch['remark_split'];
+
+                $lotParts = [];
+                $lotTimestamp = !empty($latestBatch['created_at']) ? strtotime($latestBatch['created_at']) : false;
+                if ($lotTimestamp !== false) {
+                    $lotParts[] = 'ล็อตรับ: ' . date('d/m/Y', $lotTimestamp);
+                }
+                $expiryTimestamp = !empty($latestBatch['expiry_date']) ? strtotime($latestBatch['expiry_date']) : false;
+                if ($expiryTimestamp !== false) {
+                    $lotParts[] = 'หมดอายุ: ' . date('d/m/Y', $expiryTimestamp);
+                }
+                if (!empty($lotParts)) {
+                    $row['lot_info'] = implode(' | ', $lotParts);
+                }
+            }
+
+            $results[] = $row;
+        }
+
     } else {
         // Query เดิมสำหรับการค้นหาทั่วไป
         $stmt = $pdo->prepare("
@@ -192,6 +291,27 @@ try {
             $product['unit'] = $product['unit'] ?? 'ชิ้น';
             $product['display_name'] = $product['name'];
             $product['display_info'] = 'SKU: ' . ($product['sku'] ?: 'N/A') . ' | คงเหลือ: ' . $product['available_qty'] . ' ' . $product['unit'];
+            $product['receive_id'] = isset($product['receive_id']) ? (int) $product['receive_id'] : null;
+            $product['receive_item_id'] = isset($product['receive_item_id']) ? (int) $product['receive_item_id'] : null;
+            $product['po_id'] = isset($product['po_id']) ? (int) $product['po_id'] : null;
+            $product['available_qty'] = isset($product['available_qty']) ? (float) $product['available_qty'] : 0.0;
+            $product['sale_price'] = isset($product['sale_price']) ? (float) $product['sale_price'] : 0.0;
+            $product['batch_count'] = isset($product['batch_count']) ? (int) $product['batch_count'] : 0;
+            if (!isset($product['receive_batches']) || !is_array($product['receive_batches'])) {
+                $product['receive_batches'] = [];
+            }
+            if ($product['batch_count'] === 0 && !empty($product['receive_batches'])) {
+                $product['batch_count'] = count($product['receive_batches']);
+            }
+            if (empty($product['receive_batches'])) {
+                $product['receive_id'] = $product['receive_id'] ?? null;
+            } else {
+                $lastBatch = end($product['receive_batches']);
+                if (!isset($product['receive_id']) || $product['receive_id'] === null) {
+                    $product['receive_id'] = $lastBatch['receive_id'] ?? $product['receive_id'];
+                }
+                reset($product['receive_batches']);
+            }
         } else {
             // สำหรับการค้นหาทั่วไป
             $product['price_per_unit'] = 0; 
