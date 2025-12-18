@@ -368,6 +368,15 @@ if (!$user_id) {
         let selectedSalesOrder = null;
         let returnReasons = [];
 
+        function escapeAttr(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/'/g, '&#39;');
+        }
+
         // Show Alert Modal
         function showAlert(type, title, message) {
             const modal = new bootstrap.Modal(document.getElementById('alertModal'));
@@ -514,6 +523,19 @@ if (!$user_id) {
                     } else {
                         response.data.forEach(item => {
                             const imageUrl = item.image ? '../' + item.image : '../images/noimg.png';
+                            const availableQty = Number(item.available_qty || 0);
+                            const returnedQty = Number(item.returned_qty || 0);
+                            const alreadyReturned = Number(item.already_returned || 0) === 1;
+                            const buttonDisabled = availableQty <= 0 || alreadyReturned;
+                            const buttonLabel = buttonDisabled ? 'ตีกลับแล้ว' : 'เลือก';
+                            const buttonClasses = buttonDisabled
+                                ? 'btn btn-sm btn-outline-secondary disabled'
+                                : 'btn btn-sm btn-outline-primary';
+                            const disabledAttrs = buttonDisabled ? 'disabled aria-disabled="true"' : '';
+                            const notice = buttonDisabled
+                                ? '<p class="text-danger mb-0" style="font-size: 0.85rem;">รายการนี้มีการตีกลับแล้ว ไม่สามารถตีกลับซ้ำ</p>'
+                                : '';
+
                             html += `
                                 <div class="product-card">
                                     <div style="display: flex; justify-content: space-between; align-items: start;">
@@ -526,14 +548,23 @@ if (!$user_id) {
                                                 </p>
                                                 <p class="mb-1" style="font-size: 0.9rem;">
                                                     <strong>จำนวนออก:</strong> ${item.issue_qty} | 
-                                                    <strong>ตีกลับแล้ว:</strong> ${item.returned_qty} | 
-                                                    <strong>สามารถตีกลับได้:</strong> ${item.available_qty}
+                                                    <strong>ตีกลับแล้ว:</strong> ${returnedQty} | 
+                                                    <strong>สามารถตีกลับได้:</strong> ${availableQty}
                                                 </p>
+                                                ${notice}
                                             </div>
                                         </div>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" 
-                                            onclick="selectProduct(${selectedSalesOrder.so_id}, ${item.si_id}, ${item.product_id}, '${item.product_name}', '${item.sku} / ${item.barcode}', ${item.issue_qty}, ${item.available_qty})">
-                                            เลือก
+                                        <button type="button" class="${buttonClasses}" ${disabledAttrs}
+                                            data-so-id="${selectedSalesOrder.so_id}"
+                                            data-item-id="${item.si_id}"
+                                            data-product-id="${item.product_id}"
+                                            data-product-name="${escapeAttr(item.product_name)}"
+                                            data-sku="${escapeAttr(item.sku || '')}"
+                                            data-barcode="${escapeAttr(item.barcode || '')}"
+                                            data-original-qty="${item.issue_qty}"
+                                            data-available-qty="${availableQty}"
+                                            onclick="handleSelectProduct(this)">
+                                            ${buttonLabel}
                                         </button>
                                     </div>
                                 </div>
@@ -556,7 +587,30 @@ if (!$user_id) {
             resetReturnForm();
         }
 
+        function handleSelectProduct(button) {
+            if (button.classList.contains('disabled')) {
+                showAlert('error', 'ไม่สามารถเลือกสินค้า', 'รายการนี้มีการตีกลับแล้ว');
+                return;
+            }
+
+            const { soId, itemId, productId, productName, sku, barcode, originalQty, availableQty } = button.dataset;
+            const skuBarcode = `${sku || '-'} / ${barcode || '-'}`;
+            selectProduct(
+                Number(soId),
+                Number(itemId),
+                Number(productId),
+                productName,
+                skuBarcode,
+                parseFloat(originalQty),
+                parseFloat(availableQty)
+            );
+        }
+
         function selectProduct(so_id, item_id, product_id, product_name, sku_barcode, original_qty, available_qty) {
+            if (!available_qty || available_qty <= 0) {
+                showAlert('error', 'ไม่สามารถเลือกสินค้า', 'รายการนี้มีการตีกลับแล้ว');
+                return;
+            }
             $('#form-so-id').val(so_id);
             $('#form-po-id').val('');
             $('#form-item-id').val(item_id);

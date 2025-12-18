@@ -144,10 +144,23 @@ if(isset($_POST['submit'])) {
 
                     if ($product) {
                         $product_id = $product['product_id'];
+                        $pdo->prepare("UPDATE products SET is_active = 1 WHERE product_id = ?")
+                            ->execute([$product_id]);
                     } else {
                         try {
-                            $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, remark_color, remark_split, product_category_id, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())");
-                            $stmt->execute([$name, $sku === '' ? null : $sku, $barcode === '' ? null : $barcode, $unit, 'images/'.$image, $remark_color, $remark_split, $product_category_id, $user_id]);
+                            $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, remark_color, remark_split, product_category_id, is_active, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW())");
+                            $stmt->execute([
+                                $name,
+                                $sku === '' ? null : $sku,
+                                $barcode === '' ? null : $barcode,
+                                $unit,
+                                'images/'.$image,
+                                $remark_color,
+                                $remark_split,
+                                $product_category_id,
+                                1,
+                                $user_id
+                            ]);
                             $product_id = $pdo->lastInsertId();
                         } catch (PDOException $pe) {
                             if ($pe->getCode() === '23000') {
@@ -160,6 +173,8 @@ if(isset($_POST['submit'])) {
                                 $product = $stmt->fetch(PDO::FETCH_ASSOC);
                                 if ($product) {
                                     $product_id = $product['product_id'];
+                                    $pdo->prepare("UPDATE products SET is_active = 1 WHERE product_id = ?")
+                                        ->execute([$product_id]);
                                 } else {
                                     $debug = [
                                         'sku' => $sku,

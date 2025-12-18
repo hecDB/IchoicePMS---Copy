@@ -9,6 +9,398 @@ session_start();
 
 require '../config/db_connect.php';
 
+ensureDamagedReturnQueue($pdo);
+ensureIssueItemsExpiryColumn($pdo);
+ensureReturnedItemsReceiveIdColumn($pdo);
+
+function ensureDamagedReturnQueue(PDO $pdo): void
+{
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS damaged_return_inspections (
+            inspection_id INT AUTO_INCREMENT PRIMARY KEY,
+            return_id INT NOT NULL,
+            return_code VARCHAR(50) NOT NULL,
+            product_id INT NOT NULL,
+            product_name VARCHAR(255) NOT NULL,
+            sku VARCHAR(100) NULL,
+            barcode VARCHAR(100) NULL,
+            expiry_date DATE NULL,
+            po_id INT NULL,
+            po_number VARCHAR(50) NULL,
+            return_qty DECIMAL(12,2) NOT NULL DEFAULT 0,
+            reason_id INT NOT NULL DEFAULT 0,
+            reason_name VARCHAR(255) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            new_sku VARCHAR(100) NULL,
+            new_product_id INT NULL,
+            cost_price DECIMAL(12,2) NULL,
+            sale_price DECIMAL(12,2) NULL,
+            restock_qty DECIMAL(12,2) NULL,
+            defect_notes TEXT NULL,
+            created_by INT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            inspected_by INT NULL,
+            inspected_at DATETIME NULL,
+            restocked_by INT NULL,
+            restocked_at DATETIME NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $columnsStmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'damaged_return_inspections'");
+        $columnsStmt->execute();
+        $existingColumns = array_flip(array_column($columnsStmt->fetchAll(PDO::FETCH_ASSOC), 'COLUMN_NAME'));
+
+        $requiredColumns = [
+            'reason_id' => "ALTER TABLE damaged_return_inspections ADD COLUMN reason_id INT NOT NULL DEFAULT 0 AFTER return_qty",
+            'reason_name' => "ALTER TABLE damaged_return_inspections ADD COLUMN reason_name VARCHAR(255) NOT NULL AFTER reason_id",
+            'status' => "ALTER TABLE damaged_return_inspections ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'pending' AFTER reason_name",
+            'new_sku' => "ALTER TABLE damaged_return_inspections ADD COLUMN new_sku VARCHAR(100) NULL AFTER status",
+            'new_product_id' => "ALTER TABLE damaged_return_inspections ADD COLUMN new_product_id INT NULL AFTER new_sku",
+            'receive_id' => "ALTER TABLE damaged_return_inspections ADD COLUMN receive_id INT NULL AFTER barcode",
+            'expiry_date' => "ALTER TABLE damaged_return_inspections ADD COLUMN expiry_date DATE NULL AFTER receive_id",
+            'po_id' => "ALTER TABLE damaged_return_inspections ADD COLUMN po_id INT NULL AFTER expiry_date",
+            'po_number' => "ALTER TABLE damaged_return_inspections ADD COLUMN po_number VARCHAR(50) NULL AFTER po_id",
+            'cost_price' => "ALTER TABLE damaged_return_inspections ADD COLUMN cost_price DECIMAL(12,2) NULL AFTER new_product_id",
+            'sale_price' => "ALTER TABLE damaged_return_inspections ADD COLUMN sale_price DECIMAL(12,2) NULL AFTER cost_price",
+            'restock_qty' => "ALTER TABLE damaged_return_inspections ADD COLUMN restock_qty DECIMAL(12,2) NULL AFTER sale_price",
+            'defect_notes' => "ALTER TABLE damaged_return_inspections ADD COLUMN defect_notes TEXT NULL AFTER restock_qty",
+            'created_by' => "ALTER TABLE damaged_return_inspections ADD COLUMN created_by INT NULL AFTER defect_notes",
+            'created_at' => "ALTER TABLE damaged_return_inspections ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP AFTER created_by",
+            'inspected_by' => "ALTER TABLE damaged_return_inspections ADD COLUMN inspected_by INT NULL AFTER created_at",
+            'inspected_at' => "ALTER TABLE damaged_return_inspections ADD COLUMN inspected_at DATETIME NULL AFTER inspected_by",
+            'restocked_by' => "ALTER TABLE damaged_return_inspections ADD COLUMN restocked_by INT NULL AFTER inspected_at",
+            'restocked_at' => "ALTER TABLE damaged_return_inspections ADD COLUMN restocked_at DATETIME NULL AFTER restocked_by",
+            'updated_at' => "ALTER TABLE damaged_return_inspections ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER restocked_at"
+        ];
+
+        foreach ($requiredColumns as $column => $ddl) {
+            if (!isset($existingColumns[$column])) {
+                $pdo->exec($ddl);
+            }
+        }
+
+        $indexCheck = $pdo->query("SHOW INDEX FROM damaged_return_inspections WHERE Key_name = 'uniq_return_id'");
+        if ($indexCheck->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE damaged_return_inspections ADD UNIQUE KEY uniq_return_id (return_id)");
+        }
+
+        $fkCheck = $pdo->prepare("SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'damaged_return_inspections'");
+        $fkCheck->execute();
+        if ($fkCheck->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE damaged_return_inspections ADD CONSTRAINT fk_damaged_return_returned_items FOREIGN KEY (return_id) REFERENCES returned_items(return_id) ON DELETE CASCADE");
+        }
+    } catch (Exception $e) {
+        error_log('Failed to initialize damaged_return_inspections table: ' . $e->getMessage());
+    }
+}
+
+function ensureIssueItemsExpiryColumn(PDO $pdo): void
+{
+    try {
+        // Check if expiry_date column exists in issue_items
+        $columnsStmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'issue_items' AND COLUMN_NAME = 'expiry_date'");
+        $columnsStmt->execute();
+        
+        if ($columnsStmt->rowCount() === 0) {
+            // Add expiry_date column if it doesn't exist
+            $pdo->exec("ALTER TABLE issue_items ADD COLUMN expiry_date DATE NULL AFTER issue_qty");
+        }
+    } catch (Exception $e) {
+        error_log('Failed to ensure issue_items expiry_date column: ' . $e->getMessage());
+    }
+}
+
+function ensureReturnedItemsReceiveIdColumn(PDO $pdo): void
+{
+    try {
+        // Check if receive_id column exists in returned_items
+        $columnsStmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'returned_items' AND COLUMN_NAME = 'receive_id'");
+        $columnsStmt->execute();
+        
+        if ($columnsStmt->rowCount() === 0) {
+            // Add receive_id column if it doesn't exist
+            $pdo->exec("ALTER TABLE returned_items ADD COLUMN receive_id INT NULL COMMENT 'receive_id from issue_items for batch/lot tracking' AFTER po_number");
+            // Add index for receive_id
+            $pdo->exec("ALTER TABLE returned_items ADD KEY idx_receive_id (receive_id)");
+        }
+    } catch (Exception $e) {
+        error_log('Failed to ensure returned_items receive_id column: ' . $e->getMessage());
+    }
+}
+
+function findProductBySku(PDO $pdo, string $sku): ?array
+{
+    if ($sku === '') {
+        return null;
+    }
+
+    $stmt = $pdo->prepare("SELECT * FROM products WHERE sku = :sku LIMIT 1");
+    $stmt->execute([':sku' => $sku]);
+    $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $product ?: null;
+}
+
+function createDefectProduct(PDO $pdo, array $sourceProduct, string $newSku, int $userId): int
+{
+    $baseName = $sourceProduct['name'] ?? 'สินค้าใหม่';
+    $nameSuffix = ' (สินค้ามีตำหนิ)';
+    $finalName = mb_strpos($baseName, 'ตำหนิ') === false ? $baseName . $nameSuffix : $baseName;
+
+    $stmt = $pdo->prepare("INSERT INTO products (
+        name, sku, barcode, unit, image, remark_color, remark_split, is_active, created_by, created_at, product_category_id, category_name
+    ) VALUES (
+        :name, :sku, :barcode, :unit, :image, :remark_color, :remark_split, 1, :created_by, NOW(), :product_category_id, :category_name
+    )");
+
+    $stmt->execute([
+        ':name' => $finalName,
+        ':sku' => $newSku,
+        ':barcode' => $sourceProduct['barcode'] ?? null,
+        ':unit' => $sourceProduct['unit'] ?? null,
+        ':image' => $sourceProduct['image'] ?? null,
+        ':remark_color' => $sourceProduct['remark_color'] ?? '',
+        ':remark_split' => isset($sourceProduct['remark_split']) ? (int)$sourceProduct['remark_split'] : 0,
+        ':created_by' => $userId,
+        ':product_category_id' => $sourceProduct['product_category_id'] ?? null,
+        ':category_name' => $sourceProduct['category_name'] ?? null
+    ]);
+
+    return (int)$pdo->lastInsertId();
+}
+
+function buildDefectSku(string $originalSku): string
+{
+    $trimmed = trim($originalSku);
+    if ($trimmed === '') {
+        throw new InvalidArgumentException('Original SKU is required for damaged inspections');
+    }
+    $prefix = 'ตำหนิ-';
+    return mb_strpos($trimmed, $prefix) === 0 ? $trimmed : $prefix . $trimmed;
+}
+
+function logProductActivity(PDO $pdo, int $productId, int $userId, float $quantity, string $reference, string $sku, ?string $notes = null): void
+{
+    try {
+        static $productActivityColumns = null;
+
+        if ($productActivityColumns === false) {
+            return;
+        }
+
+        if ($productActivityColumns === null) {
+            $columnsStmt = $pdo->query('SHOW COLUMNS FROM product_activity');
+            if (!$columnsStmt) {
+                $productActivityColumns = false;
+                return;
+            }
+            $productActivityColumns = array_column($columnsStmt->fetchAll(PDO::FETCH_ASSOC), 'Field');
+            if (empty($productActivityColumns)) {
+                $productActivityColumns = false;
+                return;
+            }
+        }
+
+        $columns = $productActivityColumns;
+        $data = [];
+
+        if (in_array('product_id', $columns, true)) {
+            $data['product_id'] = $productId;
+        }
+        if (in_array('user_id', $columns, true)) {
+            $data['user_id'] = $userId;
+        }
+        if (in_array('activity_type', $columns, true)) {
+            $data['activity_type'] = 'Damaged-Stock-In';
+        }
+        if (in_array('quantity', $columns, true)) {
+            $data['quantity'] = $quantity;
+        }
+        if (in_array('reference', $columns, true)) {
+            $data['reference'] = $reference;
+        }
+        if (in_array('notes', $columns, true) && $notes !== null && $notes !== '') {
+            $data['notes'] = $notes;
+        }
+        if (in_array('activity_date', $columns, true)) {
+            $data['activity_date'] = date('Y-m-d H:i:s');
+        }
+        if (in_array('location_from', $columns, true)) {
+            $data['location_from'] = 'Damaged Returns';
+        }
+        if (in_array('location_to', $columns, true)) {
+            $data['location_to'] = 'Main Stock';
+        }
+        if (in_array('sku', $columns, true)) {
+            $data['sku'] = $sku;
+        }
+
+        if (empty($data)) {
+            return;
+        }
+
+        $fields = array_keys($data);
+        $placeholders = array_map(fn($field) => ':' . $field, $fields);
+        $sql = 'INSERT INTO product_activity (' . implode(', ', $fields) . ') VALUES (' . implode(', ', $placeholders) . ')';
+        $stmt = $pdo->prepare($sql);
+        foreach ($data as $field => $value) {
+            $stmt->bindValue(':' . $field, $value);
+        }
+        $stmt->execute();
+    } catch (Exception $e) {
+        error_log('Failed to log product activity: ' . $e->getMessage());
+    }
+}
+
+function ensureDamagedReturnPo(PDO $pdo, array $inspection, int $userId, ?float $costPrice, ?float $salePrice, float $restockQty): array
+{
+    $poId = isset($inspection['po_id']) ? (int)$inspection['po_id'] : 0;
+    $poNumber = $inspection['po_number'] ?? null;
+
+    if ($poId > 0) {
+        if (!$poNumber) {
+            try {
+                $poLookup = $pdo->prepare('SELECT po_number FROM purchase_orders WHERE po_id = :po_id LIMIT 1');
+                $poLookup->execute([':po_id' => $poId]);
+                $foundNumber = $poLookup->fetchColumn();
+                if ($foundNumber) {
+                    $poNumber = $foundNumber;
+                }
+            } catch (Exception $e) {
+                error_log('Failed to resolve PO number for damaged inspection: ' . $e->getMessage());
+            }
+        }
+        return ['po_id' => $poId, 'po_number' => $poNumber];
+    }
+
+    try {
+        $poNumber = 'PO-DMG-' . date('YmdHis');
+        $unitBase = $costPrice ?? $salePrice ?? 0.0;
+        $restock = max(0.0, $restockQty);
+        $totalAmount = round($unitBase * $restock, 2);
+        $remark = 'สร้างจากสินค้าชำรุดบางส่วน ' . ($inspection['return_code'] ?? '');
+
+        $createPo = $pdo->prepare("INSERT INTO purchase_orders (
+                po_number, supplier_id, order_date, total_amount,
+                ordered_by, status, remark, created_at,
+                currency_id, exchange_rate, total_amount_original, total_amount_base
+            ) VALUES (
+                :po_number, NULL, NOW(), :total_amount,
+                :ordered_by, 'completed', :remark, NOW(),
+                1, 1, :total_amount, :total_amount
+            )");
+
+        $createPo->execute([
+            ':po_number' => $poNumber,
+            ':total_amount' => $totalAmount,
+            ':ordered_by' => $userId,
+            ':remark' => $remark
+        ]);
+
+        $newPoId = (int)$pdo->lastInsertId();
+        if ($newPoId <= 0) {
+            return ['po_id' => 0, 'po_number' => null];
+        }
+
+        return ['po_id' => $newPoId, 'po_number' => $poNumber];
+    } catch (Exception $e) {
+        error_log('Failed to create PO for damaged inspection: ' . $e->getMessage());
+        return ['po_id' => 0, 'po_number' => null];
+    }
+}
+
+function ensureDamagedPurchaseOrderItem(PDO $pdo, int $poId, int $productId, float $restockQty, ?float $costPrice, ?float $salePrice): ?int
+{
+    if ($poId <= 0 || $productId <= 0 || $restockQty <= 0) {
+        return null;
+    }
+
+    try {
+        $lookup = $pdo->prepare('SELECT item_id FROM purchase_order_items WHERE po_id = :po_id AND product_id = :product_id ORDER BY item_id DESC LIMIT 1');
+        $lookup->execute([
+            ':po_id' => $poId,
+            ':product_id' => $productId
+        ]);
+        $existingItemId = $lookup->fetchColumn();
+        if ($existingItemId) {
+            return (int)$existingItemId;
+        }
+
+        $pricePerUnit = $costPrice ?? $salePrice ?? 0.0;
+        $saleValue = $salePrice ?? $pricePerUnit;
+        $quantity = round($restockQty, 2);
+        $totalAmount = round($pricePerUnit * $quantity, 2);
+
+        $insert = $pdo->prepare('INSERT INTO purchase_order_items (
+                po_id, product_id, qty, price_per_unit, sale_price, total, created_at
+            ) VALUES (
+                :po_id, :product_id, :qty, :price_per_unit, :sale_price, :total, NOW()
+            )');
+
+        $insert->execute([
+            ':po_id' => $poId,
+            ':product_id' => $productId,
+            ':qty' => $quantity,
+            ':price_per_unit' => $pricePerUnit,
+            ':sale_price' => $saleValue,
+            ':total' => $totalAmount
+        ]);
+
+        $itemId = (int)$pdo->lastInsertId();
+        return $itemId > 0 ? $itemId : null;
+    } catch (Exception $e) {
+        error_log('Failed to ensure purchase order item for damaged inspection: ' . $e->getMessage());
+        return null;
+    }
+}
+
+function insertDamagedReceiveMovement(PDO $pdo, int $itemId, int $poId, float $restockQty, int $userId, string $newSku, ?string $notes, string $returnCode, ?string $expiryDate): void
+{
+    if ($itemId <= 0 || $poId <= 0 || $restockQty <= 0) {
+        return;
+    }
+
+    $restock = round($restockQty, 2);
+    $notesLine = trim((string)$notes);
+    $remarkParts = [
+        'รับสินค้าคืน (สินค้าชำรุดบางส่วน)',
+        'SKU ใหม่: ' . $newSku
+    ];
+
+    if ($returnCode !== '') {
+        $remarkParts[] = 'อ้างอิงคืนสินค้า: ' . $returnCode;
+    }
+
+    if ($notesLine !== '') {
+        $remarkParts[] = $notesLine;
+    }
+
+    $remarkParts[] = 'บันทึกโดยระบบตรวจสอบสินค้าชำรุด';
+    $remark = implode(' | ', array_filter($remarkParts, static fn($part) => $part !== ''));
+
+    try {
+        $insert = $pdo->prepare('INSERT INTO receive_items (
+                item_id, po_id, receive_qty, expiry_date,
+                remark_color, remark_split, remark, created_by, created_at
+            ) VALUES (
+                :item_id, :po_id, :receive_qty, :expiry_date,
+                NULL, NULL, :remark, :created_by, NOW()
+            )');
+
+        $insert->execute([
+            ':item_id' => $itemId,
+            ':po_id' => $poId,
+            ':receive_qty' => $restock,
+            ':expiry_date' => $expiryDate ?: null,
+            ':remark' => $remark,
+            ':created_by' => $userId
+        ]);
+    } catch (Exception $e) {
+        error_log('Failed to insert receive movement for damaged inspection: ' . $e->getMessage());
+    }
+}
+
 $user_id = $_SESSION['user_id'] ?? null;
 if (!$user_id) {
     http_response_code(401);
@@ -176,18 +568,27 @@ if ($action === 'get_sales_order_items') {
         
         $stmt = $pdo->prepare("
             SELECT 
-                ii.issue_id as si_id,
-                ii.sale_order_id as so_id,
+                ii.issue_id AS si_id,
+                ii.sale_order_id AS so_id,
                 ii.product_id,
                 p.sku,
                 p.barcode,
-                p.name as product_name,
+                p.name AS product_name,
                 p.image,
                 ii.issue_qty,
-                0 as returned_qty,
-                ii.issue_qty as available_qty
+                COALESCE(ret.total_returned, 0) AS returned_qty,
+                CASE WHEN COALESCE(ret.total_returned, 0) > 0 THEN 0 ELSE ii.issue_qty END AS available_qty,
+                CASE WHEN COALESCE(ret.total_returned, 0) > 0 THEN 1 ELSE 0 END AS already_returned
             FROM issue_items ii
             LEFT JOIN products p ON ii.product_id = p.product_id
+            LEFT JOIN (
+                SELECT 
+                    item_id,
+                    SUM(return_qty) AS total_returned
+                FROM returned_items
+                WHERE return_from_sales = 1 AND return_status IN ('pending', 'approved', 'completed')
+                GROUP BY item_id
+            ) ret ON ret.item_id = ii.issue_id
             WHERE ii.sale_order_id = :so_id
             ORDER BY ii.issue_id ASC
         ");
@@ -236,6 +637,9 @@ if ($action === 'create_return') {
         $po_number = null;
         $original_qty = 0;
         $issue_tag = null;
+        $cost_price = null;
+        $sale_price = null;
+        $receive_id = null;
         
         if ($return_from_sales) {
             // Get sales order item details
@@ -251,9 +655,18 @@ if ($action === 'create_return') {
             if (!$order_item) {
                 throw new Exception('Sales order item not found');
             }
+
+            $duplicateCheck = $pdo->prepare("SELECT COUNT(*) FROM returned_items WHERE return_from_sales = 1 AND item_id = :item_id AND return_status IN ('pending', 'approved', 'completed')");
+            $duplicateCheck->execute([':item_id' => $item_id]);
+            if ((int)$duplicateCheck->fetchColumn() > 0) {
+                throw new Exception('รายการนี้มีการตีกลับแล้ว ไม่สามารถตีกลับซ้ำ');
+            }
             
             $original_qty = $order_item['issue_qty'];
             $issue_tag = $order_item['issue_tag'];
+            $cost_price = isset($order_item['cost_price']) ? (float)$order_item['cost_price'] : null;
+            $sale_price = isset($order_item['sale_price']) ? (float)$order_item['sale_price'] : null;
+            $receive_id = isset($order_item['receive_id']) ? (int)$order_item['receive_id'] : null;
             
             // ค้นหา po_id ที่มี product นี้ (สำหรับบันทึกวิบาก)
             if (!$po_id) {
@@ -273,7 +686,7 @@ if ($action === 'create_return') {
         } else {
             // Get receive item details
             $stmt = $pdo->prepare("
-                SELECT ri.*, poi.price_per_unit, po.po_number
+                SELECT ri.*, poi.price_per_unit, poi.sale_price, po.po_number
                 FROM receive_items ri
                 JOIN purchase_order_items poi ON ri.item_id = poi.item_id
                 JOIN purchase_orders po ON poi.po_id = po.po_id
@@ -288,6 +701,8 @@ if ($action === 'create_return') {
             
             $original_qty = $order_item['receive_qty'];
             $po_number = $order_item['po_number'];
+            $cost_price = isset($order_item['price_per_unit']) ? (float)$order_item['price_per_unit'] : null;
+            $sale_price = isset($order_item['sale_price']) ? (float)$order_item['sale_price'] : null;
         }
         
         // Get reason details
@@ -307,12 +722,12 @@ if ($action === 'create_return') {
         // Insert return record
         $stmt = $pdo->prepare("
             INSERT INTO returned_items (
-                return_code, po_id, po_number, so_id, issue_tag, item_id, product_id, 
+                return_code, po_id, po_number, receive_id, so_id, issue_tag, item_id, product_id, 
                 product_name, sku, barcode, original_qty, return_qty, reason_id, reason_name,
                 is_returnable, return_status, return_from_sales, image_path, notes, expiry_date,
                 location_id, created_by
             ) VALUES (
-                :return_code, :po_id, :po_number, :so_id, :issue_tag, :item_id, :product_id,
+                :return_code, :po_id, :po_number, :receive_id, :so_id, :issue_tag, :item_id, :product_id,
                 :product_name, :sku, :barcode, :original_qty, :return_qty, :reason_id, :reason_name,
                 :is_returnable, 'pending', :return_from_sales, :image_path, :notes, :expiry_date,
                 :location_id, :created_by
@@ -323,6 +738,7 @@ if ($action === 'create_return') {
             ':return_code' => $return_code,
             ':po_id' => $po_id,
             ':po_number' => $po_number,
+            ':receive_id' => $receive_id,
             ':so_id' => $so_id,
             ':issue_tag' => $issue_tag,
             ':item_id' => $item_id,
@@ -344,6 +760,41 @@ if ($action === 'create_return') {
         ]);
         
         $return_id = $pdo->lastInsertId();
+        $reasonNameForQueue = trim((string)($reason['reason_name'] ?? ''));
+        if ($reasonNameForQueue === 'สินค้าชำรุดบางส่วน') {
+            try {
+                $queueStmt = $pdo->prepare("INSERT INTO damaged_return_inspections (
+                        return_id, return_code, product_id, product_name, sku, barcode, receive_id, expiry_date, po_id, po_number, return_qty,
+                        reason_id, reason_name, status, new_sku, defect_notes, created_by, cost_price, sale_price
+                    ) VALUES (
+                        :return_id, :return_code, :product_id, :product_name, :sku, :barcode, :receive_id, :expiry_date, :po_id, :po_number, :return_qty,
+                        :reason_id, :reason_name, 'pending', NULL, :defect_notes, :created_by, :cost_price, :sale_price
+                    )");
+                $queueStmt->execute([
+                    ':return_id' => $return_id,
+                    ':return_code' => $return_code,
+                    ':product_id' => $product_id,
+                    ':product_name' => $product['name'],
+                    ':sku' => $product['sku'],
+                    ':barcode' => $product['barcode'] ?? null,
+                    ':receive_id' => $receive_id,
+                    ':expiry_date' => $order_item['expiry_date'] ?? null,
+                    ':po_id' => $po_id,
+                    ':po_number' => $po_number,
+                    ':return_qty' => $return_qty,
+                    ':reason_id' => $reason_id,
+                    ':reason_name' => $reasonNameForQueue,
+                    ':defect_notes' => $notes,
+                    ':created_by' => $user_id,
+                    ':cost_price' => $cost_price,
+                    ':sale_price' => $sale_price
+                ]);
+            } catch (PDOException $inspectionException) {
+                if ($inspectionException->getCode() !== '23000') {
+                    throw $inspectionException;
+                }
+            }
+        }
         
         echo json_encode([
             'status' => 'success',
@@ -416,6 +867,333 @@ if ($action === 'get_returns') {
     exit;
 }
 
+// ========== DAMAGED RETURN - LIST QUEUE ==========
+if ($action === 'list_damaged_inspections') {
+    try {
+        $status = $_GET['status'] ?? 'pending';
+        $conditions = [];
+        $params = [];
+
+        if ($status !== 'all') {
+            $conditions[] = 'di.status = :status';
+            $params[':status'] = $status;
+        }
+
+        $sql = "
+            SELECT 
+                di.*,
+                ri.return_qty AS original_return_qty,
+                ri.return_status,
+                u.name AS created_by_name,
+                u2.name AS inspected_by_name,
+                u3.name AS restocked_by_name
+            FROM damaged_return_inspections di
+            LEFT JOIN returned_items ri ON di.return_id = ri.return_id
+            LEFT JOIN users u ON di.created_by = u.user_id
+            LEFT JOIN users u2 ON di.inspected_by = u2.user_id
+            LEFT JOIN users u3 ON di.restocked_by = u3.user_id
+        ";
+
+        if (!empty($conditions)) {
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+        }
+
+        $sql .= ' ORDER BY di.created_at DESC, di.inspection_id DESC';
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $inspections = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode(['status' => 'success', 'data' => $inspections]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ========== DAMAGED RETURN - DETAIL ==========
+if ($action === 'get_damaged_inspection') {
+    try {
+        $inspection_id = $_GET['inspection_id'] ?? null;
+        if (!$inspection_id) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Inspection ID is required']);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("SELECT 
+                di.*,
+                ri.return_qty AS original_return_qty,
+                ri.return_status,
+                ri.notes AS return_notes,
+                ri.expiry_date AS return_expiry_date,
+                u.name AS created_by_name,
+                u2.name AS inspected_by_name,
+                u3.name AS restocked_by_name
+            FROM damaged_return_inspections di
+            JOIN returned_items ri ON di.return_id = ri.return_id
+            LEFT JOIN users u ON di.created_by = u.user_id
+            LEFT JOIN users u2 ON di.inspected_by = u2.user_id
+            LEFT JOIN users u3 ON di.restocked_by = u3.user_id
+            WHERE di.inspection_id = :inspection_id");
+        $stmt->execute([':inspection_id' => $inspection_id]);
+        $inspection = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$inspection) {
+            http_response_code(404);
+            echo json_encode(['status' => 'error', 'message' => 'Inspection not found']);
+            exit;
+        }
+
+        $productStmt = $pdo->prepare('SELECT * FROM products WHERE product_id = :product_id LIMIT 1');
+        $productStmt->execute([':product_id' => $inspection['product_id']]);
+        $inspection['source_product'] = $productStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        echo json_encode(['status' => 'success', 'data' => $inspection]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ========== DAMAGED RETURN - PROCESS ==========
+if ($action === 'process_damaged_inspection') {
+    try {
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $inspection_id = $payload['inspection_id'] ?? null;
+        $restockQty = isset($payload['restock_qty']) ? (float)$payload['restock_qty'] : 0.0;
+        $inspectionNotes = trim((string)($payload['inspection_notes'] ?? ''));
+        $costPriceInput = $payload['cost_price'] ?? null;
+        $salePriceInput = $payload['sale_price'] ?? null;
+
+        if (!$inspection_id) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Inspection ID is required']);
+            exit;
+        }
+
+        $pdo->beginTransaction();
+
+        $stmt = $pdo->prepare("SELECT 
+                di.*,
+                ri.return_id,
+                ri.return_qty AS original_return_qty,
+                ri.return_status,
+                ri.notes AS return_notes,
+                ri.expiry_date AS return_expiry_date,
+                p.name AS source_product_name,
+                p.sku AS source_product_sku,
+                p.barcode AS source_barcode,
+                p.unit AS source_unit,
+                p.image AS source_image,
+                p.remark_color AS source_remark_color,
+                p.remark_split AS source_remark_split,
+                p.product_category_id AS source_product_category_id,
+                p.category_name AS source_category_name
+            FROM damaged_return_inspections di
+            JOIN returned_items ri ON di.return_id = ri.return_id
+            JOIN products p ON di.product_id = p.product_id
+            WHERE di.inspection_id = :inspection_id
+            FOR UPDATE");
+        $stmt->execute([':inspection_id' => $inspection_id]);
+        $inspection = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$inspection) {
+            throw new Exception('Inspection not found');
+        }
+
+        if ($inspection['status'] !== 'pending') {
+            throw new Exception('Inspection already processed');
+        }
+
+        $newSku = buildDefectSku((string)($inspection['sku'] ?? ''));
+
+        $costPrice = null;
+        if (array_key_exists('cost_price', $payload)) {
+            if ($costPriceInput !== null && $costPriceInput !== '') {
+                $costPrice = round((float)$costPriceInput, 2);
+            }
+        } elseif ($inspection['cost_price'] !== null) {
+            $costPrice = round((float)$inspection['cost_price'], 2);
+        }
+
+        $salePrice = null;
+        if (array_key_exists('sale_price', $payload)) {
+            if ($salePriceInput !== null && $salePriceInput !== '') {
+                $salePrice = round((float)$salePriceInput, 2);
+            }
+        } elseif ($inspection['sale_price'] !== null) {
+            $salePrice = round((float)$inspection['sale_price'], 2);
+        }
+
+        $availableQty = isset($inspection['return_qty']) ? (float)$inspection['return_qty'] : 0.0;
+        if ($availableQty <= 0) {
+            throw new Exception('Invalid return quantity for inspection');
+        }
+
+        if ($restockQty <= 0) {
+            $restockQty = $availableQty;
+        }
+
+        if ($restockQty <= 0 || $restockQty > $availableQty) {
+            throw new Exception('จำนวนที่จะนำกลับเข้าสต๊อกต้องมากกว่า 0 และไม่เกินจำนวนที่ตีกลับ');
+        }
+
+        $restockQty = round($restockQty, 2);
+
+        $existingProduct = findProductBySku($pdo, $newSku);
+        if ($existingProduct && (int)$existingProduct['product_id'] === (int)$inspection['product_id']) {
+            $newProductId = (int)$existingProduct['product_id'];
+        } elseif ($existingProduct) {
+            $newProductId = (int)$existingProduct['product_id'];
+            if ((int)$existingProduct['is_active'] !== 1) {
+                $pdo->prepare('UPDATE products SET is_active = 1 WHERE product_id = :product_id')
+                    ->execute([':product_id' => $newProductId]);
+            }
+        } else {
+            $sourceProduct = [
+                'name' => $inspection['source_product_name'],
+                'barcode' => $inspection['source_barcode'],
+                'unit' => $inspection['source_unit'],
+                'image' => $inspection['source_image'],
+                'remark_color' => $inspection['source_remark_color'],
+                'remark_split' => $inspection['source_remark_split'],
+                'product_category_id' => $inspection['source_product_category_id'],
+                'category_name' => $inspection['source_category_name']
+            ];
+            $newProductId = createDefectProduct($pdo, $sourceProduct, $newSku, (int)$user_id);
+        }
+
+        $existingDefectNotes = trim((string)($inspection['defect_notes'] ?? ''));
+        $notesSegments = [];
+        if ($existingDefectNotes !== '') {
+            $notesSegments[] = $existingDefectNotes;
+        }
+        if ($inspectionNotes !== '') {
+            $notesSegments[] = $inspectionNotes;
+        }
+        $combinedNotes = implode("\n", $notesSegments);
+
+        $expiryDate = $inspection['expiry_date'] ?? $inspection['return_expiry_date'] ?? null;
+        if (($inspection['expiry_date'] ?? null) === null && $expiryDate !== null) {
+            $setExpiry = $pdo->prepare('UPDATE damaged_return_inspections SET expiry_date = :expiry_date WHERE inspection_id = :inspection_id');
+            $setExpiry->execute([
+                ':expiry_date' => $expiryDate,
+                ':inspection_id' => $inspection_id
+            ]);
+            $inspection['expiry_date'] = $expiryDate;
+        }
+
+        $poContext = ensureDamagedReturnPo($pdo, $inspection, (int)$user_id, $costPrice, $salePrice, $restockQty);
+        $poIdForMovement = (int)($poContext['po_id'] ?? 0);
+        $poNumberForMovement = $poContext['po_number'] ?? ($inspection['po_number'] ?? null);
+
+        $receiveItemId = null;
+        if ($poIdForMovement > 0) {
+            $receiveItemId = ensureDamagedPurchaseOrderItem(
+                $pdo,
+                $poIdForMovement,
+                $newProductId,
+                $restockQty,
+                $costPrice,
+                $salePrice
+            );
+        }
+
+        $updateInspection = $pdo->prepare("UPDATE damaged_return_inspections SET
+                status = 'completed',
+                new_sku = :new_sku,
+                new_product_id = :new_product_id,
+                cost_price = :cost_price,
+                sale_price = :sale_price,
+                restock_qty = :restock_qty,
+                defect_notes = :defect_notes,
+                po_id = :po_id,
+                po_number = :po_number,
+                inspected_by = :inspected_by,
+                inspected_at = NOW(),
+                restocked_by = :restocked_by,
+                restocked_at = NOW(),
+                updated_at = NOW()
+            WHERE inspection_id = :inspection_id");
+
+        $updateInspection->execute([
+            ':new_sku' => $newSku,
+            ':new_product_id' => $newProductId,
+            ':cost_price' => $costPrice,
+            ':sale_price' => $salePrice,
+            ':restock_qty' => $restockQty,
+            ':defect_notes' => $combinedNotes !== '' ? $combinedNotes : null,
+            ':po_id' => $poIdForMovement > 0 ? $poIdForMovement : null,
+            ':po_number' => $poNumberForMovement,
+            ':inspected_by' => $user_id,
+            ':restocked_by' => $user_id,
+            ':inspection_id' => $inspection_id
+        ]);
+
+        if ($poIdForMovement > 0 && ((int)($inspection['po_id'] ?? 0) !== $poIdForMovement || ($inspection['po_number'] ?? null) !== $poNumberForMovement)) {
+            $updateReturnPo = $pdo->prepare('UPDATE returned_items SET po_id = :po_id, po_number = :po_number WHERE return_id = :return_id');
+            $updateReturnPo->execute([
+                ':po_id' => $poIdForMovement,
+                ':po_number' => $poNumberForMovement,
+                ':return_id' => $inspection['return_id']
+            ]);
+        }
+
+        $noteLine = "\n[INSPECTED] เปลี่ยน SKU เป็น {$newSku} ({$restockQty}) โดยผู้ใช้ {$user_id} เวลา " . date('Y-m-d H:i:s');
+        $updateReturn = $pdo->prepare("UPDATE returned_items SET 
+                return_status = 'completed', 
+                notes = CONCAT(COALESCE(notes, ''), :note_append),
+                updated_at = NOW()
+            WHERE return_id = :return_id");
+        $updateReturn->execute([
+            ':note_append' => $noteLine,
+            ':return_id' => $inspection['return_id']
+        ]);
+
+        if ($receiveItemId !== null && $poIdForMovement > 0) {
+            insertDamagedReceiveMovement(
+                $pdo,
+                $receiveItemId,
+                $poIdForMovement,
+                $restockQty,
+                (int)$user_id,
+                $newSku,
+                $combinedNotes !== '' ? $combinedNotes : null,
+                (string)($inspection['return_code'] ?? ''),
+                $expiryDate
+            );
+        }
+
+        logProductActivity(
+            $pdo,
+            $newProductId,
+            (int)$user_id,
+            $restockQty,
+            (string)($inspection['return_code'] ?? ''),
+            $newSku,
+            $combinedNotes !== '' ? $combinedNotes : null
+        );
+
+        $pdo->commit();
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'บันทึกการตรวจสอบสินค้าเรียบร้อย',
+            'new_product_id' => $newProductId
+        ]);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // ========== APPROVE RETURN ==========
 if ($action === 'approve_return') {
     try {
@@ -440,6 +1218,9 @@ if ($action === 'approve_return') {
             throw new Exception('Return item not found');
         }
         
+        $reasonName = trim((string)($return_item['reason_name'] ?? ''));
+        $isDamagedPartial = ($reasonName === 'สินค้าชำรุดบางส่วน');
+        
         // Update return status
         $stmt = $pdo->prepare("
             UPDATE returned_items 
@@ -454,8 +1235,63 @@ if ($action === 'approve_return') {
             ':approved_by' => $user_id
         ]);
         
+        if ($isDamagedPartial) {
+            $poIdForQueue = $return_item['po_id'] ?? null;
+            $poNumberForQueue = $return_item['po_number'] ?? null;
+            $costPriceForQueue = null;
+            $salePriceForQueue = null;
+
+            if ((int)($return_item['return_from_sales'] ?? 0) === 1) {
+                $issueDataStmt = $pdo->prepare("SELECT sale_price, cost_price FROM issue_items WHERE issue_id = :issue_id LIMIT 1");
+                $issueDataStmt->execute([':issue_id' => $return_item['item_id']]);
+                $issueData = $issueDataStmt->fetch(PDO::FETCH_ASSOC);
+                if ($issueData) {
+                    $salePriceForQueue = isset($issueData['sale_price']) ? (float)$issueData['sale_price'] : null;
+                    $costPriceForQueue = isset($issueData['cost_price']) ? (float)$issueData['cost_price'] : null;
+                }
+            } else {
+                $poItemStmt = $pdo->prepare("SELECT price_per_unit, sale_price FROM purchase_order_items WHERE item_id = :item_id LIMIT 1");
+                $poItemStmt->execute([':item_id' => $return_item['item_id']]);
+                $poItemData = $poItemStmt->fetch(PDO::FETCH_ASSOC);
+                if ($poItemData) {
+                    $costPriceForQueue = isset($poItemData['price_per_unit']) ? (float)$poItemData['price_per_unit'] : null;
+                    $salePriceForQueue = isset($poItemData['sale_price']) ? (float)$poItemData['sale_price'] : null;
+                }
+            }
+
+            $inspectionCheck = $pdo->prepare("SELECT inspection_id FROM damaged_return_inspections WHERE return_id = :return_id LIMIT 1");
+            $inspectionCheck->execute([':return_id' => $return_id]);
+            if (!$inspectionCheck->fetch()) {
+                $queueStmt = $pdo->prepare("INSERT INTO damaged_return_inspections (
+                        return_id, return_code, product_id, product_name, sku, barcode, expiry_date, po_id, po_number, return_qty,
+                        reason_id, reason_name, status, new_sku, defect_notes, created_by, cost_price, sale_price
+                    ) VALUES (
+                        :return_id, :return_code, :product_id, :product_name, :sku, :barcode, :expiry_date, :po_id, :po_number, :return_qty,
+                        :reason_id, :reason_name, 'pending', NULL, :defect_notes, :created_by, :cost_price, :sale_price
+                    )");
+                $queueStmt->execute([
+                    ':return_id' => $return_item['return_id'],
+                    ':return_code' => $return_item['return_code'],
+                    ':product_id' => $return_item['product_id'],
+                    ':product_name' => $return_item['product_name'],
+                    ':sku' => $return_item['sku'],
+                    ':barcode' => $return_item['barcode'] ?? null,
+                    ':expiry_date' => $return_item['expiry_date'] ?? null,
+                    ':po_id' => $poIdForQueue,
+                    ':po_number' => $poNumberForQueue,
+                    ':return_qty' => $return_item['return_qty'],
+                    ':reason_id' => $return_item['reason_id'] ?? 0,
+                    ':reason_name' => $reasonName,
+                    ':defect_notes' => $return_item['notes'] ?? null,
+                    ':created_by' => $return_item['created_by'] ?? null,
+                    ':cost_price' => $costPriceForQueue,
+                    ':sale_price' => $salePriceForQueue
+                ]);
+            }
+        }
+        
         // ถ้าเป็นสินค้าที่สามารถคืนสต็อกได้ ให้เพิ่มลงใน receive_items
-        if ($return_item['is_returnable'] == 1) {
+        if ($return_item['is_returnable'] == 1 && !$isDamagedPartial) {
             // แน่ใจว่า return_qty เป็นค่าบวก
             $return_qty = abs((float)$return_item['return_qty']);
             
@@ -570,7 +1406,7 @@ if ($action === 'approve_return') {
         
         echo json_encode([
             'status' => 'success',
-            'message' => 'Return approved successfully'
+            'message' => $isDamagedPartial ? 'Damaged return queued for inspection' : 'Return approved successfully'
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();

@@ -251,6 +251,14 @@ if (!$user_id) {
         let pendingConfirmAction = null;
         let returnsTable = null;
 
+        function escapeForOnclick(value) {
+            return String(value ?? '')
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\r?\n/g, '\\n')
+                .replace(/\u2028|\u2029/g, '');
+        }
+
         // Show Alert Modal
         function showAlert(type, title, message) {
             const modal = new bootstrap.Modal(document.getElementById('alertModal'));
@@ -372,7 +380,7 @@ if (!$user_id) {
                                                     <span class="material-icons" style="font-size: 1rem;">info</span>
                                                 </button>
                                                 ${item.return_status === 'pending' ? `
-                                                    <button class="btn btn-sm btn-outline-success btn-action" onclick="approveReturn(${item.return_id})">
+                                                    <button class="btn btn-sm btn-outline-success btn-action" onclick="approveReturn(${item.return_id}, '${escapeForOnclick(item.reason_name || '')}')">
                                                         <span class="material-icons" style="font-size: 1rem;">check</span>
                                                     </button>
                                                     <button class="btn btn-sm btn-outline-danger btn-action" onclick="rejectReturn(${item.return_id})">
@@ -448,6 +456,14 @@ if (!$user_id) {
                             <div class="detail-label">SKU / Barcode</div>
                             <div class="detail-value">${item.sku} / ${item.barcode || '-'}</div>
                         </div>
+                        ${item.expiry_date ? `
+                        <div class="detail-row">
+                            <div class="detail-label">วันหมดอายุ</div>
+                            <div class="detail-value">
+                                <strong>${new Date(item.expiry_date).toLocaleDateString('th-TH')}</strong>
+                            </div>
+                        </div>
+                        ` : ''}
                         <div class="detail-row">
                             <div class="detail-label">จำนวนตีกลับ</div>
                             <div class="detail-value">${item.return_qty}</div>
@@ -491,7 +507,7 @@ if (!$user_id) {
                     let actionHtml = '';
                     if (item.return_status === 'pending') {
                         actionHtml = `
-                            <button type="button" class="btn btn-success btn-sm" onclick="approveReturn(${item.return_id})">
+                            <button type="button" class="btn btn-success btn-sm" onclick="approveReturn(${item.return_id}, '${escapeForOnclick(item.reason_name || '')}')">
                                 <span class="material-icons" style="vertical-align: middle; margin-right: 0.3rem;">check_circle</span>
                                 อนุมัติ
                             </button>
@@ -509,8 +525,15 @@ if (!$user_id) {
             });
         }
 
-        function approveReturn(returnId) {
-            showConfirm('ยืนยันการอนุมัติ', 'ต้องการนำสินค้าตีกลับกลับเข้าสต็อกหรือไม่?', function() {
+        function approveReturn(returnId, reasonName = '') {
+            const normalizedReason = (reasonName || '').trim();
+            const isDamagedPartial = normalizedReason === 'สินค้าชำรุดบางส่วน';
+            const confirmTitle = 'ยืนยันการอนุมัติ';
+            const confirmMessage = isDamagedPartial
+                ? 'ต้องการส่งรายการนี้เข้าคิวตรวจสอบสินค้าชำรุดหรือไม่? ระบบจะยังไม่นำจำนวนกลับเข้าสต็อก'
+                : 'ต้องการนำสินค้าตีกลับกลับเข้าสต็อกหรือไม่?';
+
+            showConfirm(confirmTitle, confirmMessage, function() {
                 $.ajax({
                     url: API_URL,
                     type: 'POST',
@@ -521,7 +544,10 @@ if (!$user_id) {
                     }),
                     success: function(response) {
                         if (response.status === 'success') {
-                            showAlert('success', '✓ อนุมัติสำเร็จ!', 'นำจำนวนเข้าสต็อกเรียบร้อยแล้ว');
+                            const successMessage = isDamagedPartial
+                                ? 'ส่งรายการเข้าคิวตรวจสอบสินค้าชำรุดแล้ว'
+                                : 'นำจำนวนเข้าสต็อกเรียบร้อยแล้ว';
+                            showAlert('success', '✓ อนุมัติสำเร็จ!', successMessage);
                             const detailModalInstance = bootstrap.Modal.getInstance(document.getElementById('detailModal'));
                             if (detailModalInstance) {
                                 detailModalInstance.hide();

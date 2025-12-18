@@ -35,7 +35,7 @@ try {
             poi.total as total_price,
             COALESCE(c.code, 'THB') as currency_code,
             COALESCE(SUM(ri.receive_qty), 0) as received_qty,
-            (poi.qty - COALESCE(SUM(ri.receive_qty), 0)) as remaining_qty,
+            GREATEST(poi.qty - COALESCE(SUM(ri.receive_qty), 0) - COALESCE(poi.cancel_qty, 0), 0) as remaining_qty,
             MAX(ri.expiry_date) as expiry_date,
             poi.is_cancelled,
             poi.is_partially_cancelled,

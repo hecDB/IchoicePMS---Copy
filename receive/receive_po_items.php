@@ -1006,6 +1006,17 @@ function formatThaiDate(dateString) {
     return `${day} ${month} ${year}`;
 }
 
+function formatThaiDateTime(dateTimeString) {
+    if (!dateTimeString) return '-';
+    const parts = dateTimeString.split(' ');
+    const datePart = parts[0] || '';
+    const timePart = parts[1] || '';
+    const thaiDate = formatThaiDate(datePart);
+    if (thaiDate === '-') return '-';
+    const timeDisplay = timePart ? timePart.slice(0, 5) : '';
+    return timeDisplay ? `${thaiDate} ${timeDisplay}` : thaiDate;
+}
+
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('th-TH', {
@@ -1269,6 +1280,18 @@ function displayCompletedPoItems(items) {
             const cancelledQty = parseFloat(item.cancel_qty || 0);
             const productName = escapeHtml(item.product_name);
             const imageSrc = resolveProductImage(item);
+            const cancelReason = escapeHtml(item.cancel_reason || '-');
+            const rawCancelNotes = item.cancel_notes ? item.cancel_notes.toString().trim() : '';
+            const cancelNotes = rawCancelNotes ? escapeHtml(rawCancelNotes) : '';
+            const cancelDateDisplay = item.cancelled_at ? formatThaiDateTime(item.cancelled_at) : '-';
+            const cancelTooltipLines = [`เหตุผล: ${cancelReason}`];
+            if (cancelNotes) {
+                cancelTooltipLines.push(`หมายเหตุ: ${cancelNotes}`);
+            }
+            if (cancelDateDisplay !== '-') {
+                cancelTooltipLines.push(`ยกเลิกเมื่อ: ${cancelDateDisplay}`);
+            }
+            const cancelTooltip = cancelTooltipLines.join('\n');
             
             html += `
                 <tr>
@@ -1289,7 +1312,9 @@ function displayCompletedPoItems(items) {
                         <div class="fw-bold text-success">${receivedQty.toLocaleString()}</div>
                     </td>
                     <td class="text-end">
-                        <div class="fw-bold ${cancelledQty > 0 ? 'text-danger' : 'text-muted'}">${cancelledQty.toLocaleString()}</div>
+                        <div class="fw-bold ${cancelledQty > 0 ? 'text-danger' : 'text-muted'}">
+                            ${cancelledQty > 0 ? `<span title="${cancelTooltip}">${cancelledQty.toLocaleString()}</span>` : cancelledQty.toLocaleString()}
+                        </div>
                     </td>
                 </tr>
             `;
@@ -1322,6 +1347,18 @@ function displayPoItems(items, mode) {
             const isCancelled = item.is_cancelled === true || item.is_cancelled === 1;
             const productName = escapeHtml(item.product_name);
             const imageSrc = resolveProductImage(item);
+            const cancelReason = escapeHtml(item.cancel_reason || '-');
+            const rawCancelNotes = item.cancel_notes ? item.cancel_notes.toString().trim() : '';
+            const cancelNotes = rawCancelNotes ? escapeHtml(rawCancelNotes) : '';
+            const cancelDateDisplay = item.cancelled_at ? formatThaiDateTime(item.cancelled_at) : '-';
+            const cancelTooltipLines = [`เหตุผล: ${cancelReason}`];
+            if (cancelNotes) {
+                cancelTooltipLines.push(`หมายเหตุ: ${cancelNotes}`);
+            }
+            if (cancelDateDisplay !== '-') {
+                cancelTooltipLines.push(`ยกเลิกเมื่อ: ${cancelDateDisplay}`);
+            }
+            const cancelTooltip = cancelTooltipLines.join('\n');
             
             html += `
                 <tr ${isCancelled ? 'style="background-color: #fee2e2; opacity: 0.8;"' : ''}>
@@ -1339,7 +1376,7 @@ function displayPoItems(items, mode) {
                     <td>${parseFloat(item.unit_price).toLocaleString()} ${escapeHtml(item.currency_code || '')}</td>
                     <td class="fw-bold text-success">${parseFloat(item.received_qty || 0).toLocaleString()}</td>
                     <td class="fw-bold ${cancelledQty > 0 ? 'text-danger' : 'text-muted'}">
-                        ${cancelledQty > 0 ? `<span title="เหตุผล: ${escapeHtml(item.cancel_reason || '-')}">${cancelledQty.toLocaleString()}</span>` : '-'}
+                        ${cancelledQty > 0 ? `<span title="${cancelTooltip}">${cancelledQty.toLocaleString()}</span>` : '-'}
                     </td>
                     <td class="fw-bold ${canReceive ? 'text-warning' : 'text-muted'}">${remainingQty.toLocaleString()}</td>
                     <td>

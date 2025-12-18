@@ -25,10 +25,18 @@ try {
             tp.product_image,
             poi.qty as order_qty,
             poi.price_per_unit as unit_price,
+            poi.total as total_price,
             c.code as currency_code,
             COALESCE(received_summary.total_received, 0) as received_qty,
-            (poi.qty - COALESCE(received_summary.total_received, 0)) as remaining_qty,
-            COALESCE(received_summary.expiry_date, NULL) as expiry_date
+            GREATEST(poi.qty - COALESCE(received_summary.total_received, 0) - COALESCE(poi.cancel_qty, 0), 0) as remaining_qty,
+            COALESCE(received_summary.expiry_date, NULL) as expiry_date,
+            poi.is_cancelled,
+            poi.is_partially_cancelled,
+            COALESCE(poi.cancel_qty, 0) as cancel_qty,
+            poi.cancel_reason,
+            poi.cancel_notes,
+            poi.cancelled_at,
+            poi.cancelled_by
         FROM purchase_order_items poi
         LEFT JOIN temp_products tp ON poi.temp_product_id = tp.temp_product_id
         LEFT JOIN (
@@ -60,11 +68,19 @@ try {
             'unit' => $item['unit'] ?? '-',
             'order_qty' => (float)$item['order_qty'],
             'unit_price' => (float)$item['unit_price'],
+            'total_price' => isset($item['total_price']) ? (float)$item['total_price'] : (float)$item['order_qty'] * (float)$item['unit_price'],
             'currency_code' => $item['currency_code'] ?? 'THB',
             'received_qty' => (float)$item['received_qty'],
             'remaining_qty' => (float)$item['remaining_qty'],
             'expiry_date' => $item['expiry_date'] ?? null,
-            'product_image' => $item['product_image'] ?? null
+            'product_image' => $item['product_image'] ?? null,
+            'is_cancelled' => isset($item['is_cancelled']) ? (bool)$item['is_cancelled'] : false,
+            'is_partially_cancelled' => isset($item['is_partially_cancelled']) ? (bool)$item['is_partially_cancelled'] : false,
+            'cancel_qty' => isset($item['cancel_qty']) ? (float)$item['cancel_qty'] : 0.0,
+            'cancel_reason' => $item['cancel_reason'] ?? null,
+            'cancel_notes' => $item['cancel_notes'] ?? null,
+            'cancelled_at' => $item['cancelled_at'] ?? null,
+            'cancelled_by' => $item['cancelled_by'] ?? null
         ];
     }
 

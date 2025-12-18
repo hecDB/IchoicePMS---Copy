@@ -261,6 +261,10 @@
                     <span class="material-icons">schedule</span>
                     <span class="submenu-text">สินค้าใกล้หมดอายุ</span>
                 </a>
+                <a href="<?= getPath('returns/damaged_return_inspections.php') ?>" class="submenu-item<?=isActive('damaged_return_inspections.php')?>">
+                    <span class="material-icons">fact_check</span>
+                    <span class="submenu-text">สินค้าชำรุดบางส่วน</span>
+                </a>
               
           
             </div>

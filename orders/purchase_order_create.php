@@ -57,9 +57,11 @@ $stmt2 = $pdo->query("
         p.sku,
         p.unit,
         p.image,
+        p.is_active,
         pc.category_name
     FROM products p
     LEFT JOIN product_category pc ON p.product_category_id = pc.category_id
+    WHERE COALESCE(p.is_active, 1) = 1
 ");
 $products = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
@@ -73,6 +75,7 @@ foreach ($products as &$product) {
     $product['last_currency_symbol'] = $latest['currency_symbol'] ?? null;
     $product['last_currency_code'] = $latest['currency_code'] ?? null;
     $product['last_order_date'] = $latest['order_date'] ?? null;
+    $product['is_active'] = $product['is_active'] ?? 1;
 }
 unset($product);
 
