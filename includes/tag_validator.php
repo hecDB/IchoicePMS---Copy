@@ -27,16 +27,18 @@ function validateTagNumber($tag, $platform = null) {
         $stmt->execute($params);
         $patterns = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // ตรวจสอบกับแต่ละรูปแบบ
+        // รวบรวมรูปแบบที่ตรงกัน (อาจมีหลายรูปแบบเนื่องจากเลขแท็กแบบเดียวกัน)
+        $matchedPatterns = [];
+        
         foreach ($patterns as $pattern) {
             try {
                 $regex = '/' . str_replace('/', '\/', $pattern['regex_pattern']) . '/';
                 if (preg_match($regex, $tag) === 1) {
-                    return [
-                        'valid' => true,
+                    $matchedPatterns[] = [
+                        'pattern_id' => $pattern['pattern_id'],
                         'platform' => $pattern['platform'],
                         'pattern_name' => $pattern['pattern_name'],
-                        'pattern_id' => $pattern['pattern_id'],
+                        'regex_pattern' => $pattern['regex_pattern'],
                         'description' => $pattern['description']
                     ];
                 }
@@ -47,12 +49,41 @@ function validateTagNumber($tag, $platform = null) {
             }
         }
         
+        // ถ้าไม่พบรูปแบบที่ตรงกัน
+        if (empty($matchedPatterns)) {
+            return [
+                'valid' => false,
+                'platform' => null,
+                'pattern_name' => null,
+                'pattern_id' => null,
+                'description' => 'ไม่พบรูปแบบที่ตรงกัน',
+                'matched_count' => 0
+            ];
+        }
+        
+        // ถ้ามีเพียง 1 รูปแบบ
+        if (count($matchedPatterns) === 1) {
+            return [
+                'valid' => true,
+                'platform' => $matchedPatterns[0]['platform'],
+                'pattern_name' => $matchedPatterns[0]['pattern_name'],
+                'pattern_id' => $matchedPatterns[0]['pattern_id'],
+                'description' => $matchedPatterns[0]['description'],
+                'matched_count' => 1,
+                'matched_patterns' => $matchedPatterns
+            ];
+        }
+        
+        // ถ้ามีหลายรูปแบบ ให้คืนทั้งหมด
         return [
-            'valid' => false,
-            'platform' => null,
-            'pattern_name' => null,
-            'pattern_id' => null,
-            'description' => 'ไม่พบรูปแบบที่ตรงกัน'
+            'valid' => true,
+            'platform' => $matchedPatterns[0]['platform'], // default first match
+            'pattern_name' => $matchedPatterns[0]['pattern_name'],
+            'pattern_id' => $matchedPatterns[0]['pattern_id'],
+            'description' => $matchedPatterns[0]['description'],
+            'matched_count' => count($matchedPatterns),
+            'matched_patterns' => $matchedPatterns,
+            'needs_confirmation' => true // flag บอกว่าต้องให้ผู้ใช้เลือก
         ];
         
     } catch (Exception $e) {
@@ -62,7 +93,8 @@ function validateTagNumber($tag, $platform = null) {
             'platform' => null,
             'pattern_name' => null,
             'pattern_id' => null,
-            'description' => 'เกิดข้อผิดพลาดในการตรวจสอบ'
+            'description' => 'เกิดข้อผิดพลาดในการตรวจสอบ',
+            'matched_count' => 0
         ];
     }
 }

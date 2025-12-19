@@ -327,18 +327,42 @@ function validateTag($tag, $platform = null) {
     $stmt->execute($params);
     $patterns = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // เก็บรูปแบบทั้งหมดที่ตรงกัน เพื่อตรวจสอบการซ้ำ
+    $matchedPatterns = [];
+    
     foreach ($patterns as $pattern) {
         $regex = '/' . str_replace('/', '\/', $pattern['regex_pattern']) . '/';
         if (preg_match($regex, $tag) === 1) {
-            return [
-                'valid' => true,
-                'pattern' => $pattern,
-                'platform' => $pattern['platform']
-            ];
+            $matchedPatterns[] = $pattern;
         }
     }
     
-    return ['valid' => false, 'pattern' => null, 'platform' => null];
+    // หากไม่มี pattern ที่ตรงกัน
+    if (empty($matchedPatterns)) {
+        return ['valid' => false, 'pattern' => null, 'platform' => null, 'matched_count' => 0];
+    }
+    
+    // หากมีเพียง 1 pattern ที่ตรงกัน
+    if (count($matchedPatterns) === 1) {
+        $pattern = $matchedPatterns[0];
+        return [
+            'valid' => true,
+            'pattern' => $pattern,
+            'platform' => $pattern['platform'],
+            'matched_count' => 1,
+            'matched_patterns' => $matchedPatterns
+        ];
+    }
+    
+    // หากมีหลายแบบ ให้คืนทั้งหมดเพื่อให้ผู้ใช้เลือก
+    return [
+        'valid' => true,
+        'pattern' => $matchedPatterns[0], // default pattern
+        'platform' => $matchedPatterns[0]['platform'],
+        'matched_count' => count($matchedPatterns),
+        'matched_patterns' => $matchedPatterns,
+        'needs_confirmation' => true // flag บอกว่าต้องให้ผู้ใช้เลือก
+    ];
 }
 
 // Export ฟังก์ชันสำหรับใช้จากไฟล์อื่น

@@ -78,11 +78,29 @@ try {
     // ตรวจสอบรูปแบบแท็คส่งออกผ่านระบบ pattern กลาง หากไม่พบให้ fallback ไปตรรกะเดิม
     $platform = '';
     $patternName = '';
+    $selectedPlatform = $data['selected_platform'] ?? null;
+    
     try {
-        $validation = validateTagNumber($issue_tag);
+        // ถ้ามี selected_platform ให้ validate กับ platform ที่เลือกเฉพาะนั้น
+        $validation = validateTagNumber($issue_tag, $selectedPlatform);
+        
+        // ถ้ามีหลาย pattern ตรงกัน ให้คืน response ขอให้เลือก platform ก่อน
+        if (!empty($validation['needs_confirmation']) && $validation['needs_confirmation']) {
+            http_response_code(200);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'needs_platform_confirmation' => true,
+                'tag' => $issue_tag,
+                'matched_patterns' => $validation['matched_patterns'] ?? [],
+                'message' => 'โปรดเลือกว่าแท็คนี้อยู่ในแพลตฟอร์มไหน'
+            ]);
+            exit;
+        }
+        
         if (!empty($validation['valid'])) {
             $platform = $validation['platform'] ?? '';
-            $patternName = $validation['pattern_name'] ?? '';
+            $patternName = $validation['pattern']['pattern_name'] ?? $validation['pattern_name'] ?? '';
         }
     } catch (Throwable $t) {
         error_log('Tag validator unavailable: ' . $t->getMessage());
@@ -167,9 +185,10 @@ try {
             sale_price,
             cost_price,
             issued_by, 
-            remark, 
+            remark,
+            expiry_date,
             created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     ");
 
     $updateReceiveStmt = $pdo->prepare("
@@ -329,7 +348,8 @@ try {
                     $sale_price,
                     $operation['cost_price'],
                     $user_id,
-                    $item_remark
+                    $item_remark,
+                    isset($product['expiry_date']) && !empty($product['expiry_date']) ? $product['expiry_date'] : null
                 ]);
 
                 if (!$insert_result) {
@@ -390,7 +410,8 @@ try {
             $sale_price,
             $cost_price,
             $user_id,
-            $item_remark
+            $item_remark,
+            isset($product['expiry_date']) && !empty($product['expiry_date']) ? $product['expiry_date'] : null
         ]);
 
         if (!$insert_result) {

@@ -701,7 +701,7 @@ require_once '../auth/auth_check.php';
                 })
                 .catch(error => {
                     container.classList.remove('loading');
-                    console.error('Error:', error);
+                    console.error('Error loading sales orders:', error);
                     container.innerHTML = `
                         <div class="alert alert-danger">
                             <span class="material-symbols-outlined me-2">error</span>
@@ -720,6 +720,7 @@ require_once '../auth/auth_check.php';
             if (toggleBtn) {
                 toggleBtn.innerHTML = '<span class="material-symbols-outlined me-1">unfold_more</span>ขยายทั้งหมด';
             }
+            
             
             if (orders.length === 0) {
                 container.innerHTML = `
@@ -748,8 +749,37 @@ require_once '../auth/auth_check.php';
             
             // สร้าง HTML สำหรับรายการสินค้า
             let itemsHtml = '';
-            items.forEach(item => {
-                const imageUrl = item.image ? `../images/${item.image}` : '../images/noimg.png';
+            items.forEach((item, index) => {
+                // ตรวจสอบหลายรูปแบบของ image path
+                let imageUrl = '/images/noimg.png';
+                let debugInfo = {
+                    product: item.product_name,
+                    rawImage: item.image,
+                    rawImageUrl: item.image_url
+                };
+                
+                if (item.image) {
+                    // ตรวจสอบว่าเป็น path แบบเต็มหรือเพียงชื่อไฟล์
+                    if (item.image.startsWith('/') || item.image.startsWith('http')) {
+                        // Full path or external URL - use as-is
+                        imageUrl = item.image;
+                    } else if (item.image.includes('images/')) {
+                        // Already has images/ prefix - use as-is with leading slash
+                        imageUrl = '/' + item.image;
+                    } else {
+                        // Just filename - prepend /images/
+                        imageUrl = `/images/${item.image}`;
+                    }
+                } else if (item.image_url) {
+                    if (item.image_url.startsWith('/') || item.image_url.startsWith('http')) {
+                        imageUrl = item.image_url;
+                    } else if (item.image_url.includes('images/')) {
+                        imageUrl = '/' + item.image_url;
+                    } else {
+                        imageUrl = `/images/${item.image_url}`;
+                    }
+                }
+                
                 const salePrice = parseFloat(item.sale_price || 0);
                 const costPrice = parseFloat(item.cost_price || 0);
                 const qty = parseFloat(item.issue_qty || 0);
@@ -764,7 +794,7 @@ require_once '../auth/auth_check.php';
                         <div class="row align-items-start">
                             <div class="col-auto">
                                 <img src="${imageUrl}" alt="${item.product_name}" class="product-image" 
-                                     onerror="this.src='../images/noimg.png'">
+                                     onerror="this.src='/images/noimg.png';">
                             </div>
                             <div class="col">
                                 <div class="fw-bold mb-1">${item.product_name}</div>

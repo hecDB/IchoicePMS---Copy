@@ -564,7 +564,6 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                 const imageSrc = product.image_url || (product.image ? '../images/' + product.image : '../images/noimg.png');
                 const poDisplay = product.po_label || product.po_number || (product.po_id ? 'PO-' + product.po_id : '-');
                 const expiryDisplay = product.expiry_date_formatted || '-';
-                const receiveQty = formatReceiveQty(product.receive_qty);
 
                 return `
                     <div class="selected-product" data-key="${product.uniqueKey}">
@@ -577,7 +576,7 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                                 <div><strong>${product.product_name}</strong></div>
                                 <small class="text-muted d-block">SKU: ${product.sku || '-'} | Barcode: ${product.barcode || '-'}</small>
                                 <small class="text-muted d-block">PO: ${poDisplay} | วันหมดอายุ: ${expiryDisplay}</small>
-                                <small class="text-muted d-block">รับเข้า: ${receiveQty} ${product.unit || 'ชิ้น'} | รับเมื่อ: ${product.receive_created_at_formatted || '-'}</small>
+                                <small class="text-muted d-block">รับเมื่อ: ${product.receive_created_at_formatted || '-'}</small>
                             </div>
                         </div>
                     </div>
@@ -592,7 +591,6 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                 const expiryDisplay = product.expiry_date_formatted || '-';
                 const unitLabel = product.unit || 'ชิ้น';
                 const currentQuantity = product.quantity !== undefined && product.quantity !== null ? product.quantity : '';
-                const receiveQty = formatReceiveQty(product.receive_qty);
 
                 return `
                     <tr data-key="${product.uniqueKey}">
@@ -606,7 +604,6 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                                 <input type="number" class="form-control missing-quantity-input" data-index="${index}" min="0.01" step="0.01" value="${currentQuantity !== '' ? currentQuantity : ''}" placeholder="0.00">
                                 <span class="input-group-text">${unitLabel}</span>
                             </div>
-                            <small class="text-muted d-block mt-1">รับเข้าไว้: ${receiveQty} ${unitLabel}</small>
                         </td>
                         <td>${poDisplay}</td>
                         <td>${expiryDisplay}</td>
@@ -676,24 +673,74 @@ $user_name = $_SESSION['user_name'] ?? 'User';
                         resp.results.forEach(product => {
                             const imagePath = product.image_url || '../images/noimg.png';
                             const poLabel = product.po_label || product.po_number || (product.po_id ? 'PO-' + product.po_id : '-');
-                            const expiryLabel = product.expiry_date_formatted || '-';
-                            const qtyLabel = (product.receive_qty !== undefined && product.receive_qty !== null)
-                                ? parseFloat(product.receive_qty).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-                                : '-';
-                            const dataset = encodeURIComponent(JSON.stringify(product));
-                            html += `<div class="product-item" data-product="${dataset}">
-                                <div class="row align-items-center g-2">
-                                    <div class="col-auto">
-                                        <img src="${imagePath}" alt="Product" class="product-image" onerror="this.src='../images/noimg.png'">
+                            
+                            // แสดงสินค้าแยกตามล็อต (receive_id)
+                            const receiveBatches = product.receive_batches || [];
+                            
+                            if (receiveBatches.length > 0) {
+                                // แสดงแยกตามแต่ละล็อต
+                                receiveBatches.forEach(batch => {
+                                    const batchExpiryLabel = batch.expiry_date 
+                                        ? new Date(batch.expiry_date).toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                                        : '-';
+                                    const batchQtyLabel = (batch.available_qty !== undefined && batch.available_qty !== null)
+                                        ? parseFloat(batch.available_qty).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                                        : '0';
+                                    
+                                    const batchStatusLabel = parseFloat(batch.available_qty) > 0 
+                                        ? `ล็อต #${batch.receive_id}`
+                                        : '<span class="text-danger">สินค้าหมด</span>';
+                                    
+                                    // สร้าง product object สำหรับแต่ละล็อต
+                                    const batchProduct = {
+                                        ...product,
+                                        receive_id: batch.receive_id,
+                                        receive_qty: batch.available_qty,
+                                        expiry_date: batch.expiry_date,
+                                        expiry_date_formatted: batchExpiryLabel,
+                                        receive_created_at: batch.created_at,
+                                        receive_created_at_formatted: batch.created_at 
+                                            ? new Date(batch.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                                            : '-'
+                                    };
+                                    
+                                    const dataset = encodeURIComponent(JSON.stringify(batchProduct));
+                                    const isOutOfStock = parseFloat(batch.available_qty) <= 0;
+                                    const clickableClass = isOutOfStock ? 'opacity-50' : '';
+                                    const disabledAttr = isOutOfStock ? 'style="cursor: not-allowed; pointer-events: none;"' : '';
+                                    
+                                    html += `<div class="product-item ${clickableClass}" data-product="${dataset}" ${disabledAttr}>
+                                        <div class="row align-items-center g-2">
+                                            <div class="col-auto">
+                                                <img src="${imagePath}" alt="Product" class="product-image" onerror="this.src='../images/noimg.png'">
+                                            </div>
+                                            <div class="col">
+                                                <div><strong>${product.product_name}</strong></div>
+                                                <small class="text-muted d-block">SKU: ${product.sku || '-'} | Barcode: ${product.barcode || '-'}</small>
+                                                <small class="text-muted d-block">PO: ${poLabel} | วันหมดอายุ: ${batchExpiryLabel}</small>
+                                                <small class="text-muted d-block">${batchStatusLabel}${parseFloat(batch.available_qty) > 0 ? ' | รับเมื่อ: ' + batchProduct.receive_created_at_formatted : ''}</small>
+                                            </div>
+                                        </div>
+                                    </div>`;
+                                });
+                            } else {
+                                // Fallback หากไม่มี receive_batches
+                                const expiryLabel = product.expiry_date_formatted || '-';
+                                const dataset = encodeURIComponent(JSON.stringify(product));
+                                html += `<div class="product-item opacity-50" data-product="${dataset}" style="cursor: not-allowed; pointer-events: none;">
+                                    <div class="row align-items-center g-2">
+                                        <div class="col-auto">
+                                            <img src="${imagePath}" alt="Product" class="product-image" onerror="this.src='../images/noimg.png'">
+                                        </div>
+                                        <div class="col">
+                                            <div><strong>${product.product_name}</strong></div>
+                                            <small class="text-muted d-block">SKU: ${product.sku || '-'} | Barcode: ${product.barcode || '-'}</small>
+                                            <small class="text-muted d-block">PO: ${poLabel} | วันหมดอายุ: ${expiryLabel}</small>
+                                            <small class="text-danger d-block">สินค้าหมด</small>
+                                        </div>
                                     </div>
-                                    <div class="col">
-                                        <div><strong>${product.product_name}</strong></div>
-                                        <small class="text-muted d-block">SKU: ${product.sku || '-'} | Barcode: ${product.barcode || '-'}</small>
-                                        <small class="text-muted d-block">PO: ${poLabel} | วันหมดอายุ: ${expiryLabel}</small>
-                                        <small class="text-muted d-block">รับเข้า: ${qtyLabel} ${product.unit || 'ชิ้น'} | รับเมื่อ: ${product.receive_created_at_formatted || '-'}</small>
-                                    </div>
-                                </div>
-                            </div>`;
+                                </div>`;
+                            }
                         });
                         $('#search-results').html(html).addClass('show');
                     } else if (resp.success && resp.results.length === 0) {

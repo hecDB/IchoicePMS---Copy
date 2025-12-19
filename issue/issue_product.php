@@ -364,30 +364,79 @@ function displaySearchResults(products) {
             receive_batches: Array.isArray(product.receive_batches) ? product.receive_batches : [],
             batch_count: Array.isArray(product.receive_batches) ? product.receive_batches.length : (parseInt(product.batch_count, 10) || 0)
         });
-        const productData = encodeURIComponent(JSON.stringify(sanitizedProduct));
         const imageSource = sanitizedProduct.image_url || (sanitizedProduct.image ? `../images/${sanitizedProduct.image}` : '../images/noimg.png');
-        html += `
-            <div class="search-item" data-product="${productData}">
-                <div class="d-flex align-items-center">
-                    <img src="${imageSource}" 
-                         class="product-image me-3" 
-                         alt="${sanitizedProduct.name}"
-                         onerror="this.src='../images/noimg.png'">
-                    <div class="flex-grow-1">
-                        <h6 class="mb-1">${sanitizedProduct.name}</h6>
-                        <small class="text-muted">SKU: ${sanitizedProduct.sku} | บาร์โค้ด: ${sanitizedProduct.barcode}</small>
-                        <br>
-                        <small class="text-primary">Item ID: ${sanitizedProduct.receive_item_id || 'N/A'} | PO: ${sanitizedProduct.po_id || 'N/A'}</small>
-                        <br>
-                        <small class="text-success">คงเหลือ: ${sanitizedProduct.available_qty} ${sanitizedProduct.unit} | ราคาขาย: ${sanitizedProduct.sale_price ? sanitizedProduct.sale_price.toFixed(2) : '0.00'} บาท</small>
-                        ${sanitizedProduct.lot_info ? `<br><small class="text-info">${sanitizedProduct.lot_info}</small>` : ''}
-                        ${sanitizedProduct.expiry_date ? `<br><small class="text-warning">หมดอายุ: ${formatDateThai(sanitizedProduct.expiry_date)}</small>` : ''}
-                        ${sanitizedProduct.batch_count > 1 ? `<br><small class="text-secondary">ล็อตย่อย: ${sanitizedProduct.batch_count}</small>` : ''}
+        
+        // แสดงสินค้าแยกตามล็อต (receive_id)
+        const receiveBatches = sanitizedProduct.receive_batches || [];
+        
+        if (receiveBatches.length > 0) {
+            // แสดงแยกตามแต่ละล็อต
+            receiveBatches.forEach(batch => {
+                const batchExpiryLabel = batch.expiry_date 
+                    ? new Date(batch.expiry_date).toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                    : '-';
+                
+                const batchStatusLabel = parseFloat(batch.available_qty) > 0 
+                    ? 'มีสินค้า'
+                    : '<span class="text-danger">สินค้าหมด</span>';
+                
+                // สร้าง product object สำหรับแต่ละล็อต
+                const batchProduct = {
+                    ...sanitizedProduct,
+                    receive_id: batch.receive_id,
+                    receive_qty: batch.available_qty,
+                    expiry_date: batch.expiry_date,
+                    receive_created_at: batch.created_at
+                };
+                
+                const productData = encodeURIComponent(JSON.stringify(batchProduct));
+                const isOutOfStock = parseFloat(batch.available_qty) <= 0;
+                const clickableClass = isOutOfStock ? 'opacity-50' : '';
+                const disabledAttr = isOutOfStock ? 'style="cursor: not-allowed; pointer-events: none;"' : '';
+                
+                html += `
+                    <div class="search-item ${clickableClass}" data-product="${productData}" ${disabledAttr}>
+                        <div class="d-flex align-items-center">
+                            <img src="${imageSource}" 
+                                 class="product-image me-3" 
+                                 alt="${sanitizedProduct.name}"
+                                 onerror="this.src='../images/noimg.png'">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">${sanitizedProduct.name}</h6>
+                                <small class="text-muted">SKU: ${sanitizedProduct.sku} | บาร์โค้ด: ${sanitizedProduct.barcode}</small>
+                                <br>
+                                <small class="text-primary">Item ID: ${sanitizedProduct.receive_item_id || 'N/A'} | PO: ${sanitizedProduct.po_id || 'N/A'}</small>
+                                <br>
+                                <small class="text-success">ราคาขาย: ${sanitizedProduct.sale_price ? sanitizedProduct.sale_price.toFixed(2) : '0.00'} บาท</small>
+                                <br>
+                                <small class="text-warning">ล็อต #${batch.receive_id} | วันหมดอายุ: ${batchExpiryLabel} | ${batchStatusLabel}</small>
+                            </div>
+                            <span class="fifo-badge">FIFO</span>
+                        </div>
                     </div>
-                    <span class="fifo-badge">FIFO</span>
+                `;
+            });
+        } else {
+            // Fallback หากไม่มี receive_batches
+            const productData = encodeURIComponent(JSON.stringify(sanitizedProduct));
+            html += `
+                <div class="search-item opacity-50" data-product="${productData}" style="cursor: not-allowed; pointer-events: none;">
+                    <div class="d-flex align-items-center">
+                        <img src="${imageSource}" 
+                             class="product-image me-3" 
+                             alt="${sanitizedProduct.name}"
+                             onerror="this.src='../images/noimg.png'">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">${sanitizedProduct.name}</h6>
+                            <small class="text-muted">SKU: ${sanitizedProduct.sku} | บาร์โค้ด: ${sanitizedProduct.barcode}</small>
+                            <br>
+                            <small class="text-danger">สินค้าหมด</small>
+                        </div>
+                        <span class="fifo-badge">FIFO</span>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
     });
     
     resultsDiv.html(html).show();
@@ -620,11 +669,16 @@ function processIssue() {
 }
 
 // ส่งข้อมูลไปบันทึก
-function submitIssue() {
+function submitIssue(selectedPlatform = null) {
     const issueData = {
         issue_tag: currentIssueTag,
         products: selectedProducts
     };
+    
+    // ถ้ามี selectedPlatform ให้เพิ่มลงใน data
+    if (selectedPlatform) {
+        issueData.selected_platform = selectedPlatform;
+    }
     
     $.ajax({
         url: '../api/issue_product_api.php',
@@ -642,6 +696,9 @@ function submitIssue() {
                     clearAll();
                     location.reload();
                 });
+            } else if (response.needs_platform_confirmation) {
+                // ต้องให้ผู้ใช้เลือก platform ก่อน
+                showPlatformSelectionModal(response.matched_patterns, response.tag);
             } else {
                 Swal.fire('เกิดข้อผิดพลาด', response.message || 'ไม่สามารถยิงสินค้าได้', 'error');
             }
@@ -649,6 +706,66 @@ function submitIssue() {
         error: function(xhr, status, error) {
             console.error('Submit error:', error);
             Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถยิงสินค้าได้', 'error');
+        }
+    });
+}
+
+// แสดง modal เลือก platform เมื่อมี pattern ซ้ำกัน
+function showPlatformSelectionModal(matchedPatterns, tag) {
+    // สร้างปุ่มเลือกแพลตฟอร์ม
+    let platformButtons = '';
+    const platforms = {};
+    
+    // รวบรวมแพลตฟอร์มที่ไม่ซ้ำกัน
+    matchedPatterns.forEach(pattern => {
+        if (!platforms[pattern.platform]) {
+            platforms[pattern.platform] = pattern;
+        }
+    });
+    
+    // สร้าง HTML สำหรับการเลือก
+    let html = `
+        <div class="text-start">
+            <p><strong>แท็ค: ${tag}</strong> ตรงกับหลายแพลตฟอร์ม</p>
+            <p class="text-muted">โปรดเลือกว่าแท็คนี้อยู่ในแพลตฟอร์มไหน:</p>
+            <div class="d-grid gap-2" style="max-width: 100%; padding-top: 10px;">
+    `;
+    
+    const platformArray = Object.keys(platforms);
+    platformArray.forEach((platform, index) => {
+        const patternName = platforms[platform].pattern_name || '';
+        const buttonId = 'platform-btn-' + index;
+        html += `
+            <button type="button" class="btn btn-outline-primary" id="${buttonId}" style="text-align: left;">
+                <strong>${platform}</strong>
+                ${patternName ? `<br><small class="text-muted">${patternName}</small>` : ''}
+            </button>
+        `;
+    });
+    
+    html += `
+            </div>
+        </div>
+    `;
+    
+    Swal.fire({
+        title: 'เลือกแพลตฟอร์ม',
+        html: html,
+        icon: 'question',
+        showCancelButton: true,
+        cancelButtonText: 'ยกเลิก',
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: function() {
+            // เพิ่ม event listener ให้ปุ่มเลือก platform เมื่อ modal แสดงแล้ว
+            platformArray.forEach((platform, index) => {
+                const buttonId = 'platform-btn-' + index;
+                document.getElementById(buttonId).addEventListener('click', function() {
+                    Swal.close();
+                    // ส่ง submit อีกครั้งพร้อมกับ selected_platform
+                    submitIssue(platform);
+                });
+            });
         }
     });
 }
@@ -723,7 +840,61 @@ function checkPlatform(tag) {
         data: { action: 'validate', tag: tag },
         dataType: 'json',
         success: function(response) {
-            if (response.valid) {
+            // ถ้ามีหลาย pattern ตรงกัน ให้แสดง modal เลือก platform
+            if (response.needs_confirmation && response.matched_patterns) {
+                const platformInfo = $('#platform-info');
+                
+                // แสดง popup ให้เลือก
+                let platformOptions = '<div class="d-grid gap-2">';
+                response.matched_patterns.forEach((pattern, index) => {
+                    const btnId = 'platform-choice-' + index;
+                    platformOptions += `
+                        <button type="button" class="btn btn-outline-primary platform-choice-btn" id="${btnId}" data-platform="${pattern.platform}" data-pattern-id="${pattern.pattern_id}" style="text-align: left;">
+                            <strong>${pattern.platform}</strong>
+                            ${pattern.pattern_name ? `<br><small class="text-muted">${pattern.pattern_name}</small>` : ''}
+                        </button>
+                    `;
+                });
+                platformOptions += '</div>';
+                
+                Swal.fire({
+                    title: 'เลือกแพลตฟอร์มสำหรับแท็ค: ' + tag,
+                    html: `
+                        <p class="text-muted">แท็คนี้ตรงกับหลายแพลตฟอร์ม โปรดเลือก:</p>
+                        ${platformOptions}
+                    `,
+                    icon: 'question',
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    didOpen: function() {
+                        // เพิ่ม event listener ให้ปุ่มเลือก
+                        document.querySelectorAll('.platform-choice-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const selectedPlatform = this.getAttribute('data-platform');
+                                currentIssueTag = tag;
+                                
+                                // ปรับปรุง platform info
+                                $('#platform-text').html(`
+                                    <i class="material-icons">check_circle</i> 
+                                    ระบุแพลตฟอร์ม: ${selectedPlatform}
+                                `);
+                                
+                                if (selectedPlatform === 'Shopee') {
+                                    $('#platform-text').css('color', '#ff6b35');
+                                } else if (selectedPlatform === 'Lazada') {
+                                    $('#platform-text').css('color', '#0f146d');
+                                } else {
+                                    $('#platform-text').css('color', '#28a745');
+                                }
+                                
+                                platformInfo.show();
+                                Swal.close();
+                            });
+                        });
+                    }
+                });
+            } else if (response.valid) {
+                const platformInfo = $('#platform-info');
                 const platformText = `ระบุแพลตฟอร์ม: ${response.platform}`;
                 const patternText = response.pattern_name ? ` (${response.pattern_name})` : '';
                 
@@ -740,6 +911,8 @@ function checkPlatform(tag) {
                 } else {
                     $('#platform-text').css('color', '#28a745');
                 }
+                
+                platformInfo.show();
             } else {
                 $('#platform-text').html(`
                     <i class="material-icons">error</i> 

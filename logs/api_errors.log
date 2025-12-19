@@ -1191,3 +1191,160 @@
 [18-Dec-2025 16:04:04 Europe/Berlin] Created sale_order_id: 15
 [18-Dec-2025 16:04:04 Europe/Berlin] Successfully issued: Product ID 4, Qty 5, Receive ID 59, Sale Order ID 15
 [18-Dec-2025 16:04:04 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[19-Dec-2025 13:40:06 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:40:06 Europe/Berlin] Request query: Horse
+[19-Dec-2025 13:40:06 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:40:06 Europe/Berlin] Request URI: /api/product_search_api.php?q=Horse&type=issue&available_only=true
+[19-Dec-2025 13:40:06 Europe/Berlin] Searching for: 'Horse' with limit: 10
+[19-Dec-2025 13:40:06 Europe/Berlin] About to encode 1 results for type: issue
+[19-Dec-2025 13:40:06 Europe/Berlin] Sent JSON response length: 1074
+[19-Dec-2025 13:40:06 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:40:42 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:40:42 Europe/Berlin] Request query: Horse
+[19-Dec-2025 13:40:42 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:40:42 Europe/Berlin] Request URI: /api/product_search_api.php?q=Horse&type=issue&available_only=true
+[19-Dec-2025 13:40:42 Europe/Berlin] Searching for: 'Horse' with limit: 10
+[19-Dec-2025 13:40:42 Europe/Berlin] About to encode 1 results for type: issue
+[19-Dec-2025 13:40:42 Europe/Berlin] Sent JSON response length: 1073
+[19-Dec-2025 13:40:42 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:47:53 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:47:53 Europe/Berlin] Request query: Horse
+[19-Dec-2025 13:47:53 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:47:53 Europe/Berlin] Request URI: /api/product_search_api.php?q=Horse&type=issue&available_only=true
+[19-Dec-2025 13:47:53 Europe/Berlin] Searching for: 'Horse' with limit: 10
+[19-Dec-2025 13:47:53 Europe/Berlin] About to encode 1 results for type: issue
+[19-Dec-2025 13:47:53 Europe/Berlin] Sent JSON response length: 1073
+[19-Dec-2025 13:47:53 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:49:24 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:49:24 Europe/Berlin] Request query: เมื่อพิมพ์สินค้าบางส่วนเพื่อเลือกสินค้า ให้แสดงสินค้าแยกตามล็อตที่รับเข้า receive_items.`receive_id เพื่อสินค้ามีวันหมดอายุต่างกัน แต่ไม่ต้องแสดงจำนวน หากมีสินค้าอยุ่ หากสินค้าหมดแล้ว ให้แสดงว่าสินค้าหมด
+[19-Dec-2025 13:49:24 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:49:24 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B9%80%E0%B8%A1%E0%B8%B7%E0%B9%88%E0%B8%AD%E0%B8%9E%E0%B8%B4%E0%B8%A1%E0%B8%9E%E0%B9%8C%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%84%E0%B9%89%E0%B8%B2%E0%B8%9A%E0%B8%B2%E0%B8%87%E0%B8%AA%E0%B9%88%E0%B8%A7%E0%B8%99%E0%B9%80%E0%B8%9E%E0%B8%B7%E0%B9%88%E0%B8%AD%E0%B9%80%E0%B8%A5%E0%B8%B7%E0%B8%AD%E0%B8%81%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%84%E0%B9%89%E0%B8%B2%20%E0%B9%83%E0%B8%AB%E0%B9%89%E0%B9%81%E0%B8%AA%E0%B8%94%E0%B8%87%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%84%E0%B9%89%E0%B8%B2%E0%B9%81%E0%B8%A2%E0%B8%81%E0%B8%95%E0%B8%B2%E0%B8%A1%E0%B8%A5%E0%B9%87%E0%B8%AD%E0%B8%95%E0%B8%97%E0%B8%B5%E0%B9%88%E0%B8%A3%E0%B8%B1%E0%B8%9A%E0%B9%80%E0%B8%82%E0%B9%89%E0%B8%B2%20receive_items.%60receive_id%20%E0%B9%80%E0%B8%9E%E0%B8%B7%E0%B9%88%E0%B8%AD%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%84%E0%B9%89%E0%B8%B2%E0%B8%A1%E0%B8%B5%E0%B8%A7%E0%B8%B1%E0%B8%99%E0%B8%AB%E0%B8%A1%E0%B8%94%E0%B8%AD%E0%B8%B2%E0%B8%A2%E0%B8%B8%E0%B8%95%E0%B9%88%E0%B8%B2%E0%B8%87%E0%B8%81%E0%B8%B1%E0%B8%99%20%E0%B9%81%E0%B8%95%E0%B9%88%E0%B9%84%E0%B8%A1%E0%B9%88%E0%B8%95%E0%B9%89%E0%B8%AD%E0%B8%87%E0%B9%81%E0%B8%AA%E0%B8%94%E0%B8%87%E0%B8%88%E0%B8%B3%E0%B8%99%E0%B8%A7%E0%B8%99%20%E0%B8%AB%E0%B8%B2%E0%B8%81%E0%B8%A1%E0%B8%B5%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%84%E0%B9%89%E0%B8%B2%E0%B8%AD%E0%B8%A2%E0%B8%B8%E0%B9%88%20%E0%B8%AB%E0%B8%B2%E0%B8%81%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%84%E0%B9%89%E0%B8%B2%E0%B8%AB%E0%B8%A1%E0%B8%94%E0%B9%81%E0%B8%A5%E0%B9%89%E0%B8%A7%20%E0%B9%83%E0%B8%AB%E0%B9%89%E0%B9%81%E0%B8%AA%E0%B8%94%E0%B8%87%E0%B8%A7%E0%B9%88%E0%B8%B2%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%84%E0%B9%89%E0%B8%B2%E0%B8%AB%E0%B8%A1%E0%B8%94&type=issue&available_only=true
+[19-Dec-2025 13:49:24 Europe/Berlin] Searching for: 'เมื่อพิมพ์สินค้าบางส่วนเพื่อเลือกสินค้า ให้แสดงสินค้าแยกตามล็อตที่รับเข้า receive_items.`receive_id เพื่อสินค้ามีวันหมดอายุต่างกัน แต่ไม่ต้องแสดงจำนวน หากมีสินค้าอยุ่ หากสินค้าหมดแล้ว ให้แสดงว่าสินค้าหมด' with limit: 10
+[19-Dec-2025 13:49:24 Europe/Berlin] About to encode 0 results for type: issue
+[19-Dec-2025 13:49:24 Europe/Berlin] Sent JSON response length: 15
+[19-Dec-2025 13:49:24 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:49:30 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:49:30 Europe/Berlin] Request query: hu
+[19-Dec-2025 13:49:30 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:49:30 Europe/Berlin] Request URI: /api/product_search_api.php?q=hu&type=issue&available_only=true
+[19-Dec-2025 13:49:30 Europe/Berlin] Searching for: 'hu' with limit: 10
+[19-Dec-2025 13:49:30 Europe/Berlin] About to encode 0 results for type: issue
+[19-Dec-2025 13:49:30 Europe/Berlin] Sent JSON response length: 15
+[19-Dec-2025 13:49:30 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:49:32 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:49:32 Europe/Berlin] Request query: hut
+[19-Dec-2025 13:49:32 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:49:32 Europe/Berlin] Request URI: /api/product_search_api.php?q=hut&type=issue&available_only=true
+[19-Dec-2025 13:49:32 Europe/Berlin] Searching for: 'hut' with limit: 10
+[19-Dec-2025 13:49:32 Europe/Berlin] About to encode 0 results for type: issue
+[19-Dec-2025 13:49:32 Europe/Berlin] Sent JSON response length: 15
+[19-Dec-2025 13:49:32 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:49:33 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:49:33 Europe/Berlin] Request query: hur
+[19-Dec-2025 13:49:33 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:49:33 Europe/Berlin] Request URI: /api/product_search_api.php?q=hur&type=issue&available_only=true
+[19-Dec-2025 13:49:33 Europe/Berlin] Searching for: 'hur' with limit: 10
+[19-Dec-2025 13:49:33 Europe/Berlin] About to encode 0 results for type: issue
+[19-Dec-2025 13:49:33 Europe/Berlin] Sent JSON response length: 15
+[19-Dec-2025 13:49:33 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:49:35 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:49:35 Europe/Berlin] Request query: hou
+[19-Dec-2025 13:49:35 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:49:35 Europe/Berlin] Request URI: /api/product_search_api.php?q=hou&type=issue&available_only=true
+[19-Dec-2025 13:49:35 Europe/Berlin] Searching for: 'hou' with limit: 10
+[19-Dec-2025 13:49:35 Europe/Berlin] About to encode 0 results for type: issue
+[19-Dec-2025 13:49:35 Europe/Berlin] Sent JSON response length: 15
+[19-Dec-2025 13:49:35 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:49:36 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:49:36 Europe/Berlin] Request query: hot
+[19-Dec-2025 13:49:36 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:49:36 Europe/Berlin] Request URI: /api/product_search_api.php?q=hot&type=issue&available_only=true
+[19-Dec-2025 13:49:36 Europe/Berlin] Searching for: 'hot' with limit: 10
+[19-Dec-2025 13:49:36 Europe/Berlin] About to encode 0 results for type: issue
+[19-Dec-2025 13:49:36 Europe/Berlin] Sent JSON response length: 15
+[19-Dec-2025 13:49:36 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:49:37 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:49:37 Europe/Berlin] Request query: hor
+[19-Dec-2025 13:49:37 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:49:37 Europe/Berlin] Request URI: /api/product_search_api.php?q=hor&type=issue&available_only=true
+[19-Dec-2025 13:49:37 Europe/Berlin] Searching for: 'hor' with limit: 10
+[19-Dec-2025 13:49:37 Europe/Berlin] About to encode 0 results for type: issue
+[19-Dec-2025 13:49:37 Europe/Berlin] Sent JSON response length: 15
+[19-Dec-2025 13:49:37 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:49:40 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:49:40 Europe/Berlin] Request query: horse
+[19-Dec-2025 13:49:40 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:49:40 Europe/Berlin] Request URI: /api/product_search_api.php?q=horse&type=issue&available_only=true
+[19-Dec-2025 13:49:40 Europe/Berlin] Searching for: 'horse' with limit: 10
+[19-Dec-2025 13:49:40 Europe/Berlin] About to encode 0 results for type: issue
+[19-Dec-2025 13:49:40 Europe/Berlin] Sent JSON response length: 15
+[19-Dec-2025 13:49:40 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:49:46 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:49:46 Europe/Berlin] Request query: Hor
+[19-Dec-2025 13:49:46 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:49:46 Europe/Berlin] Request URI: /api/product_search_api.php?q=Hor&type=issue&available_only=true
+[19-Dec-2025 13:49:46 Europe/Berlin] Searching for: 'Hor' with limit: 10
+[19-Dec-2025 13:49:46 Europe/Berlin] About to encode 1 results for type: issue
+[19-Dec-2025 13:49:46 Europe/Berlin] Sent JSON response length: 1073
+[19-Dec-2025 13:49:46 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:49:47 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:49:47 Europe/Berlin] Request query: Horse
+[19-Dec-2025 13:49:47 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:49:47 Europe/Berlin] Request URI: /api/product_search_api.php?q=Horse&type=issue&available_only=true
+[19-Dec-2025 13:49:47 Europe/Berlin] Searching for: 'Horse' with limit: 10
+[19-Dec-2025 13:49:47 Europe/Berlin] About to encode 1 results for type: issue
+[19-Dec-2025 13:49:47 Europe/Berlin] Sent JSON response length: 1073
+[19-Dec-2025 13:49:47 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:51:00 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:51:00 Europe/Berlin] Request query: ho
+[19-Dec-2025 13:51:00 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:51:00 Europe/Berlin] Request URI: /api/product_search_api.php?q=ho&type=issue&available_only=true
+[19-Dec-2025 13:51:00 Europe/Berlin] Searching for: 'ho' with limit: 10
+[19-Dec-2025 13:51:00 Europe/Berlin] About to encode 4 results for type: issue
+[19-Dec-2025 13:51:00 Europe/Berlin] Sent JSON response length: 4392
+[19-Dec-2025 13:51:00 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:51:02 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:51:02 Europe/Berlin] Request query: Ho
+[19-Dec-2025 13:51:02 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:51:02 Europe/Berlin] Request URI: /api/product_search_api.php?q=Ho&type=issue&available_only=true
+[19-Dec-2025 13:51:02 Europe/Berlin] Searching for: 'Ho' with limit: 10
+[19-Dec-2025 13:51:02 Europe/Berlin] About to encode 1 results for type: issue
+[19-Dec-2025 13:51:02 Europe/Berlin] Sent JSON response length: 1073
+[19-Dec-2025 13:51:02 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:51:03 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 13:51:03 Europe/Berlin] Request query: Hor
+[19-Dec-2025 13:51:03 Europe/Berlin] Request method: GET
+[19-Dec-2025 13:51:03 Europe/Berlin] Request URI: /api/product_search_api.php?q=Hor&type=issue&available_only=true
+[19-Dec-2025 13:51:03 Europe/Berlin] Searching for: 'Hor' with limit: 10
+[19-Dec-2025 13:51:03 Europe/Berlin] About to encode 1 results for type: issue
+[19-Dec-2025 13:51:03 Europe/Berlin] Sent JSON response length: 1073
+[19-Dec-2025 13:51:03 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 13:51:06 Europe/Berlin] Issue request: Tag=56464, Products=1, User=1
+[19-Dec-2025 13:51:06 Europe/Berlin] Created sale_order_id: 16
+[19-Dec-2025 13:51:06 Europe/Berlin] Successfully issued: Product ID 14, Qty 1, Receive ID 40, Sale Order ID 16
+[19-Dec-2025 13:51:06 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[19-Dec-2025 14:42:52 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 14:42:52 Europe/Berlin] Request query: ้น
+[19-Dec-2025 14:42:52 Europe/Berlin] Request method: GET
+[19-Dec-2025 14:42:52 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B9%89%E0%B8%99&type=issue&available_only=true
+[19-Dec-2025 14:42:52 Europe/Berlin] Searching for: '้น' with limit: 10
+[19-Dec-2025 14:42:52 Europe/Berlin] About to encode 9 results for type: issue
+[19-Dec-2025 14:42:52 Europe/Berlin] Sent JSON response length: 13642
+[19-Dec-2025 14:42:52 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 14:42:58 Europe/Berlin] Issue request: Tag=1254789658745896547, Products=1, User=1
+[19-Dec-2025 14:42:58 Europe/Berlin] Created sale_order_id: 17
+[19-Dec-2025 14:42:58 Europe/Berlin] Successfully issued: Product ID 23, Qty 1, Receive ID 53, Sale Order ID 17
+[19-Dec-2025 14:42:58 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[19-Dec-2025 15:06:33 Europe/Berlin] === product_search_api.php START ===
+[19-Dec-2025 15:06:33 Europe/Berlin] Request query: หู
+[19-Dec-2025 15:06:33 Europe/Berlin] Request method: GET
+[19-Dec-2025 15:06:33 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%AB%E0%B8%B9&type=issue&available_only=true
+[19-Dec-2025 15:06:33 Europe/Berlin] Searching for: 'หู' with limit: 10
+[19-Dec-2025 15:06:33 Europe/Berlin] About to encode 2 results for type: issue
+[19-Dec-2025 15:06:33 Europe/Berlin] Sent JSON response length: 2108
+[19-Dec-2025 15:06:33 Europe/Berlin] === product_search_api.php END ===
+[19-Dec-2025 15:06:39 Europe/Berlin] Issue request: Tag=TH520482U7BU3A, Products=1, User=1
+[19-Dec-2025 15:06:39 Europe/Berlin] Validation result: {"valid":true,"platform":"Lazada","pattern_name":"Lazada-TH-Flash Express","pattern_id":7,"description":"TH + \u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 6 \u0e2b\u0e25\u0e31\u0e01 + \u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23\/\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 5-7 \u0e15\u0e31\u0e27","matched_count":1,"matched_patterns":[{"pattern_id":7,"platform":"Lazada","pattern_name":"Lazada-TH-Flash Express","regex_pattern":"^TH[0-9]{6}[A-Z0-9]{5,7}$","description":"TH + \u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 6 \u0e2b\u0e25\u0e31\u0e01 + \u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23\/\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 5-7 \u0e15\u0e31\u0e27"}]}
+[19-Dec-2025 15:06:39 Europe/Berlin] Created sale_order_id: 18
+[19-Dec-2025 15:06:39 Europe/Berlin] Successfully issued: Product ID 8, Qty 1, Receive ID 63, Sale Order ID 18
+[19-Dec-2025 15:06:39 Europe/Berlin] Issue completed: 1 successful, 0 errors
