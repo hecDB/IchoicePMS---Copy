@@ -19,6 +19,7 @@ $sql = "
     r.expiry_date,
     tp.product_name AS product_name,
     tp.product_category,
+    tp.unit,
     tp.temp_product_id,
     tp.provisional_sku,
     tp.provisional_barcode,
@@ -43,6 +44,7 @@ UNION ALL
     ri.expiry_date,
     tp.product_name AS product_name,
     tp.product_category,
+    tp.unit,
     tp.temp_product_id,
     tp.provisional_sku,
     tp.provisional_barcode,
@@ -679,7 +681,7 @@ function resolveTransactionImageSrc($imageValue) {
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" title="แก้ไข SKU/Barcode/รูปภาพ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
+                                    <button class="btn btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" title="แก้ไข SKU/Barcode/รูปภาพ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
                                         <span class="material-icons" style="font-size: 1rem;">edit</span>
                                     </button>
                                     <button class="btn btn-outline-success approve-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-name="<?= htmlspecialchars($row['product_name']) ?>" title="อนุมัติและย้ายไปคลังปกติ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
@@ -799,6 +801,7 @@ $(document).ready(function() {
         const provisionalBarcode = $(this).data('provisional-barcode');
         const salePrice = $(this).attr('data-sale-price');
         const remarkRaw = $(this).attr('data-remark');
+        const unitValue = $(this).data('unit');
         const rowImageSrc = $(this).closest('tr').find('img.product-image').attr('src');
         
         $('#tempProductId').val(tempId);
@@ -806,6 +809,7 @@ $(document).ready(function() {
         $('#expiryInput').val(expiry);
         $('#provisionalSkuInput').val(provisionalSku);
         $('#provisionalBarcodeInput').val(provisionalBarcode);
+        $('#unitInput').val(unitValue || '');
         $('#salePriceInput').val('');
         $('#remarkInput').val('');
         if (salePrice !== undefined && salePrice !== null && salePrice !== '') {
@@ -912,6 +916,7 @@ $(document).ready(function() {
         const expiryDate = $('#expiryInput').val();
         const provisionalSku = $('#provisionalSkuInput').val();
         const provisionalBarcode = $('#provisionalBarcodeInput').val();
+        const unitValue = $('#unitInput').val().trim();
         const rowCode = $('#editRowCodeInput').val().trim();
         const bin = $('#editBinInput').val().trim();
         const shelf = $('#editShelfInput').val().trim();
@@ -950,14 +955,14 @@ $(document).ready(function() {
         
         // Process image compression if exists
         if (imageFile) {
-            compressAndSendImage(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf, salePrice, remark, locationId);
+            compressAndSendImage(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, salePrice, remark, locationId);
         } else {
-            sendFormData(null, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf, salePrice, remark, locationId);
+            sendFormData(null, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, salePrice, remark, locationId);
         }
     });
     
     // Compress image and send
-    function compressAndSendImage(file, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf, salePrice, remark, locationId) {
+    function compressAndSendImage(file, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, salePrice, remark, locationId) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = new Image();
@@ -996,7 +1001,7 @@ $(document).ready(function() {
                     console.log(`Image Compressed: ${originalSize}KB → ${compressedSize}KB`);
                     console.log('Sending file:', compressedFile.name, compressedFile.type, compressedFile.size);
                     
-                    sendFormData(compressedFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf, salePrice, remark, locationId);
+                    sendFormData(compressedFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, salePrice, remark, locationId);
                 }, 'image/jpeg', 0.85);
             };
             img.src = e.target.result;
@@ -1005,12 +1010,13 @@ $(document).ready(function() {
     }
     
     // Send form data to server
-    function sendFormData(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, rowCode, bin, shelf, salePrice, remark, locationId) {
+    function sendFormData(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, salePrice, remark, locationId) {
         const formData = new FormData();
         formData.append('temp_product_id', tempId);
         formData.append('expiry_date', expiryDate);
         formData.append('provisional_sku', provisionalSku);
         formData.append('provisional_barcode', provisionalBarcode);
+        formData.append('unit', unitValue);
         formData.append('row_code', rowCode);
         formData.append('bin', bin);
         formData.append('shelf', shelf);
@@ -1156,10 +1162,11 @@ $(document).ready(function() {
                     dataType: 'json',
                     success: function(response) {
                         if (response.success) {
+                            const productId = response.product_id || response.new_product_id || '-';
                             Swal.fire({
                                 icon: 'success',
                                 title: 'อนุมัติสำเร็จ!',
-                                text: 'สินค้าถูกย้ายไปยังคลังปกติแล้ว\nรหัสสินค้า: ' + response.product_id,
+                                text: 'สินค้าถูกย้ายไปยังคลังปกติแล้ว\nรหัสสินค้า: ' + productId,
                                 confirmButtonText: 'ตกลง'
                             }).then((result) => {
                                 if (result.isConfirmed) {
@@ -1347,6 +1354,11 @@ function selectLocationEdit(locationId, rowCode, bin, shelf) {
                     <div class="mb-3">
                         <label for="provisionalBarcodeInput" class="form-label">บาร์โค้ดสำรอง</label>
                         <input type="text" class="form-control" id="provisionalBarcodeInput" name="provisional_barcode" placeholder="ใส่บาร์โค้ดสำรอง">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="unitInput" class="form-label">หน่วยนับ</label>
+                        <input type="text" class="form-control" id="unitInput" name="unit" placeholder="เช่น ชิ้น, กล่อง, แพ็ค">
                     </div>
                     
                     <div class="mb-3">

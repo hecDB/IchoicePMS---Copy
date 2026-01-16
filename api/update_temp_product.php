@@ -92,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $temp_product_id = isset($_POST['temp_product_id']) ? (int)$_POST['temp_product_id'] : 0;
 $provisional_sku = isset($_POST['provisional_sku']) ? trim($_POST['provisional_sku']) : '';
 $provisional_barcode = isset($_POST['provisional_barcode']) ? trim($_POST['provisional_barcode']) : '';
+$unit = isset($_POST['unit']) ? trim($_POST['unit']) : '';
 $expiry_date = isset($_POST['expiry_date']) ? $_POST['expiry_date'] : null;
 $sale_price_raw = isset($_POST['sale_price']) ? trim($_POST['sale_price']) : null;
 $sale_price = ($sale_price_raw !== null && $sale_price_raw !== '' && is_numeric($sale_price_raw)) ? (float)$sale_price_raw : null;
@@ -347,6 +348,7 @@ try {
         $sql = "UPDATE temp_products SET 
             provisional_sku = :provisional_sku,
             provisional_barcode = :provisional_barcode,
+            unit = :unit,
             remark = :remark";
     
     if ($stored_image_path !== null) {
@@ -360,6 +362,7 @@ try {
     $params = [
         ':provisional_sku' => $provisional_sku,
         ':provisional_barcode' => $provisional_barcode,
+        ':unit' => $unit,
         ':remark' => $remark,
         ':temp_product_id' => $temp_product_id
     ];
@@ -430,6 +433,23 @@ try {
         ]);
         error_log("Sale price updated rows: " . $stmtSalePrice->rowCount());
     }
+
+    // Update unit on converted products if available
+    if ($unit !== '') {
+        $sqlUpdateUnit = "UPDATE products SET unit = :unit
+                           WHERE product_id IN (
+                               SELECT DISTINCT poi.product_id
+                               FROM purchase_order_items poi
+                               WHERE poi.temp_product_id = :temp_product_id
+                                 AND poi.product_id IS NOT NULL
+                           )";
+        $stmtUpdateUnit = $pdo->prepare($sqlUpdateUnit);
+        $stmtUpdateUnit->execute([
+            ':unit' => $unit,
+            ':temp_product_id' => $temp_product_id
+        ]);
+        error_log("Products unit updated rows: " . $stmtUpdateUnit->rowCount());
+    }
     
     // หากมี expiry_date ให้อัปเดต receive_items
         if ($stored_image_path !== null) {
@@ -473,6 +493,7 @@ try {
         'image_filename' => $image_filename,
         'image_path' => $stored_image_path,
         'sale_price' => $sale_price,
+        'unit' => $unit,
         'remark' => $remark,
         'location_id' => $location_id,
         'row_code' => $row_code,

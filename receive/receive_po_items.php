@@ -56,54 +56,27 @@ $new_product_orders = array_filter($all_purchase_orders, function($po) {
     return $po['remark'] && stripos($po['remark'], 'New Product Purchase') !== false;
 });
 
-// Calculate statistics for all POs (including completed ones)
-$sql_stats = "
-    SELECT 
-        po.po_id,
-        COUNT(poi.item_id) as total_items,
-        COALESCE(SUM(
-            CASE WHEN (COALESCE(received_summary.total_received, 0) + COALESCE(poi.cancel_qty, 0)) >= poi.qty THEN 1 ELSE 0 END
-        ), 0) as fully_received_items,
-        COALESCE(SUM(
-            CASE WHEN (COALESCE(received_summary.total_received, 0) + COALESCE(poi.cancel_qty, 0)) > 0 AND (COALESCE(received_summary.total_received, 0) + COALESCE(poi.cancel_qty, 0)) < poi.qty THEN 1 ELSE 0 END
-        ), 0) as partially_received_items,
-        COALESCE(SUM(poi.qty), 0) as total_ordered_qty,
-        COALESCE(SUM(COALESCE(received_summary.total_received, 0)), 0) as total_received_qty,
-        COALESCE(SUM(COALESCE(poi.cancel_qty, 0)), 0) as total_cancelled_qty
-    FROM purchase_orders po
-    LEFT JOIN purchase_order_items poi ON po.po_id = poi.po_id
-    LEFT JOIN (
-        SELECT item_id, SUM(receive_qty) as total_received 
-        FROM receive_items 
-        GROUP BY item_id
-    ) received_summary ON poi.item_id = received_summary.item_id
-    WHERE po.status IN ('pending', 'partial', 'completed')
-    GROUP BY po.po_id
+// Calculate statistics directly from purchase_orders.status so the cards match table data
+$sql_status_counts = "
+    SELECT status, COUNT(*) AS cnt
+    FROM purchase_orders
+    GROUP BY status
 ";
 
-$stmt_stats = $pdo->query($sql_stats);
-$all_pos = $stmt_stats->fetchAll(PDO::FETCH_ASSOC);
+$status_counts = [];
+$stmt_status = $pdo->query($sql_status_counts);
+foreach ($stmt_status->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $status = $row['status'] ?? '';
+    $count = (int)($row['cnt'] ?? 0);
+    if ($status !== '') {
+        $status_counts[$status] = $count;
+    }
+}
 
-// Calculate statistics
-$total_pos = count($purchase_orders); // Only incomplete regular POs shown
-$total_new_product_pos = count($new_product_orders); // Incomplete new product POs
-$total_all_pos = count($all_pos); // All POs for statistics
-
-// สถานะใหม่: ตรวจสอบจากจำนวนที่รับจริง + จำนวนที่ยกเลิก เทียบกับจำนวนที่สั่ง
-$ready_to_receive = count(array_filter($all_pos, function($po) {
-    $total_fulfilled = $po['total_received_qty'] + $po['total_cancelled_qty'];
-    return $total_fulfilled == 0; // ยังไม่ได้รับหรือยกเลิกเลย
-}));
-
-$partially_received = count(array_filter($all_pos, function($po) {
-    $total_fulfilled = $po['total_received_qty'] + $po['total_cancelled_qty'];
-    return $total_fulfilled > 0 && $total_fulfilled < $po['total_ordered_qty']; // รับบางส่วน (น้อยกว่าที่สั่ง)
-}));
-
-$fully_received = count(array_filter($all_pos, function($po) {
-    $total_fulfilled = $po['total_received_qty'] + $po['total_cancelled_qty'];
-    return $total_fulfilled >= $po['total_ordered_qty']; // รับครบหรือยกเลิกครบตามจำนวนสั่ง
-}));
+$total_all_pos = array_sum($status_counts); // ทุกสถานะรวม
+$ready_to_receive = $status_counts['pending'] ?? 0; // พร้อมรับสินค้า
+$partially_received = $status_counts['partial'] ?? 0; // รับบางส่วน
+$fully_received = $status_counts['completed'] ?? 0; // รับครบแล้ว
 
 ?>
 
@@ -294,7 +267,8 @@ $fully_received = count(array_filter($all_pos, function($po) {
         }
 
         .receive-qty-input {
-            width: 80px;
+            min-width: 120px;
+            max-width: 150px;
         }
 
         .quick-receive-btn {
@@ -749,14 +723,15 @@ $fully_received = count(array_filter($all_pos, function($po) {
                             <tr>
                                 <th width="3%">#</th>
                                 <th width="8%">รูปภาพ</th>
-                                <th width="20%">สินค้า</th>
-                                <th width="6%">SKU</th>
-                                <th width="6%">หน่วย</th>
-                                <th width="7%">จำนวนสั่ง</th>
-                                <th width="7%">ราคา/หน่วย</th>
-                                <th width="7%">รับแล้ว</th>
-                                <th width="7%">ยกเลิก</th>
-                                <th width="7%">คงเหลือ</th>
+                                <th width="10%">สินค้า</th>
+                                <th width="10%">SKU</th>
+                                <th width="5%">หน่วย</th>
+                                <th width="5%">จำนวนสั่ง</th>
+                                <th width="5%">ราคา/หน่วย</th>
+                                <th width="5%">รับแล้ว</th>
+                                <th width="5%">ยกเลิก</th>
+                                <th width="5%">ชำรุด</th>
+                                <th width="5%">คงเหลือ</th>
                                 <th width="11%">วันหมดอายุ</th>
                                 <th width="11%">รับเข้า</th>
                             </tr>
@@ -840,6 +815,75 @@ $fully_received = count(array_filter($all_pos, function($po) {
                 <button type="button" class="btn btn-success" id="confirmQuickReceive">
                     <span class="material-icons me-1">check</span>
                     ยืนยันรับเข้า
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Damaged Item Modal -->
+<div class="modal fade" id="damagedItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+                <h5 class="modal-title">
+                    <span class="material-icons align-middle me-2">construction</span>
+                    สินค้าชำรุดบางส่วน
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter: invert(1);"></button>
+            </div>
+            <div class="modal-body">
+                <form id="damagedItemForm">
+                    <input type="hidden" id="damagedItemId">
+                    <input type="hidden" id="damagedProductId">
+                    <input type="hidden" id="damagedPoId">
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">สินค้า</label>
+                        <div id="damagedProductName" class="form-control-plaintext fw-bold text-warning"></div>
+                        <small class="text-muted">SKU: <span id="damagedSku"></span></small>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label">คงเหลือรับได้</label>
+                            <div id="damagedRemaining" class="form-control-plaintext text-info fw-bold"></div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">จำนวนสั่ง</label>
+                            <div id="damagedOrdered" class="form-control-plaintext text-muted"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="damagedQty" class="form-label fw-bold">จำนวนที่ชำรุด *</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="damagedQty" min="0.01" step="0.01" required>
+                            <span class="input-group-text" id="damagedUnit"></span>
+                        </div>
+                        <small class="text-muted">ระบุจำนวนไม่เกินคงเหลือรับได้</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">สถานะสินค้า</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="damagedDisposition" id="damagedSellable" value="sellable" checked>
+                                <label class="form-check-label" for="damagedSellable">ขายได้</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="damagedDisposition" id="damagedDiscard" value="discard">
+                                <label class="form-check-label" for="damagedDiscard">ทิ้ง/ใช้ไม่ได้</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="damagedNotes" class="form-label">หมายเหตุ</label>
+                        <textarea class="form-control" id="damagedNotes" rows="2" placeholder="รายละเอียดสภาพสินค้า..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="button" class="btn btn-warning" id="confirmDamagedItem">
+                    <span class="material-icons align-middle me-1">check</span>
+                    ส่งเข้าตรวจสอบ
                 </button>
             </div>
         </div>
@@ -996,6 +1040,26 @@ function escapeHtml(text) {
     return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
+// Fetch damaged reason id (สินค้าชำรุดบางส่วน)
+function fetchDamagedReasonId() {
+    $.ajax({
+        url: '../api/returned_items_api.php?action=get_reasons',
+        method: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (!response || response.status !== 'success' || !Array.isArray(response.data)) {
+                console.warn('Cannot load return reasons');
+                return;
+            }
+            const match = response.data.find(r => (r.reason_name || '').trim() === 'สินค้าชำรุดบางส่วน');
+            damagedReasonId = match ? match.reason_id : null;
+        },
+        error: function(xhr, status, error) {
+            console.error('Failed to fetch reasons', error);
+        }
+    });
+}
+
 function formatThaiDate(dateString) {
     if (!dateString) return '-';
     const date = new Date(dateString + 'T00:00:00');
@@ -1087,6 +1151,101 @@ function resolveProductImage(item) {
     return fallback;
 }
 
+function showDamagedItemModal({ itemId, productId, productName, orderedQty, remainingQty, unit, sku }) {
+    $('#damagedItemId').val(itemId);
+    $('#damagedProductId').val(productId);
+    $('#damagedPoId').val(currentPoData.poId || '');
+    $('#damagedProductName').text(productName || '-');
+    $('#damagedSku').text(sku || '-');
+    $('#damagedOrdered').text(orderedQty.toLocaleString() + ' ' + (unit || ''));
+    $('#damagedRemaining').text(remainingQty.toLocaleString() + ' ' + (unit || ''));
+    $('#damagedUnit').text(unit || '');
+    $('#damagedQty').attr('max', remainingQty > 0 ? remainingQty : 0).val(remainingQty > 0 ? remainingQty : '');
+    $('#damagedNotes').val('');
+    $('#damagedSellable').prop('checked', true);
+
+    $('#damagedItemModal').modal('show');
+
+    setTimeout(() => {
+        $('#damagedQty').focus().select();
+    }, 300);
+}
+
+function submitDamagedItem() {
+    const itemId = $('#damagedItemId').val();
+    const productId = $('#damagedProductId').val();
+    const poId = $('#damagedPoId').val();
+    const qty = parseFloat($('#damagedQty').val());
+    const maxQty = parseFloat($('#damagedQty').attr('max'));
+    const notes = $('#damagedNotes').val() || '';
+    const disposition = $('input[name="damagedDisposition"]:checked').val();
+
+    if (!damagedReasonId) {
+        Swal.fire({ icon: 'warning', title: 'ไม่พบเหตุผลชำรุดบางส่วน', text: 'กรุณาเพิ่มเหตุผลก่อน' });
+        return;
+    }
+
+    if (!itemId || !productId || !poId) {
+        Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบ', text: 'ไม่พบข้อมูลสินค้า/PO' });
+        return;
+    }
+
+    if (!qty || qty <= 0) {
+        Swal.fire({ icon: 'warning', title: 'จำนวนไม่ถูกต้อง', text: 'กรุณากรอกจำนวนที่มากกว่า 0' });
+        return;
+    }
+
+    if (Number.isFinite(maxQty) && qty > maxQty + 0.00001) {
+        Swal.fire({ icon: 'warning', title: 'จำนวนเกินกำหนด', text: 'จำนวนชำรุดต้องไม่เกินคงเหลือรับได้' });
+        return;
+    }
+
+    const finalNotes = disposition === 'discard'
+        ? `[ทิ้ง/ใช้ไม่ได้] ${notes}`.trim()
+        : `[ขายได้] ${notes}`.trim();
+
+    Swal.fire({
+        title: 'ยืนยันส่งตรวจสอบสินค้าชำรุด',
+        text: `จำนวน ${qty.toLocaleString()}`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#f59e0b',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'ยกเลิก'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        $.ajax({
+            url: '../api/returned_items_api.php?action=create_return',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                action: 'create_return',
+                po_id: poId,
+                item_id: itemId,
+                product_id: productId,
+                return_qty: qty,
+                reason_id: damagedReasonId,
+                notes: finalNotes
+            }),
+            dataType: 'json',
+            success: function(response) {
+                if (response && response.status === 'success') {
+                    Swal.fire({ icon: 'success', title: 'ส่งเข้าตรวจสอบแล้ว', text: 'ไปที่เมนูสินค้าชำรุดเพื่อดำเนินการต่อ' });
+                    $('#damagedItemModal').modal('hide');
+                } else {
+                    Swal.fire({ icon: 'error', title: 'ไม่สามารถส่งตรวจสอบได้', text: (response && response.message) || 'กรุณาลองใหม่' });
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Damaged submit error:', error);
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถส่งตรวจสอบได้ กรุณาลองใหม่' });
+            }
+        });
+    });
+}
+
 // Toggle completed POs function
 function toggleCompletedPOs() {
     const button = $('#toggleText');
@@ -1133,6 +1292,7 @@ function toggleCompletedPOs() {
 // Global variables for modal and items
 let currentPoData = {};
 let receiveItems = {};
+let damagedReasonId = null;
 
 // Load PO items - GLOBAL FUNCTION
 function loadPoItems(poId, poNumber, supplier, mode, remark) {
@@ -1343,7 +1503,9 @@ function displayPoItems(items, mode) {
         items.forEach(function(item, index) {
             const remainingQty = parseFloat(item.remaining_qty);
             const cancelledQty = parseFloat(item.cancel_qty || 0);
+            const damagedQty = parseFloat(item.damaged_qty || 0);
             const canReceive = remainingQty > 0;
+            const allowDamaged = !!item.product_id;
             const isCancelled = item.is_cancelled === true || item.is_cancelled === 1;
             const productName = escapeHtml(item.product_name);
             const imageSrc = resolveProductImage(item);
@@ -1378,6 +1540,9 @@ function displayPoItems(items, mode) {
                     <td class="fw-bold ${cancelledQty > 0 ? 'text-danger' : 'text-muted'}">
                         ${cancelledQty > 0 ? `<span title="${cancelTooltip}">${cancelledQty.toLocaleString()}</span>` : '-'}
                     </td>
+                    <td class="fw-bold ${damagedQty > 0 ? 'text-warning' : 'text-muted'}">
+                        ${damagedQty > 0 ? damagedQty.toLocaleString() : '-'}
+                    </td>
                     <td class="fw-bold ${canReceive ? 'text-warning' : 'text-muted'}">${remainingQty.toLocaleString()}</td>
                     <td>
                         <div class="d-flex align-items-center gap-1 flex-wrap">
@@ -1399,6 +1564,7 @@ function displayPoItems(items, mode) {
                         <input type="number" 
                                class="form-control receive-qty-input" 
                                data-item-id="${item.item_id}"
+                               data-product-id="${item.product_id}"
                                data-max="${remainingQty}"
                                min="0" 
                                max="${remainingQty}" 
@@ -1413,6 +1579,19 @@ function displayPoItems(items, mode) {
                                 data-unit="${escapeHtml(item.unit)}"
                                 title="รับเข้าด่วน">
                             <span class="material-icons" style="font-size: 1rem;">speed</span>
+                        </button>
+                        <button type="button" 
+                                class="btn btn-outline-warning damaged-item-btn"
+                                data-item-id="${item.item_id}"
+                                data-product-id="${item.product_id}"
+                                data-product-name="${escapeHtml(item.product_name)}"
+                                data-ordered-qty="${item.order_qty}"
+                                data-remaining-qty="${remainingQty}"
+                                data-unit="${escapeHtml(item.unit)}"
+                                data-sku="${escapeHtml(item.sku)}"
+                                title="สินค้าชำรุดบางส่วน"
+                                ${allowDamaged ? '' : 'disabled'}>
+                            <span class="material-icons" style="font-size: 1rem;">construction</span>
                         </button>
                         <button type="button" 
                                 class="btn btn-outline-danger cancel-item-btn"
@@ -1453,6 +1632,9 @@ function displayPoItems(items, mode) {
 $(document).ready(function() {
     let showingCompleted = false;
     let currentFilter = 'all';
+
+    // Load damaged reason id once
+    fetchDamagedReasonId();
     
     // Filter buttons click event
     $('.filter-btn, .filter-btn-card').on('click', function() {
@@ -1902,6 +2084,27 @@ $(document).ready(function() {
 
         showCancelItemModal(itemId, productName, remainingQty, unit);
     });
+
+    $(document).on('click', '.damaged-item-btn', function() {
+        const itemId = $(this).data('item-id');
+        const productId = $(this).data('product-id');
+        const productName = $(this).data('product-name');
+        const orderedQty = parseFloat($(this).data('ordered-qty')) || 0;
+        const remainingQty = parseFloat($(this).data('remaining-qty')) || 0;
+        const unit = $(this).data('unit');
+        const sku = $(this).data('sku');
+
+        if (!damagedReasonId) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ไม่พบเหตุผล "สินค้าชำรุดบางส่วน"',
+                text: 'กรุณาเพิ่มเหตุผลการคืนสินค้าหรือแจ้งผู้ดูแลระบบ'
+            });
+            return;
+        }
+
+        showDamagedItemModal({ itemId, productId, productName, orderedQty, remainingQty, unit, sku });
+    });
     
     // Confirm cancel item - Reset event binding
     $(document).off('click', '#confirmCancelItem').on('click', '#confirmCancelItem', function() {
@@ -2120,6 +2323,11 @@ $(document).ready(function() {
         }
         
         saveSingleReceive(itemId, quantity, notes);
+    });
+
+    // Confirm damaged item
+    $('#confirmDamagedItem').on('click', function() {
+        submitDamagedItem();
     });
     
     // Save single receive

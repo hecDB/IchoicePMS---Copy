@@ -694,15 +694,35 @@ if ($action === 'create_return') {
             ");
             $stmt->execute([':item_id' => $item_id, ':po_id' => $po_id]);
             $order_item = $stmt->fetch();
-            
+
+            // Fallback: allow damaged flow before any receive record exists
+            if (!$order_item) {
+                $fallbackStmt = $pdo->prepare("
+                    SELECT poi.*, po.po_number
+                    FROM purchase_order_items poi
+                    JOIN purchase_orders po ON poi.po_id = po.po_id
+                    WHERE poi.item_id = :item_id AND poi.po_id = :po_id
+                    LIMIT 1
+                ");
+                $fallbackStmt->execute([':item_id' => $item_id, ':po_id' => $po_id]);
+                $fallbackItem = $fallbackStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($fallbackItem) {
+                    $order_item = $fallbackItem;
+                    $order_item['expiry_date'] = null;
+                    $order_item['receive_id'] = null;
+                }
+            }
+
             if (!$order_item) {
                 throw new Exception('Purchase order item not found');
             }
-            
-            $original_qty = $order_item['receive_qty'];
-            $po_number = $order_item['po_number'];
+
+            $original_qty = isset($order_item['receive_qty']) ? $order_item['receive_qty'] : ($order_item['qty'] ?? 0);
+            $po_number = $order_item['po_number'] ?? null;
             $cost_price = isset($order_item['price_per_unit']) ? (float)$order_item['price_per_unit'] : null;
             $sale_price = isset($order_item['sale_price']) ? (float)$order_item['sale_price'] : null;
+            $receive_id = isset($order_item['receive_id']) ? (int)$order_item['receive_id'] : null;
         }
         
         // Get reason details

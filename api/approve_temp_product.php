@@ -16,6 +16,16 @@ if (!$temp_product_id) {
 }
 
 try {
+    // Ensure pending location table exists before starting a transaction
+    $pdo->exec("CREATE TABLE IF NOT EXISTS temp_product_locations (
+        temp_product_id INT PRIMARY KEY,
+        location_id INT DEFAULT NULL,
+        row_code VARCHAR(50) DEFAULT NULL,
+        bin VARCHAR(50) DEFAULT NULL,
+        shelf VARCHAR(50) DEFAULT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
     $pdo->beginTransaction();
     
     // ดึงข้อมูลจาก temp_products
@@ -44,9 +54,9 @@ try {
     
     // สร้างสินค้าใหม่ในตาราง products
     $sql_insert = "INSERT INTO products 
-                   (name, sku, barcode, product_category_id, image, remark_color, created_by, created_at) 
+                   (name, sku, barcode, unit, product_category_id, image, remark_color, created_by, created_at) 
                    VALUES 
-                   (:product_name, :sku, :barcode, :product_category_id, :product_image, :remark, :created_by, NOW())";
+                   (:product_name, :sku, :barcode, :unit, :product_category_id, :product_image, :remark, :created_by, NOW())";
     
     $stmt_insert = $pdo->prepare($sql_insert);
     
@@ -64,6 +74,7 @@ try {
         ':product_name' => $temp_product['product_name'],
         ':sku' => $temp_product['provisional_sku'],
         ':barcode' => $temp_product['provisional_barcode'],
+        ':unit' => $temp_product['unit'] ?? '',
         ':product_category_id' => $category_id ?? 1,
         ':product_image' => $temp_product['product_image'],
         ':remark' => $temp_product['remark'] ?? '',
@@ -72,16 +83,11 @@ try {
     
     $new_product_id = $pdo->lastInsertId();
 
-    // Apply pending location information if available
-    $pdo->exec("CREATE TABLE IF NOT EXISTS temp_product_locations (
-        temp_product_id INT PRIMARY KEY,
-        location_id INT DEFAULT NULL,
-        row_code VARCHAR(50) DEFAULT NULL,
-        bin VARCHAR(50) DEFAULT NULL,
-        shelf VARCHAR(50) DEFAULT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // Set new product as active (ขายอยู่)
+    $stmtActivate = $pdo->prepare("UPDATE products SET is_active = 1 WHERE product_id = :product_id");
+    $stmtActivate->execute([':product_id' => $new_product_id]);
 
+    // Apply pending location information if available
     $stmtPendingLocation = $pdo->prepare("SELECT location_id, row_code, bin, shelf FROM temp_product_locations WHERE temp_product_id = :temp_product_id LIMIT 1");
     $stmtPendingLocation->execute([':temp_product_id' => $temp_product_id]);
     $pendingLocation = $stmtPendingLocation->fetch(PDO::FETCH_ASSOC);
@@ -142,7 +148,8 @@ try {
     echo json_encode([
         'success' => true, 
         'message' => 'อนุมัติสำเร็จ! สินค้าถูกย้ายไปคลังปกติแล้ว',
-        'new_product_id' => $new_product_id
+        'new_product_id' => $new_product_id,
+        'product_id' => $new_product_id
     ]);
     
 } catch (Exception $e) {

@@ -11,7 +11,7 @@ if (!$user_id) {
 }
 
 try {
-    // Get completed Purchase Orders - where (received + cancelled) >= ordered for ALL items
+    // Get completed Purchase Orders by status flag (show all completed POs regardless of quantity math)
     $sql = "
         SELECT 
             po.po_id,
@@ -38,14 +38,10 @@ try {
             FROM receive_items 
             GROUP BY item_id
         ) received_summary ON poi.item_id = received_summary.item_id
-        WHERE po.status IN ('pending', 'partial', 'completed')
+        WHERE po.status = 'completed'
         GROUP BY po.po_id, po.po_number, s.name, po.order_date, po.total_amount, c.code, po.remark, po.status
-        HAVING COUNT(DISTINCT poi.item_id) > 0 
-            AND COUNT(DISTINCT poi.item_id) = SUM(
-                CASE WHEN (COALESCE(received_summary.total_received, 0) + COALESCE(poi.cancel_qty, 0)) >= poi.qty THEN 1 ELSE 0 END
-            )
         ORDER BY po.order_date DESC, po.po_number DESC
-        LIMIT 100
+        LIMIT 500
     ";
     
     $stmt = $pdo->query($sql);
