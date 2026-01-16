@@ -69,7 +69,7 @@ if (empty($products) || !is_array($products)) {
     exit;
 }
 
-error_log('Issue request: Tag=' . $issue_tag . ', Products=' . count($products) . ', User=' . $user_id);
+error_log('Issue request: Tag=' . $issue_tag . ', Products=' . count($products) . ', User=' . $user_id . ', Selected Platform=' . ($data['selected_platform'] ?? 'null'));
 
 try {
     // Start transaction
@@ -79,13 +79,20 @@ try {
     $platform = '';
     $patternName = '';
     $selectedPlatform = $data['selected_platform'] ?? null;
+    $selectedPatternName = $data['selected_pattern_name'] ?? null;
+    
+    error_log('Selected platform from request: ' . ($selectedPlatform ? $selectedPlatform : 'NULL'));
+    error_log('Selected pattern_name from request: ' . ($selectedPatternName ? $selectedPatternName : 'NULL'));
     
     try {
         // ถ้ามี selected_platform ให้ validate กับ platform ที่เลือกเฉพาะนั้น
         $validation = validateTagNumber($issue_tag, $selectedPlatform);
         
-        // ถ้ามีหลาย pattern ตรงกัน ให้คืน response ขอให้เลือก platform ก่อน
-        if (!empty($validation['needs_confirmation']) && $validation['needs_confirmation']) {
+        error_log('Validation result: ' . json_encode($validation));
+        
+        // ถ้ามีหลาย pattern ตรงกัน และไม่มี selected_platform ให้คืน response ขอให้เลือก platform ก่อน
+        if (!empty($validation['needs_confirmation']) && $validation['needs_confirmation'] && !$selectedPlatform) {
+            $pdo->rollBack();
             http_response_code(200);
             header('Content-Type: application/json');
             echo json_encode([
@@ -101,12 +108,22 @@ try {
         if (!empty($validation['valid'])) {
             $platform = $validation['platform'] ?? '';
             $patternName = $validation['pattern']['pattern_name'] ?? $validation['pattern_name'] ?? '';
+        } elseif ($selectedPlatform) {
+            // ถ้า validation ไม่ผ่าน แต่มี selected_platform ให้ใช้ selected_platform
+            $platform = $selectedPlatform;
+            $patternName = '';
         }
     } catch (Throwable $t) {
         error_log('Tag validator unavailable: ' . $t->getMessage());
     }
 
-    if ($platform === '') {
+    // ถ้ามี pattern ที่ผู้ใช้เลือกมาให้ใช้ข้อมูลนั้นเป็นหลัก
+    if ($selectedPatternName) {
+        $patternName = $selectedPatternName;
+    }
+
+    // ถ้ายังไม่มี platform และไม่มี selectedPlatform ให้ใช้ fallback logic
+    if ($platform === '' && !$selectedPlatform) {
         if (strlen($issue_tag) == 14) {
             $first_six = substr($issue_tag, 0, 6);
             $seventh_char = substr($issue_tag, 6, 1);
@@ -120,11 +137,26 @@ try {
         } elseif (strlen($issue_tag) == 16 && ctype_digit($issue_tag)) {
             $platform = 'Lazada';
         }
+    } elseif ($platform === '' && $selectedPlatform) {
+        // ถ้า validation ไม่ผ่าน แต่มี selectedPlatform ให้ใช้
+        $platform = $selectedPlatform;
+    }
+    
+    // ถ้าเลือก platform ไปแล้ว ไม่ว่า validation ผลลัพธ์เป็นอะไรก็ตาม ให้ใช้ selectedPlatform
+    if ($selectedPlatform && $platform !== $selectedPlatform) {
+        error_log("Platform mismatch: validation said '$platform', but selected is '$selectedPlatform'. Using selected.");
+        $platform = $selectedPlatform;
+        // ใช้ pattern_name ที่เลือกมา
+        if ($selectedPatternName) {
+            $patternName = $selectedPatternName;
+        }
     }
 
     if ($platform === '') {
         $platform = 'Internal';
     }
+    
+    error_log("Final platform for issue: $platform, Pattern: $patternName");
     
     // สร้าง Sales Order ก่อน
     $insert_sale_order = $pdo->prepare("
@@ -158,22 +190,25 @@ try {
     ]);
     
     if (!$sale_order_result) {
-        throw new Exception('ไม่สามารถสร้างรายการขายได้');
+        $errorInfo = $insert_sale_order->errorInfo();
+        error_log("Failed to create sale order: " . json_encode($errorInfo));
+        throw new Exception('ไม่สามารถสร้างรายการขายได้: ' . ($errorInfo[2] ?? 'Unknown error'));
     }
     
     $sale_order_id = $pdo->lastInsertId();
-    error_log("Created sale_order_id: {$sale_order_id}");
+    error_log("Created sale_order_id: {$sale_order_id} with platform: {$platform}, remark: {$remark}");
     
     $stockCheckStmt = $pdo->prepare("
         SELECT 
             ri.receive_qty,
             p.name,
             p.sku,
-            poi.price_per_unit AS cost_price
+            COALESCE(poi.price_per_unit, 0) AS cost_price
         FROM receive_items ri
-        INNER JOIN purchase_order_items poi ON poi.item_id = ri.item_id
-        INNER JOIN products p ON p.product_id = poi.product_id
-        WHERE ri.receive_id = ? AND poi.product_id = ?
+        LEFT JOIN purchase_order_items poi ON poi.item_id = ri.item_id
+        LEFT JOIN products p ON p.product_id = poi.product_id OR p.product_id = ?
+        WHERE ri.receive_id = ?
+        LIMIT 1
     ");
 
     $insertIssueStmt = $pdo->prepare("
@@ -202,6 +237,8 @@ try {
     $total_amount = 0;
     
     foreach ($products as $product) {
+        error_log("Raw product data: " . json_encode($product));
+        
         $product_id = isset($product['product_id']) ? (int)$product['product_id'] : 0;
         $receive_id = isset($product['receive_id']) ? (int)$product['receive_id'] : 0;
         $issue_qty = isset($product['issue_qty']) ? (float)$product['issue_qty'] : 0.0;
@@ -210,8 +247,11 @@ try {
         $item_remark = "ยิงสินค้าจากแท็ค: {$issue_tag}";
         $receive_batches = isset($product['receive_batches']) && is_array($product['receive_batches']) ? $product['receive_batches'] : [];
 
+        error_log("Processing product: ID=$product_id, Name=$product_name, Qty=$issue_qty, Price=$sale_price, Receive_ID=$receive_id");
+
         if (!$product_id || $issue_qty <= 0) {
-            $error_messages[] = "ข้อมูลสินค้า {$product_name} ไม่ครบถ้วน";
+            $error_messages[] = "ข้อมูลสินค้า {$product_name} ไม่ครบถ้วน (product_id=$product_id, qty=$issue_qty)";
+            error_log("Skipping product due to invalid data");
             continue;
         }
 
@@ -266,7 +306,7 @@ try {
             foreach ($normalized_batches as $batch) {
                 $batchReceiveId = $batch['receive_id'];
                 if (!isset($batchDetails[$batchReceiveId])) {
-                    $stockCheckStmt->execute([$batchReceiveId, $product_id]);
+                    $stockCheckStmt->execute([$product_id, $batchReceiveId]);
                     $available = $stockCheckStmt->fetch(PDO::FETCH_ASSOC);
                     $stockCheckStmt->closeCursor();
                     if (!$available) {
@@ -382,7 +422,7 @@ try {
             continue;
         }
 
-        $stockCheckStmt->execute([$receive_id, $product_id]);
+        $stockCheckStmt->execute([$product_id, $receive_id]);
         $available = $stockCheckStmt->fetch(PDO::FETCH_ASSOC);
         $stockCheckStmt->closeCursor();
 

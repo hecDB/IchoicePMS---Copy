@@ -253,6 +253,8 @@ if (!$user_id) {
 <script>
 let selectedProducts = [];
 let currentIssueTag = '';
+let selectedPlatform = ''; // เก็บแพลตฟอร์มที่เลือก
+let selectedPatternName = ''; // เก็บชื่อรูปแบบที่เลือก
 
 $(document).ready(function() {
     // ตรวจสอบแท็คส่งออกขณะพิมพ์
@@ -267,14 +269,22 @@ $(document).ready(function() {
             const tagValue = $(this).val().trim();
             if (tagValue) {
                 currentIssueTag = tagValue;
+                
+                // ถ้ายังไม่มี selectedPlatform ให้รอให้ user เลือก
+                // ถ้ามี selectedPlatform จากการ checkPlatform แล้ว ให้เปิด scan section ทันที
+                if (!selectedPlatform) {
+                    // ให้ checkPlatform() popup แสดง แล้วเมื่อเลือกจะจัดการต่อ
+                    return;
+                }
+                
+                // ถ้ามี selectedPlatform แล้ว เปิด scan section
                 $('#scan-section').slideDown();
                 $('#product-search').focus();
                 $(this).prop('readonly', true);
                 
-                const platform = getPlatformFromTag(tagValue);
                 let message = `แท็คส่งออก: ${tagValue}`;
-                if (platform) {
-                    message += ` (${platform})`;
+                if (selectedPlatform) {
+                    message += ` (${selectedPlatform})`;
                 }
                 
                 Swal.fire({
@@ -669,16 +679,23 @@ function processIssue() {
 }
 
 // ส่งข้อมูลไปบันทึก
-function submitIssue(selectedPlatform = null) {
+function submitIssue(platformOverride = null) {
     const issueData = {
         issue_tag: currentIssueTag,
         products: selectedProducts
     };
     
-    // ถ้ามี selectedPlatform ให้เพิ่มลงใน data
-    if (selectedPlatform) {
-        issueData.selected_platform = selectedPlatform;
+    // ใช้ selectedPlatform ที่เลือกไปแล้ว หรือ override ใหม่
+    const platformToSend = platformOverride || selectedPlatform;
+    if (platformToSend) {
+        issueData.selected_platform = platformToSend;
     }
+    // ส่ง pattern_name ที่เลือกด้วย
+    if (selectedPatternName) {
+        issueData.selected_pattern_name = selectedPatternName;
+    }
+    
+    console.log('Submitting issue with data:', issueData, 'Platform:', platformToSend);
     
     $.ajax({
         url: '../api/issue_product_api.php',
@@ -686,6 +703,8 @@ function submitIssue(selectedPlatform = null) {
         contentType: 'application/json',
         data: JSON.stringify(issueData),
         success: function(response) {
+            console.log('API Response:', response);
+            
             if (response.success) {
                 Swal.fire({
                     title: 'สำเร็จ!',
@@ -696,16 +715,30 @@ function submitIssue(selectedPlatform = null) {
                     clearAll();
                     location.reload();
                 });
-            } else if (response.needs_platform_confirmation) {
-                // ต้องให้ผู้ใช้เลือก platform ก่อน
+            } else if (response.needs_platform_confirmation && !selectedPlatform) {
+                // ต้องให้ผู้ใช้เลือก platform ก่อน เฉพาะเมื่อไม่มีการเลือกไว้แล้ว
                 showPlatformSelectionModal(response.matched_patterns, response.tag);
+            } else if (response.needs_platform_confirmation && selectedPlatform) {
+                // ถ้าเลือก platform ไปแล้วแต่ยังคืน needs_platform_confirmation เป็นข้อผิดพลาด
+                Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถยืนยัน platform ได้ โปรดลองอีกครั้ง', 'error');
+            } else if (response.message) {
+                Swal.fire('เกิดข้อผิดพลาด', response.message, 'error');
             } else {
-                Swal.fire('เกิดข้อผิดพลาด', response.message || 'ไม่สามารถยิงสินค้าได้', 'error');
+                Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถยิงสินค้าได้', 'error');
             }
         },
         error: function(xhr, status, error) {
-            console.error('Submit error:', error);
-            Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถยิงสินค้าได้', 'error');
+            console.error('Submit error:', error, xhr);
+            let errorMsg = 'ไม่สามารถยิงสินค้าได้';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.message) {
+                    errorMsg = response.message;
+                }
+            } catch (e) {
+                // ถ้า parse ไม่ได้ ใช้ error message เดิม
+            }
+            Swal.fire('เกิดข้อผิดพลาด', errorMsg, 'error');
         }
     });
 }
@@ -736,7 +769,7 @@ function showPlatformSelectionModal(matchedPatterns, tag) {
         const patternName = platforms[platform].pattern_name || '';
         const buttonId = 'platform-btn-' + index;
         html += `
-            <button type="button" class="btn btn-outline-primary" id="${buttonId}" style="text-align: left;">
+            <button type="button" class="btn btn-outline-primary" id="${buttonId}" data-platform="${platform}" data-pattern-name="${patternName}" style="text-align: left;">
                 <strong>${platform}</strong>
                 ${patternName ? `<br><small class="text-muted">${patternName}</small>` : ''}
             </button>
@@ -761,6 +794,8 @@ function showPlatformSelectionModal(matchedPatterns, tag) {
             platformArray.forEach((platform, index) => {
                 const buttonId = 'platform-btn-' + index;
                 document.getElementById(buttonId).addEventListener('click', function() {
+                    selectedPlatform = this.getAttribute('data-platform'); // บันทึก platform ที่เลือก
+                    selectedPatternName = this.getAttribute('data-pattern-name') || ''; // บันทึก pattern_name
                     Swal.close();
                     // ส่ง submit อีกครั้งพร้อมกับ selected_platform
                     submitIssue(platform);
@@ -849,7 +884,7 @@ function checkPlatform(tag) {
                 response.matched_patterns.forEach((pattern, index) => {
                     const btnId = 'platform-choice-' + index;
                     platformOptions += `
-                        <button type="button" class="btn btn-outline-primary platform-choice-btn" id="${btnId}" data-platform="${pattern.platform}" data-pattern-id="${pattern.pattern_id}" style="text-align: left;">
+                        <button type="button" class="btn btn-outline-primary platform-choice-btn" id="${btnId}" data-platform="${pattern.platform}" data-pattern-id="${pattern.pattern_id}" data-pattern-name="${pattern.pattern_name || ''}" style="text-align: left;">
                             <strong>${pattern.platform}</strong>
                             ${pattern.pattern_name ? `<br><small class="text-muted">${pattern.pattern_name}</small>` : ''}
                         </button>
@@ -870,7 +905,8 @@ function checkPlatform(tag) {
                         // เพิ่ม event listener ให้ปุ่มเลือก
                         document.querySelectorAll('.platform-choice-btn').forEach(btn => {
                             btn.addEventListener('click', function() {
-                                const selectedPlatform = this.getAttribute('data-platform');
+                                selectedPlatform = this.getAttribute('data-platform'); // บันทึก platform ที่เลือก
+                                selectedPatternName = this.getAttribute('data-pattern-name') || ''; // บันทึก pattern_name
                                 currentIssueTag = tag;
                                 
                                 // ปรับปรุง platform info
@@ -889,6 +925,11 @@ function checkPlatform(tag) {
                                 
                                 platformInfo.show();
                                 Swal.close();
+                                
+                                // เปิดส่วนสแกนสินค้า
+                                $('#scan-section').slideDown();
+                                $('#product-search').focus();
+                                $('#issue-tag').prop('readonly', true);
                             });
                         });
                     }
@@ -897,6 +938,10 @@ function checkPlatform(tag) {
                 const platformInfo = $('#platform-info');
                 const platformText = `ระบุแพลตฟอร์ม: ${response.platform}`;
                 const patternText = response.pattern_name ? ` (${response.pattern_name})` : '';
+                
+                // บันทึก platform และ pattern_name
+                selectedPlatform = response.platform;
+                selectedPatternName = response.pattern_name || '';
                 
                 $('#platform-text').html(`
                     <i class="material-icons">check_circle</i> 
@@ -961,6 +1006,8 @@ function formatDateThai(dateString) {
 function clearAll() {
     selectedProducts = [];
     currentIssueTag = '';
+    selectedPlatform = ''; // ล้าง platform ที่เลือก
+    selectedPatternName = ''; // ล้าง pattern_name ที่เลือก
     
     $('#issue-tag').val('').prop('readonly', false);
     $('#product-search').val('');

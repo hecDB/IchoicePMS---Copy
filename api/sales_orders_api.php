@@ -256,18 +256,17 @@ try {
                 round(($profit / $order['total_amount']) * 100, 2) : 0;
             
             // ตรวจสอบและอัพเดทแพลตฟอร์มด้วยระบบใหม่
+            // หมายเหตุ: ไม่ override ถ้ามี platform อยู่แล้ว (ให้เคารพที่ผู้ใช้เลือกจาก popup)
             $detected_platform = detectPlatformFromTag($order['issue_tag']);
             
-            // อัพเดทแพลตฟอร์มในฐานข้อมูลถ้ายังไม่มีหรือไม่ตรงกัน
-            if (empty($order['platform']) || $order['platform'] !== $detected_platform) {
-                if (!empty($detected_platform)) {
-                    try {
-                        $update_stmt = $pdo->prepare("UPDATE sales_orders SET platform = ? WHERE sale_order_id = ?");
-                        $update_stmt->execute([$detected_platform, $order['sale_order_id']]);
-                        $order['platform'] = $detected_platform;
-                    } catch (Exception $e) {
-                        error_log('Platform update error: ' . $e->getMessage());
-                    }
+            // อัพเดทเฉพาะกรณีที่ยังว่างเท่านั้น
+            if (empty($order['platform']) && !empty($detected_platform)) {
+                try {
+                    $update_stmt = $pdo->prepare("UPDATE sales_orders SET platform = ? WHERE sale_order_id = ?");
+                    $update_stmt->execute([$detected_platform, $order['sale_order_id']]);
+                    $order['platform'] = $detected_platform;
+                } catch (Exception $e) {
+                    error_log('Platform update error: ' . $e->getMessage());
                 }
             }
             

@@ -231,6 +231,10 @@ try {
                 $row['expiry_date'] = $latestBatch['expiry_date'];
                 $row['remark_color'] = $latestBatch['remark_color'];
                 $row['remark_split'] = $latestBatch['remark_split'];
+                // Copy sale_price from latest batch
+                if (isset($latestBatch['sale_price'])) {
+                    $row['sale_price'] = $latestBatch['sale_price'];
+                }
 
                 $lotParts = [];
                 $lotTimestamp = !empty($latestBatch['created_at']) ? strtotime($latestBatch['created_at']) : false;
