@@ -560,6 +560,9 @@ $rows = $stmt->fetchAll();
             const priceOriginal = (item.price_original !== null && item.price_original !== undefined) ? parseFloat(item.price_original) : parseFloat(item.price_per_unit || 0);
             const priceBase = (item.price_base !== null && item.price_base !== undefined) ? parseFloat(item.price_base) : parseFloat(item.price_per_unit || 0);
             const total = parseFloat(item.total || (qty * priceBase));
+            // If stored price equals total (common when unit price saved as total), derive unit price from total/qty
+            const displayPriceBase = (qty > 0 && total > 0 && Math.abs(priceBase - total) < 0.0001) ? (total / qty) : priceBase;
+            const displayPriceOriginal = (qty > 0 && total > 0 && Math.abs(priceOriginal - total) < 0.0001) ? (total / qty) : priceOriginal;
             const itemCurrencySymbol = item.item_currency_symbol || currencySymbol;
             
             // Debug: แสดงค่าที่ดึงมา
@@ -589,13 +592,13 @@ $rows = $stmt->fetchAll();
                 <td>${item.unit || 'ชิ้น'}</td>
                 <td style="text-align:right;">
                     ${data.order.currency_code !== 'THB' ? 
-                        `<div>${itemCurrencySymbol}${formatCurrency(priceOriginal, true)}</div><div style="font-size:11px;color:#666;">≈ ฿${formatCurrency(priceBase)}</div>` : 
-                        `฿${formatCurrency(priceBase)}`
+                        `<div>${itemCurrencySymbol}${formatCurrency(displayPriceOriginal, true)}</div><div style="font-size:11px;color:#666;">≈ ฿${formatCurrency(displayPriceBase)}</div>` : 
+                        `฿${formatCurrency(displayPriceBase)}`
                     }
                 </td>
                 <td style="text-align:right;">
                     ${data.order.currency_code !== 'THB' ? 
-                        `<div>${itemCurrencySymbol}${formatCurrency(qty * priceOriginal, true)}</div><div style="font-size:11px;color:#666;">≈ ฿${formatCurrency(total)}</div>` : 
+                        `<div>${itemCurrencySymbol}${formatCurrency(qty * displayPriceOriginal, true)}</div><div style="font-size:11px;color:#666;">≈ ฿${formatCurrency(total)}</div>` : 
                         `฿${formatCurrency(total)}`
                     }
                 </td>
@@ -605,14 +608,17 @@ $rows = $stmt->fetchAll();
         const subtotalOriginal = data.items ? data.items.reduce((sum, item) => {
             const qty = parseFloat(item.qty || 0);
             const priceOriginal = (item.price_original !== null && item.price_original !== undefined) ? parseFloat(item.price_original) : parseFloat(item.price_per_unit || 0);
-            return sum + (qty * priceOriginal);
+            const total = parseFloat(item.total || 0);
+            const unit = (qty > 0 && total > 0 && Math.abs(priceOriginal - total) < 0.0001) ? (total / qty) : priceOriginal;
+            return sum + (qty * unit);
         }, 0) : 0;
         
         const subtotalBase = data.items ? data.items.reduce((sum, item) => {
             const qty = parseFloat(item.qty || 0);
             const priceBase = (item.price_base !== null && item.price_base !== undefined) ? parseFloat(item.price_base) : parseFloat(item.price_per_unit || 0);
             const total = parseFloat(item.total || (qty * priceBase));
-            return sum + total;
+            const unit = (qty > 0 && total > 0 && Math.abs(priceBase - total) < 0.0001) ? (total / qty) : priceBase;
+            return sum + (qty * unit);
         }, 0) : 0;
 
         content.innerHTML = `

@@ -25,6 +25,8 @@ $sql = "
     tp.provisional_barcode,
     tp.status as temp_product_status,
     poi.sale_price as sale_price,
+    poi.price_per_unit as po_price_per_unit,
+    poi.unit_price as purchase_price,
     tp.remark as temp_product_remark
 FROM receive_items r
 LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
@@ -50,6 +52,8 @@ UNION ALL
     tp.provisional_barcode,
     tp.status as temp_product_status,
     poi.sale_price as sale_price,
+    poi.price_per_unit as po_price_per_unit,
+    poi.unit_price as purchase_price,
     tp.remark as temp_product_remark
 FROM issue_items ii
 LEFT JOIN receive_items ri ON ii.receive_id = ri.receive_id
@@ -628,7 +632,7 @@ function resolveTransactionImageSrc($imageValue) {
                                 <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($row['created_by'] ?? '-') ?></td>
-                            <td class="text-center">
+                            <td class="text-center" data-order="<?= htmlspecialchars($row['created_at']) ?>">
                                 <small><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></small>
                             </td>
                             <td class="text-center">
@@ -681,7 +685,7 @@ function resolveTransactionImageSrc($imageValue) {
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" title="แก้ไข SKU/Barcode/รูปภาพ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
+                                    <button class="btn btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-purchase-price="<?= htmlspecialchars($row['purchase_price'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-po-sale-price="<?= htmlspecialchars($row['po_price_per_unit'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" title="แก้ไข SKU/Barcode/รูปภาพ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
                                         <span class="material-icons" style="font-size: 1rem;">edit</span>
                                     </button>
                                     <button class="btn btn-outline-success approve-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-name="<?= htmlspecialchars($row['product_name']) ?>" title="อนุมัติและย้ายไปคลังปกติ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
@@ -709,6 +713,12 @@ function resolveTransactionImageSrc($imageValue) {
 
 <script>
 let transactionTable;
+let currentBasePurchasePrice = 0;
+
+function formatPrice(value) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num.toFixed(2) : '-';
+}
 
 function decodeHtml(value) {
     if (value === undefined || value === null) {
@@ -717,6 +727,38 @@ function decodeHtml(value) {
     const textarea = document.createElement('textarea');
     textarea.innerHTML = value;
     return textarea.value;
+}
+
+function updatePricingFromWeight() {
+    const weightVal = Number($('#weightInput').val());
+    const hasWeight = Number.isFinite(weightVal) && weightVal >= 0;
+    const weightCost = hasWeight ? weightVal * 850 : 0;
+    const baseCost = Number.isFinite(currentBasePurchasePrice) ? currentBasePurchasePrice : 0;
+    const trueCost = baseCost + weightCost;
+
+    if (baseCost > 0 || hasWeight) {
+        $('#trueCostInput').val(trueCost.toFixed(2));
+        if (hasWeight) {
+            $('#salePriceInput').val(trueCost.toFixed(2));
+        }
+    } else {
+        $('#trueCostInput').val('');
+    }
+
+    updateNetProfitLabel();
+}
+
+function updateNetProfitLabel() {
+    const saleVal = Number($('#salePriceInput').val());
+    if (!Number.isFinite(saleVal) || saleVal < 0) {
+        $('#netProfitDisplay').text('-');
+        return;
+    }
+
+    const result1 = saleVal * 0.8;
+    const result2 = result1 * 0.8;
+    const netProfit = result2 * 0.8;
+    $('#netProfitDisplay').text(netProfit.toFixed(2) + ' บาท');
 }
 
 $(document).ready(function() {
@@ -787,6 +829,9 @@ $(document).ready(function() {
         transactionTable.search(this.value).draw();
     });
 
+    $('#weightInput').on('input change', updatePricingFromWeight);
+    $('#salePriceInput').on('input change', updateNetProfitLabel);
+
     // Hide default DataTable search
     setTimeout(function() {
         $('.dataTables_filter').hide();
@@ -799,10 +844,16 @@ $(document).ready(function() {
         const expiry = $(this).data('expiry');
         const provisionalSku = $(this).data('provisional-sku');
         const provisionalBarcode = $(this).data('provisional-barcode');
+        const purchasePrice = $(this).attr('data-purchase-price');
         const salePrice = $(this).attr('data-sale-price');
+        const poSalePrice = $(this).attr('data-po-sale-price');
         const remarkRaw = $(this).attr('data-remark');
         const unitValue = $(this).data('unit');
+        const productName = $(this).attr('data-product-name') || '';
         const rowImageSrc = $(this).closest('tr').find('img.product-image').attr('src');
+        const resolvedPurchasePrice = [purchasePrice, poSalePrice, salePrice].find(v => v !== undefined && v !== null && v !== '');
+        const resolvedSalePrice = (salePrice !== undefined && salePrice !== null && salePrice !== '') ? salePrice : '';
+        const numericPurchaseBase = Number(resolvedPurchasePrice);
         
         $('#tempProductId').val(tempId);
         $('#receiveId').val(receiveId);
@@ -810,12 +861,26 @@ $(document).ready(function() {
         $('#provisionalSkuInput').val(provisionalSku);
         $('#provisionalBarcodeInput').val(provisionalBarcode);
         $('#unitInput').val(unitValue || '');
+        $('#productNameDisplay').text(productName || '');
+        $('#weightInput').val('');
+        $('#purchasePriceInput').val('');
         $('#salePriceInput').val('');
         $('#remarkInput').val('');
-        if (salePrice !== undefined && salePrice !== null && salePrice !== '') {
-            const numericSalePrice = Number(salePrice);
-            $('#salePriceInput').val(!Number.isNaN(numericSalePrice) ? numericSalePrice.toFixed(2) : salePrice);
+        $('#salePriceDisplay').text('ราคาขายจาก PO: ' + formatPrice(resolvedSalePrice) + ' บาท');
+        currentBasePurchasePrice = Number.isFinite(numericPurchaseBase) ? numericPurchaseBase : 0;
+
+        if (resolvedPurchasePrice !== undefined && resolvedPurchasePrice !== null && resolvedPurchasePrice !== '') {
+            const numericPurchasePrice = Number(resolvedPurchasePrice);
+            $('#purchasePriceInput').val(!Number.isNaN(numericPurchasePrice) ? numericPurchasePrice.toFixed(2) : resolvedPurchasePrice).addClass('text-danger fw-semibold');
+        } else {
+            $('#purchasePriceInput').val('');
         }
+        if (resolvedSalePrice !== '') {
+            const numericSalePrice = Number(resolvedSalePrice);
+            $('#salePriceInput').val(!Number.isNaN(numericSalePrice) ? numericSalePrice.toFixed(2) : resolvedSalePrice);
+        }
+        updatePricingFromWeight();
+        updateNetProfitLabel();
         if (remarkRaw) {
             $('#remarkInput').val(decodeHtml(remarkRaw));
         }
@@ -920,6 +985,8 @@ $(document).ready(function() {
         const rowCode = $('#editRowCodeInput').val().trim();
         const bin = $('#editBinInput').val().trim();
         const shelf = $('#editShelfInput').val().trim();
+        const weightVal = $('#weightInput').val();
+        const purchasePrice = $('#purchasePriceInput').val();
         const salePrice = $('#salePriceInput').val();
         const remark = $('#remarkInput').val().trim();
         const locationId = $('#editProductLocation').val();
@@ -930,6 +997,15 @@ $(document).ready(function() {
                 icon: 'error',
                 title: 'ข้อผิดพลาด',
                 text: 'ข้อมูลไม่ถูกต้อง'
+            });
+            return;
+        }
+
+        if (purchasePrice !== '' && !isNaN(purchasePrice) && Number(purchasePrice) < 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'ข้อมูลราคาซื้อไม่ถูกต้อง',
+                text: 'กรุณากรอกราคาซื้อที่เป็นจำนวนไม่ติดลบ'
             });
             return;
         }
@@ -955,14 +1031,14 @@ $(document).ready(function() {
         
         // Process image compression if exists
         if (imageFile) {
-            compressAndSendImage(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, salePrice, remark, locationId);
+            compressAndSendImage(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId);
         } else {
-            sendFormData(null, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, salePrice, remark, locationId);
+            sendFormData(null, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId);
         }
     });
     
     // Compress image and send
-    function compressAndSendImage(file, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, salePrice, remark, locationId) {
+    function compressAndSendImage(file, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = new Image();
@@ -1001,7 +1077,7 @@ $(document).ready(function() {
                     console.log(`Image Compressed: ${originalSize}KB → ${compressedSize}KB`);
                     console.log('Sending file:', compressedFile.name, compressedFile.type, compressedFile.size);
                     
-                    sendFormData(compressedFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, salePrice, remark, locationId);
+                    sendFormData(compressedFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId);
                 }, 'image/jpeg', 0.85);
             };
             img.src = e.target.result;
@@ -1010,7 +1086,7 @@ $(document).ready(function() {
     }
     
     // Send form data to server
-    function sendFormData(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, salePrice, remark, locationId) {
+    function sendFormData(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId) {
         const formData = new FormData();
         formData.append('temp_product_id', tempId);
         formData.append('expiry_date', expiryDate);
@@ -1020,6 +1096,8 @@ $(document).ready(function() {
         formData.append('row_code', rowCode);
         formData.append('bin', bin);
         formData.append('shelf', shelf);
+        formData.append('weight', weightVal ?? '');
+        formData.append('purchase_price', purchasePrice ?? '');
         formData.append('sale_price', salePrice ?? '');
         formData.append('remark', remark ?? '');
         formData.append('location_id', locationId ?? '');
@@ -1337,6 +1415,10 @@ function selectLocationEdit(locationId, rowCode, bin, shelf) {
                 <form id="editForm">
                     <input type="hidden" id="tempProductId" name="temp_product_id">
                     <input type="hidden" id="receiveId" name="receive_id">
+
+                    <div class="mb-3">
+                        <div id="productNameDisplay" class="fw-bold" style="font-size: 1.05rem;"></div>
+                    </div>
                     
                     <div class="mb-3">
                         <label for="productImageInput" class="form-label">รูปภาพสินค้า</label>
@@ -1361,9 +1443,38 @@ function selectLocationEdit(locationId, rowCode, bin, shelf) {
                         <input type="text" class="form-control" id="unitInput" name="unit" placeholder="เช่น ชิ้น, กล่อง, แพ็ค">
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="salePriceInput" class="form-label">ราคาขาย (บาท)</label>
-                        <input type="number" class="form-control" id="salePriceInput" name="sale_price" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+                    <div class="mb-3 p-3" style="background: #dae9f8; border: 1px solid #e5e7eb; border-radius: 8px;">
+                       
+
+                        <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="purchasePriceInput" class="form-label">ราคาซื้อ</label>
+                            <input type="number" class="form-control text-danger fw-semibold" id="purchasePriceInput" name="purchase_price" placeholder="0.00" min="0" step="0.01" inputmode="decimal" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="weightInput" class="form-label">น้ำหนัก (กิโลกรัม)</label>
+                            <input type="number" class="form-control" id="weightInput" name="weight" placeholder="เช่น 1.00" min="0" step="0.01" inputmode="decimal">
+                            <!-- <small class="text-muted">ระบบจะคิด 850 บาท/กก. (85 บาท/ขีด) แล้วบวกราคาซื้อจากใบ PO เข้ากับต้นทุนเพื่อตั้งราคาขายอัตโนมัติ</small> -->
+                        </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="trueCostInput" class="form-label">ราคาต้นทุน (PO + น้ำหนัก)</label>
+                            <input type="text" class="form-control" id="trueCostInput" placeholder="0.00" readonly>
+                            <small class="text-muted">คำนวณจาก ราคาซื้อ PO + (น้ำหนัก × 850 บาท/กก. หรือ 85 บาท/ขีด)</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="salePriceInput" class="form-label">ราคาขาย (บาท)</label>
+                            <input type="number" class="form-control" id="salePriceInput" name="sale_price" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+                            <div class="d-flex align-items-center justify-content-between mt-2">
+                                <span class="badge bg-danger-subtle text-danger fw-semibold" style="letter-spacing: 0.2px;">กำไรสุทธิ (หัก 20% × 3)</span>
+                                <span id="netProfitDisplay" class="fw-bold text-danger">-</span>
+                            </div>
+                            <small class="text-muted">สูตร: ราคาขาย × 0.8 × 0.8 × 0.8</small>
+                        </div>
+
+                       
                     </div>
                     
                     <div class="mb-3">

@@ -17,6 +17,7 @@ $sql = "
             r.po_id, r.item_id,
             p.name AS product_name,
             p.product_id,
+            p.remark_weight,
             r.created_by AS created_by_id,
             po.remark AS po_remark,
             po.po_number AS po_number,
@@ -49,6 +50,7 @@ $sql = "
             NULL as po_id, NULL as item_id,
             p.name AS product_name,
             p.product_id,
+            p.remark_weight,
             ii.issued_by AS created_by_id,
             NULL as po_remark,
             NULL as po_number,
@@ -65,7 +67,7 @@ $sql = "
         LEFT JOIN sales_orders so ON ii.sale_order_id = so.sale_order_id
         WHERE poi.product_id IS NOT NULL )
 
-        ORDER BY created_at DESC
+        ORDER BY created_at ASC
         LIMIT 500";
 $stmt = $pdo->query($sql);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -695,6 +697,17 @@ unset($sortedIndices, $runningTotals);
                 padding: 0.35rem 0.65rem;
                 border-radius: 0.375rem;
             }
+
+            /* Field accents for quick scanning */
+            .field-accent { font-weight: 600; }
+            .field-purchase { color: #0d6efd; }
+            .field-weight { color: #0f766e; }
+            .field-cost { color: #7c3aed; }
+            .field-sale { color: #d97706; }
+            .field-input-purchase { color: #0d6efd; font-weight: 600; }
+            .field-input-weight { color: #0f766e; font-weight: 600; }
+            .field-input-cost { color: #7c3aed; font-weight: 700; }
+            .field-input-sale { color: #d97706; font-weight: 600; }
             
             .badge.bg-primary:hover {
                 transform: scale(1.05);
@@ -907,12 +920,21 @@ unset($sortedIndices, $runningTotals);
                     </tr>
                     <?php else: ?>
                     <?php foreach($rows as $row): ?>
+                        <?php
+                            $weightKg = isset($row['remark_weight']) ? (float)$row['remark_weight'] : 0.0;
+                            $baseCost = isset($row['price_per_unit']) ? (float)$row['price_per_unit'] : 0.0;
+                            $weightCost = $weightKg > 0 ? $weightKg * 850 : 0;
+                            $trueCost = $baseCost + $weightCost;
+                        ?>
                         <tr data-id="<?= $row['transaction_id'] ?>" 
                             data-quantity="<?= abs($row['quantity'] ?? 0) ?>"
                             data-quantity-type="<?= ($row['quantity_direction'] ?? 'plus') ?>"
                             data-location="<?= htmlspecialchars($row['location_desc'] ?? '') ?>"
                             data-expiry="<?= isset($row['expiry_date']) && $row['expiry_date'] ? date('Y-m-d', strtotime($row['expiry_date'])) : '' ?>"
                             data-po-number="<?= htmlspecialchars($row['po_number'] ?? '') ?>"
+                            data-weight="<?= $weightKg ?>"
+                            data-base-cost="<?= $baseCost ?>"
+                            data-true-cost="<?= $trueCost ?>"
                             data-transaction-type="<?= htmlspecialchars($row['transaction_type']) ?>"
                             data-created-date="<?= date('Y-m-d', strtotime($row['created_at'])) ?>"
                             class="<?= ($row['quantity_direction'] ?? 'plus') === 'minus' ? 'table-danger' : '' ?>">
@@ -1153,6 +1175,13 @@ $(document).ready(function() {
         return true;
     });
     
+    function updateTrueCostDisplay() {
+        const weightVal = parseFloat($('#edit-weight').val()) || 0;
+        const baseCostVal = parseFloat($('#edit-price-cost').val()) || 0;
+        const trueCost = baseCostVal + (weightVal * 850);
+        $('#edit-true-cost').val(trueCost > 0 ? trueCost.toFixed(2) : '');
+    }
+
     // Function to bind action button events (delete functionality removed)
     window.bindEditButtonEvents = function() {
         console.log('Binding action button events...');
@@ -1314,6 +1343,8 @@ $(document).ready(function() {
         }
     });
 
+    $('#edit-price-cost').on('input change', updateTrueCostDisplay);
+
     // Hide default DataTable search box
     setTimeout(function() {
         $('.dataTables_filter').hide();
@@ -1344,8 +1375,12 @@ $(document).ready(function() {
         let qty = row.data('quantity') || 0;
         let qtyType = row.data('quantity-type') || 'plus';
         let locationText = row.data('location') || '';
-        let expiry = row.data('expiry') || '';
+        const expiry = row.data('expiry') || '';
         let poNumber = row.data('po-number') || '';
+        const weightRaw = row.data('weight');
+        const weightKg = weightRaw !== undefined ? parseFloat(weightRaw) : 0;
+        const baseCost = parseFloat(row.data('base-cost')) || 0;
+        const trueCost = parseFloat(row.data('true-cost')) || 0;
         
         console.log('Extracted data from data attributes:', {
             id, qty, qtyType, expiry, poNumber, locationText
@@ -1355,7 +1390,7 @@ $(document).ready(function() {
         $('#edit-receive-id').val(id);
         $('#edit-qty-type').val(qtyType);
         $('#edit-receive-qty').val(qty);
-        $('#edit-expiry-date').val(''); // ✅ ล้างวันหมดอายุเสมอ (ไม่นำข้อมูลเดิมมา)
+        $('#edit-expiry-date').val(expiry);
         $('#edit-po-number').val(poNumber);
         // clear select และราคาก่อน
         $('#edit-row-code').val('');
@@ -1363,6 +1398,9 @@ $(document).ready(function() {
         $('#edit-shelf').val('');
         $('#edit-price-cost').val('');
         $('#edit-price-sale').val('');
+        $('#edit-weight').val(weightRaw !== undefined && weightRaw !== null ? weightRaw : '');
+        $('#edit-true-cost').val(trueCost ? trueCost.toFixed(2) : '');
+        updateTrueCostDisplay();
         $('#edit-remark').val('');
         
         // ล้างข้อมูลการแบ่งจำนวนก่อนหน้า
@@ -1383,6 +1421,7 @@ $(document).ready(function() {
                 let priceSale = resp.sale_price || '';
                 let remarkFromAPI = resp.remark || '';
                 let expiryFromAPI = resp.expiry_date || '';
+                let weightFromAPI = resp.remark_weight || '';
                 
                 function setSelectWithDynamicOption(sel, val) {
                     val = (val || '').toString().trim();
@@ -1398,6 +1437,10 @@ $(document).ready(function() {
                 // ใส่ราคาและข้อมูลอื่นๆ ที่ได้จาก API
                 $('#edit-price-cost').val(priceCost);
                 $('#edit-price-sale').val(priceSale);
+                if (weightFromAPI !== '') {
+                    $('#edit-weight').val(weightFromAPI);
+                }
+                updateTrueCostDisplay();
                 $('#edit-remark').val(remarkFromAPI);
                 
                 // ⚠️ ไม่อัพเดทวันหมดอายุจาก API
@@ -2234,13 +2277,24 @@ $(document).ready(function() {
                             </div>
                         </div>
                     </div>
-                    <div class="mb-2">
-                        <label for="edit-price-cost" class="form-label">ราคาต้นทุน</label>
-                        <input type="number" step="0.01" class="form-control" name="price_per_unit" id="edit-price-cost">
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label for="edit-price-cost" class="form-label field-accent field-purchase">ราคาซื้อ</label>
+                            <input type="number" step="0.01" class="form-control field-input-purchase" name="price_per_unit" id="edit-price-cost">
+                        </div>
+                        <div class="col-6">
+                            <label for="edit-weight" class="form-label field-accent field-weight">น้ำหนัก (กก.)</label>
+                            <input type="number" step="0.01" min="0" class="form-control field-input-weight" id="edit-weight" placeholder="-" readonly>
+                        </div>
                     </div>
                     <div class="mb-2">
-                        <label for="edit-price-sale" class="form-label">ราคาขายออก</label>
-                        <input type="number" step="0.01" class="form-control" name="sale_price" id="edit-price-sale">
+                        <label for="edit-true-cost" class="form-label field-accent field-cost">ราคาต้นทุน</label>
+                        <input type="text" class="form-control field-input-cost" id="edit-true-cost" placeholder="0.00" readonly>
+                        <small class="text-muted">คำนวณจาก ราคาซื้อใบ PO + (น้ำหนัก × 850 บาท/กก.)</small>
+                    </div>
+                    <div class="mb-2">
+                        <label for="edit-price-sale" class="form-label field-accent field-sale">ราคาขาย</label>
+                        <input type="number" step="0.01" class="form-control field-input-sale" name="sale_price" id="edit-price-sale">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">ประเภทการเปลี่ยนแปลง</label>

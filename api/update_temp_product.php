@@ -96,6 +96,10 @@ $unit = isset($_POST['unit']) ? trim($_POST['unit']) : '';
 $expiry_date = isset($_POST['expiry_date']) ? $_POST['expiry_date'] : null;
 $sale_price_raw = isset($_POST['sale_price']) ? trim($_POST['sale_price']) : null;
 $sale_price = ($sale_price_raw !== null && $sale_price_raw !== '' && is_numeric($sale_price_raw)) ? (float)$sale_price_raw : null;
+$purchase_price_raw = isset($_POST['purchase_price']) ? trim($_POST['purchase_price']) : null;
+$purchase_price = ($purchase_price_raw !== null && $purchase_price_raw !== '' && is_numeric($purchase_price_raw)) ? (float)$purchase_price_raw : null;
+$weight_raw = isset($_POST['weight']) ? trim($_POST['weight']) : null;
+$remark_weight = ($weight_raw !== null && $weight_raw !== '' && is_numeric($weight_raw)) ? (float)$weight_raw : null;
 $remark = isset($_POST['remark']) ? trim($_POST['remark']) : '';
 $row_code = isset($_POST['row_code']) ? trim($_POST['row_code']) : '';
 $bin_value = isset($_POST['bin']) ? trim($_POST['bin']) : '';
@@ -113,6 +117,8 @@ error_log("temp_product_id: " . $temp_product_id);
 error_log("Files received: " . count($_FILES));
 error_log("POST keys: " . implode(', ', array_keys($_POST)));
 error_log("sale_price_raw: " . var_export($sale_price_raw, true));
+error_log("purchase_price_raw: " . var_export($purchase_price_raw, true));
+error_log("weight_raw: " . var_export($weight_raw, true));
 error_log("remark_length: " . strlen($remark));
 error_log("row_code: " . $row_code);
 error_log("bin: " . $bin);
@@ -434,6 +440,44 @@ try {
         error_log("Sale price updated rows: " . $stmtSalePrice->rowCount());
     }
 
+    if ($purchase_price !== null) {
+        $sqlPurchasePrice = "UPDATE purchase_order_items SET unit_price = :purchase_price WHERE temp_product_id = :temp_product_id";
+        $stmtPurchasePrice = $pdo->prepare($sqlPurchasePrice);
+        $stmtPurchasePrice->execute([
+            ':purchase_price' => $purchase_price,
+            ':temp_product_id' => $temp_product_id
+        ]);
+        error_log("Purchase price updated rows: " . $stmtPurchasePrice->rowCount());
+    }
+
+    // Resolve linked product IDs once for downstream updates
+    $linkedProductIds = [];
+    $stmtProductIdsWeight = $pdo->prepare("SELECT DISTINCT poi.product_id
+                                           FROM purchase_order_items poi
+                                           WHERE poi.temp_product_id = :temp_product_id
+                                             AND poi.product_id IS NOT NULL");
+    $stmtProductIdsWeight->execute([':temp_product_id' => $temp_product_id]);
+    $linkedProductIds = $stmtProductIdsWeight->fetchAll(PDO::FETCH_COLUMN);
+    error_log("Linked product_ids for temp_product_id {$temp_product_id}: " . json_encode($linkedProductIds));
+
+    if ($remark_weight !== null) {
+        if ($linkedProductIds) {
+            $sqlWeight = "UPDATE products SET remark_weight = :remark_weight WHERE product_id IN (" . implode(',', array_map('intval', $linkedProductIds)) . ")";
+            $stmtWeight = $pdo->prepare($sqlWeight);
+            $stmtWeight->execute([':remark_weight' => $remark_weight]);
+            error_log("Remark weight updated rows: " . $stmtWeight->rowCount());
+        } else {
+            error_log("Remark weight skip: no linked product_id for temp_product_id {$temp_product_id}");
+        }
+        // Also store on temp_products for traceability even if not yet linked
+        $stmtWeightTemp = $pdo->prepare("UPDATE temp_products SET remark_weight = :remark_weight WHERE temp_product_id = :temp_product_id");
+        $stmtWeightTemp->execute([
+            ':remark_weight' => $remark_weight,
+            ':temp_product_id' => $temp_product_id
+        ]);
+        error_log("Remark weight stored on temp_products rows: " . $stmtWeightTemp->rowCount());
+    }
+
     // Update unit on converted products if available
     if ($unit !== '') {
         $sqlUpdateUnit = "UPDATE products SET unit = :unit
@@ -493,6 +537,8 @@ try {
         'image_filename' => $image_filename,
         'image_path' => $stored_image_path,
         'sale_price' => $sale_price,
+        'purchase_price' => $purchase_price,
+        'remark_weight' => $remark_weight,
         'unit' => $unit,
         'remark' => $remark,
         'location_id' => $location_id,

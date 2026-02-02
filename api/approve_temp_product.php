@@ -54,9 +54,9 @@ try {
     
     // สร้างสินค้าใหม่ในตาราง products
     $sql_insert = "INSERT INTO products 
-                   (name, sku, barcode, unit, product_category_id, image, remark_color, created_by, created_at) 
+                   (name, sku, barcode, unit, product_category_id, image, remark_color, remark_weight, created_by, created_at) 
                    VALUES 
-                   (:product_name, :sku, :barcode, :unit, :product_category_id, :product_image, :remark, :created_by, NOW())";
+                   (:product_name, :sku, :barcode, :unit, :product_category_id, :product_image, :remark, :remark_weight, :created_by, NOW())";
     
     $stmt_insert = $pdo->prepare($sql_insert);
     
@@ -78,6 +78,7 @@ try {
         ':product_category_id' => $category_id ?? 1,
         ':product_image' => $temp_product['product_image'],
         ':remark' => $temp_product['remark'] ?? '',
+        ':remark_weight' => $temp_product['remark_weight'] ?? null,
         ':created_by' => $_SESSION['user_id'] ?? $temp_product['created_by']
     ]);
     

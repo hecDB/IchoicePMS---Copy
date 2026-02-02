@@ -27,7 +27,7 @@ if (!$user_id) {
     
     <style>
         body {
-            font-family: 'Sarabun', sans-serif;
+            
             background-color: #f8fafc;
         }
         
