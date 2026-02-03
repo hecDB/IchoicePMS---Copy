@@ -17,14 +17,13 @@ require '../templates/sidebar.php';
     <title>ตรวจสอบสินค้าชำรุด - IchoicePMS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/base.css">
     <link rel="stylesheet" href="../assets/sidebar.css">
     <link rel="stylesheet" href="../assets/components.css">
     <style>
         body {
-            font-family: 'Sarabun', sans-serif;
             background-color: #f8fafc;
         }
         .mainwrap {
@@ -169,6 +168,15 @@ require '../templates/sidebar.php';
                     <div class="mb-4">
                         <div class="form-section-title">ข้อมูลสินค้า</div>
                         <ul class="list-unstyled mb-0 small text-slate-600" id="detailInfoList"></ul>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">สถานะสินค้า</label>
+                        <select class="form-select" id="dispositionSelect">
+                            <option value="sellable">ขายได้</option>
+                            <option value="discard">ทิ้ง / ใช้ไม่ได้</option>
+                        </select>
+                        <small class="text-muted">ดึงจากข้อมูลการตีกลับ สามารถปรับใหม่ได้ก่อนบันทึก</small>
                     </div>
 
                     <form id="inspectionForm" autocomplete="off">
@@ -390,6 +398,11 @@ function populateDetail(data) {
     const resolvedSku = autoSku || (data.new_sku || '');
     document.getElementById('newSkuInput').value = resolvedSku;
 
+    // Set disposition select from existing notes (default to sellable)
+    const dispositionSelect = document.getElementById('dispositionSelect');
+    const disposition = resolveDisposition(data);
+    dispositionSelect.value = disposition;
+
     const costPriceInput = document.getElementById('costPriceInput');
     const salePriceInput = document.getElementById('salePriceInput');
     const costValue = data.cost_price !== null && data.cost_price !== undefined && data.cost_price !== ''
@@ -403,6 +416,10 @@ function populateDetail(data) {
     salePriceInput.value = saleValue !== null && !Number.isNaN(saleValue) ? saleValue.toFixed(2) : '';
 
     document.getElementById('inspectionNotesInput').value = data.defect_notes || '';
+
+    // Lock editing for completed items
+    const isEditable = (data.status || '') === 'pending';
+    setDetailEditable(isEditable);
 }
 
 function resetDetail() {
@@ -416,6 +433,7 @@ function resetDetail() {
 async function submitInspection(event) {
     event.preventDefault();
     const inspectionId = document.getElementById('inspectionId').value;
+    const disposition = document.getElementById('dispositionSelect').value || 'sellable';
     const restockQtyValue = parseFloat(document.getElementById('restockQtyInput').value);
     const inspectionNotes = document.getElementById('inspectionNotesInput').value.trim();
     const returnQtyValue = parseFloat(document.getElementById('returnQtyInput').value);
@@ -452,6 +470,7 @@ async function submitInspection(event) {
             body: JSON.stringify({
                 action: 'process_damaged_inspection',
                 inspection_id: inspectionId,
+                disposition,
                 new_sku: generatedSku,
                 restock_qty: restockQty,
                 inspection_notes: inspectionNotes,
@@ -503,6 +522,31 @@ document.getElementById('inspectionForm').addEventListener('submit', submitInspe
 document.getElementById('cancelDetailBtn').addEventListener('click', resetDetail);
 
 loadInspections();
+
+// Helper to resolve disposition from existing notes
+function resolveDisposition(data) {
+    const combinedNotes = `${data.return_notes || ''}\n${data.defect_notes || ''}`;
+    if (/ทิ้ง\s*\/\s*ใช้ไม่ได้/.test(combinedNotes)) {
+        return 'discard';
+    }
+    if (/ขายได้/.test(combinedNotes)) {
+        return 'sellable';
+    }
+    return 'sellable';
+}
+
+// Helper to toggle editability for completed inspections
+function setDetailEditable(isEditable) {
+    const form = document.getElementById('inspectionForm');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => {
+        if (el.id === 'cancelDetailBtn') return; // keep cancel available
+        el.disabled = !isEditable;
+    });
+    if (submitBtn) {
+        submitBtn.textContent = isEditable ? 'ยืนยันสินค้ามีตำหนิและจัดการสต๊อก' : 'รายการนี้ตรวจสอบแล้ว';
+    }
+}
 </script>
 </body>
 </html>

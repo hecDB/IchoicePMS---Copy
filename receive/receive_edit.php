@@ -50,7 +50,7 @@ try {
     $pdo->beginTransaction();
     
     // ดึงข้อมูล receive_items เดิมก่อนการแก้ไข
-    $sqlOriginal = "SELECT r.*, poi.product_id, p.sku, p.barcode, p.name as product_name 
+    $sqlOriginal = "SELECT r.*, poi.product_id, poi.temp_product_id, p.sku, p.barcode, p.name as product_name 
                    FROM receive_items r 
                    LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id 
                    LEFT JOIN products p ON poi.product_id = p.product_id 
@@ -94,27 +94,80 @@ try {
         error_log("Normal update executed. Expiry_date: " . var_export($expiry_date, true) . ", Rows affected: " . $stmt->rowCount());
     }
 
-    // อัปเดตตำแหน่ง (location_desc, row_code, bin, shelf) ในตาราง locations ถ้ามีข้อมูล
+    // อัปเดตตำแหน่ง (location_desc, row_code, bin, shelf) และสร้าง mapping ถ้ายังไม่มี
     if ($location_desc !== '' || $row_code !== '' || $bin !== '' || $shelf !== '') {
-        // หา location_id จาก receive_items
-        $sqlLoc = "SELECT l.location_id FROM receive_items r
+        // ดึง product/temp_product ปัจจุบันของ receive นี้ (หลังการอัปเดตด้านบน)
+        $stmtCurrent = $pdo->prepare("SELECT poi.product_id, poi.temp_product_id, poi.item_id
+            FROM receive_items r
             LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
-            LEFT JOIN products p ON poi.product_id = p.product_id
-            LEFT JOIN product_location pl ON pl.product_id = p.product_id
-            LEFT JOIN locations l ON l.location_id = pl.location_id
-            WHERE r.receive_id = ? LIMIT 1";
-        $stmtLoc = $pdo->prepare($sqlLoc);
-        $stmtLoc->execute([$receive_id]);
-        $location_id = $stmtLoc->fetchColumn();
-        if ($location_id) {
-            $updateLoc = "UPDATE locations SET description=?, row_code=?, bin=?, shelf=? WHERE location_id=?";
-            $pdo->prepare($updateLoc)->execute([
-                $location_desc,
-                $row_code,
-                $bin,
-                $shelf,
-                $location_id
-            ]);
+            WHERE r.receive_id = ? LIMIT 1");
+        $stmtCurrent->execute([$receive_id]);
+        $currentLink = $stmtCurrent->fetch(PDO::FETCH_ASSOC) ?: [];
+        $currentProductId = isset($currentLink['product_id']) ? (int)$currentLink['product_id'] : 0;
+        $currentTempProductId = isset($currentLink['temp_product_id']) ? (int)$currentLink['temp_product_id'] : 0;
+
+        // ถ้าไม่ส่ง description มา แต่มี row/bin/shelf ให้สร้าง description อัตโนมัติ
+        $locationDescValue = $location_desc;
+        if ($locationDescValue === '' && $row_code !== '' && $bin !== '' && $shelf !== '') {
+            $locationDescValue = "$row_code-$bin-$shelf";
+        }
+
+        $location_id = null;
+
+        // พยายามหา location_id ที่ map กับสินค้าอยู่แล้ว
+        if ($currentProductId) {
+            $stmtLoc = $pdo->prepare("SELECT l.location_id FROM product_location pl
+                LEFT JOIN locations l ON l.location_id = pl.location_id
+                WHERE pl.product_id = ? LIMIT 1");
+            $stmtLoc->execute([$currentProductId]);
+            $location_id = (int)$stmtLoc->fetchColumn();
+        }
+
+        // ถ้าไม่มี mapping ให้ลองหา location จากพิกัดที่ส่งมา
+        if (!$location_id && $row_code !== '' && $bin !== '' && $shelf !== '') {
+            $stmtFindLoc = $pdo->prepare("SELECT location_id FROM locations WHERE row_code=? AND bin=? AND shelf=? LIMIT 1");
+            $stmtFindLoc->execute([$row_code, $bin, $shelf]);
+            $location_id = (int)$stmtFindLoc->fetchColumn();
+        }
+
+        // ถ้ายังไม่เจอ ให้สร้าง location ใหม่
+        if (!$location_id && $row_code !== '' && $bin !== '' && $shelf !== '') {
+            $stmtInsertLoc = $pdo->prepare("INSERT INTO locations (row_code, bin, shelf, description) VALUES (?,?,?,?)");
+            $stmtInsertLoc->execute([$row_code, $bin, $shelf, $locationDescValue]);
+            $location_id = (int)$pdo->lastInsertId();
+        }
+
+        if ($location_id && $currentProductId) {
+            // ผูก product_location (อัปเดตของเดิมหรือสร้างใหม่)
+            $stmtExistingLink = $pdo->prepare("SELECT id FROM product_location WHERE product_id=? LIMIT 1");
+            $stmtExistingLink->execute([$currentProductId]);
+            $existingLinkId = (int)$stmtExistingLink->fetchColumn();
+
+            if ($existingLinkId) {
+                $pdo->prepare("UPDATE product_location SET location_id=? WHERE id=?")->execute([$location_id, $existingLinkId]);
+            } else {
+                $pdo->prepare("INSERT INTO product_location (product_id, location_id) VALUES (?, ?)")
+                    ->execute([$currentProductId, $location_id]);
+            }
+
+            // อัปเดต metadata ของ location
+            $pdo->prepare("UPDATE locations SET description=?, row_code=?, bin=?, shelf=? WHERE location_id=?")
+                ->execute([$locationDescValue, $row_code, $bin, $shelf, $location_id]);
+        } elseif ($location_id && $currentTempProductId) {
+            // กรณี temp_product ให้เก็บตำแหน่งไว้ใน temp_product_locations (สำหรับอนุมัติภายหลัง)
+            $pdo->exec("CREATE TABLE IF NOT EXISTS temp_product_locations (
+                temp_product_id INT PRIMARY KEY,
+                location_id INT DEFAULT NULL,
+                row_code VARCHAR(50) DEFAULT NULL,
+                bin VARCHAR(50) DEFAULT NULL,
+                shelf VARCHAR(50) DEFAULT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+            $stmtTempLoc = $pdo->prepare("INSERT INTO temp_product_locations (temp_product_id, location_id, row_code, bin, shelf)
+                VALUES (?,?,?,?,?)
+                ON DUPLICATE KEY UPDATE location_id=VALUES(location_id), row_code=VALUES(row_code), bin=VALUES(bin), shelf=VALUES(shelf)");
+            $stmtTempLoc->execute([$currentTempProductId, $location_id, $row_code, $bin, $shelf]);
         }
     }
 

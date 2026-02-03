@@ -18,6 +18,7 @@ try {
     $sql = "
         SELECT 
             poi.item_id,
+            poi.product_id,
             tp.product_name,
             tp.provisional_sku as sku,
             tp.provisional_barcode as barcode,
@@ -62,6 +63,7 @@ try {
     foreach ($items as $item) {
         $processed_items[] = [
             'item_id' => $item['item_id'],
+            'product_id' => isset($item['product_id']) ? (int)$item['product_id'] : null,
             'product_name' => $item['product_name'] ?? 'Unknown Product',
             'barcode' => $item['barcode'] ?? null,
             'sku' => $item['sku'] ?? '-',

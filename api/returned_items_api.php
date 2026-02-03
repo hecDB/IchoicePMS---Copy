@@ -983,6 +983,7 @@ if ($action === 'process_damaged_inspection') {
     try {
         $payload = json_decode(file_get_contents('php://input'), true);
         $inspection_id = $payload['inspection_id'] ?? null;
+        $disposition = $payload['disposition'] ?? null;
         $restockQty = isset($payload['restock_qty']) ? (float)$payload['restock_qty'] : 0.0;
         $inspectionNotes = trim((string)($payload['inspection_notes'] ?? ''));
         $costPriceInput = $payload['cost_price'] ?? null;
@@ -1086,14 +1087,27 @@ if ($action === 'process_damaged_inspection') {
             $newProductId = createDefectProduct($pdo, $sourceProduct, $newSku, (int)$user_id);
         }
 
+        // Normalize disposition label and downstream behavior flag
+        $isSellable = ($disposition !== 'discard');
+        $dispositionLabel = $isSellable ? '[ขายได้]' : '[ทิ้ง/ใช้ไม่ได้]';
+
+        // Strip any existing disposition prefixes and reapply the latest selection
         $existingDefectNotes = trim((string)($inspection['defect_notes'] ?? ''));
+        $existingDefectNotes = preg_replace('/^\[(ขายได้|ทิ้ง\/ใช้ไม่ได้)\]\s*/u', '', $existingDefectNotes);
+
         $notesSegments = [];
         if ($existingDefectNotes !== '') {
-            $notesSegments[] = $existingDefectNotes;
+            $notesSegments[] = "$dispositionLabel " . $existingDefectNotes;
         }
-        if ($inspectionNotes !== '') {
-            $notesSegments[] = $inspectionNotes;
+
+        $newNoteLine = $inspectionNotes !== '' ? $inspectionNotes : '';
+        if ($newNoteLine !== '') {
+            $notesSegments[] = "$dispositionLabel " . $newNoteLine;
+        } elseif (empty($notesSegments)) {
+            // Keep at least the disposition label to reflect the latest choice
+            $notesSegments[] = $dispositionLabel;
         }
+
         $combinedNotes = implode("\n", $notesSegments);
 
         $expiryDate = $inspection['expiry_date'] ?? $inspection['return_expiry_date'] ?? null;
@@ -1106,20 +1120,26 @@ if ($action === 'process_damaged_inspection') {
             $inspection['expiry_date'] = $expiryDate;
         }
 
-        $poContext = ensureDamagedReturnPo($pdo, $inspection, (int)$user_id, $costPrice, $salePrice, $restockQty);
-        $poIdForMovement = (int)($poContext['po_id'] ?? 0);
-        $poNumberForMovement = $poContext['po_number'] ?? ($inspection['po_number'] ?? null);
-
+        $poIdForMovement = 0;
+        $poNumberForMovement = $inspection['po_number'] ?? null;
         $receiveItemId = null;
-        if ($poIdForMovement > 0) {
-            $receiveItemId = ensureDamagedPurchaseOrderItem(
-                $pdo,
-                $poIdForMovement,
-                $newProductId,
-                $restockQty,
-                $costPrice,
-                $salePrice
-            );
+
+        // Only create PO/items/movements when the item is sellable
+        if ($isSellable) {
+            $poContext = ensureDamagedReturnPo($pdo, $inspection, (int)$user_id, $costPrice, $salePrice, $restockQty);
+            $poIdForMovement = (int)($poContext['po_id'] ?? 0);
+            $poNumberForMovement = $poContext['po_number'] ?? ($inspection['po_number'] ?? null);
+
+            if ($poIdForMovement > 0) {
+                $receiveItemId = ensureDamagedPurchaseOrderItem(
+                    $pdo,
+                    $poIdForMovement,
+                    $newProductId,
+                    $restockQty,
+                    $costPrice,
+                    $salePrice
+                );
+            }
         }
 
         $updateInspection = $pdo->prepare("UPDATE damaged_return_inspections SET
@@ -1153,7 +1173,7 @@ if ($action === 'process_damaged_inspection') {
             ':inspection_id' => $inspection_id
         ]);
 
-        if ($poIdForMovement > 0 && ((int)($inspection['po_id'] ?? 0) !== $poIdForMovement || ($inspection['po_number'] ?? null) !== $poNumberForMovement)) {
+        if ($isSellable && $poIdForMovement > 0 && ((int)($inspection['po_id'] ?? 0) !== $poIdForMovement || ($inspection['po_number'] ?? null) !== $poNumberForMovement)) {
             $updateReturnPo = $pdo->prepare('UPDATE returned_items SET po_id = :po_id, po_number = :po_number WHERE return_id = :return_id');
             $updateReturnPo->execute([
                 ':po_id' => $poIdForMovement,
@@ -1173,7 +1193,7 @@ if ($action === 'process_damaged_inspection') {
             ':return_id' => $inspection['return_id']
         ]);
 
-        if ($receiveItemId !== null && $poIdForMovement > 0) {
+        if ($isSellable && $receiveItemId !== null && $poIdForMovement > 0) {
             insertDamagedReceiveMovement(
                 $pdo,
                 $receiveItemId,
@@ -1187,15 +1207,18 @@ if ($action === 'process_damaged_inspection') {
             );
         }
 
-        logProductActivity(
-            $pdo,
-            $newProductId,
-            (int)$user_id,
-            $restockQty,
-            (string)($inspection['return_code'] ?? ''),
-            $newSku,
-            $combinedNotes !== '' ? $combinedNotes : null
-        );
+        if ($isSellable) {
+            // Only log stock movement when item is sellable
+            logProductActivity(
+                $pdo,
+                $newProductId,
+                (int)$user_id,
+                $restockQty,
+                (string)($inspection['return_code'] ?? ''),
+                $newSku,
+                $combinedNotes !== '' ? $combinedNotes : null
+            );
+        }
 
         $pdo->commit();
 

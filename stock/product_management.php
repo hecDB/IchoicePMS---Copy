@@ -4,28 +4,28 @@ require '../config/db_connect.php';
 
 // ดึงข้อมูลสินค้าทั้งหมด
 $sql = "
-SELECT 
-    p.product_id,
-    p.image,
-    p.barcode,
-    p.sku,
-    p.name,
-    p.unit,
-    p.remark_color,
-    p.remark_split,
-    pc.category_name,
-    COALESCE(p.is_active, 1) as is_active,
-    l.location_id,
-    l.row_code,
-    l.bin,
-    l.shelf,
-    l.description as location_description,
-    pl.location_id as product_location_id
-FROM products p
-LEFT JOIN product_category pc ON p.product_category_id = pc.category_id
-LEFT JOIN product_location pl ON p.product_id = pl.product_id
-LEFT JOIN locations l ON pl.location_id = l.location_id
-ORDER BY p.name ASC
+    SELECT 
+        p.product_id,
+        p.image,
+        p.barcode,
+        p.sku,
+        p.name,
+        p.unit,
+        p.remark_color,
+        p.remark_split,
+        pc.category_name,
+        COALESCE(p.is_active, 1) as is_active,
+        l.location_id,
+        l.row_code,
+        l.bin,
+        l.shelf,
+        l.description as location_description,
+        pl.location_id as product_location_id
+    FROM products p
+    LEFT JOIN product_category pc ON p.product_category_id = pc.category_id
+    LEFT JOIN product_location pl ON p.product_id = pl.product_id
+    LEFT JOIN locations l ON pl.location_id = l.location_id
+    ORDER BY p.name ASC
 ";
 $stmt = $pdo->query($sql);
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -703,6 +703,7 @@ $stats = [
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
 let currentProductId = null;
@@ -1085,6 +1086,15 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
         const text = row.textContent.toLowerCase();
         row.style.display = text.includes(searchText) ? '' : 'none';
     });
+
+    // ยกเลิกเช็กที่ไม่แสดงผลหลังกรองค้นหา
+    document.querySelectorAll('.product-checkbox').forEach(cb => {
+        const row = cb.closest('tr');
+        if (row && row.style.display === 'none') {
+            cb.checked = false;
+        }
+    });
+    updateSelectionCount();
 });
 
 // Initialize DataTable
@@ -1143,15 +1153,23 @@ $(document).ready(function() {
 });
 
 // ฟังก์ชั่น Checklist
+function getVisibleProductCheckboxes() {
+    return Array.from(document.querySelectorAll('.product-checkbox')).filter(cb => {
+        const row = cb.closest('tr');
+        return row && row.style.display !== 'none';
+    });
+}
+
 function toggleSelectAll(checkbox) {
-    document.querySelectorAll('.product-checkbox').forEach(cb => {
+    getVisibleProductCheckboxes().forEach(cb => {
         cb.checked = checkbox.checked;
     });
     updateSelectionCount();
 }
 
 function updateSelectionCount() {
-    const checkedCount = document.querySelectorAll('.product-checkbox:checked').length;
+    const visibleCheckboxes = getVisibleProductCheckboxes();
+    const checkedCount = visibleCheckboxes.filter(cb => cb.checked).length;
     const selectionActions = document.getElementById('selectionActions');
     const selectionCount = document.getElementById('selectionCount');
     
@@ -1163,9 +1181,10 @@ function updateSelectionCount() {
     }
     
     // Update select all checkbox state
-    const allCheckboxes = document.querySelectorAll('.product-checkbox');
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    selectAllCheckbox.checked = checkedCount === allCheckboxes.length && allCheckboxes.length > 0;
+    const totalVisible = visibleCheckboxes.length;
+    selectAllCheckbox.checked = checkedCount === totalVisible && totalVisible > 0;
+    selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < totalVisible;
 }
 
 function clearSelection() {
@@ -1236,42 +1255,18 @@ function exportToExcel() {
         alert('\u0e01\u0e23\u0e38\u0e13\u0e32\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e19\u0e49\u0e2d\u0e22');
         return;
     }
-    
-    // Create CSV data for Excel
-    let csvData = '\ufeff'; // UTF-8 BOM
-    csvData += '\u0e25\u0e33\u0e14\u0e31\u0e1a,\u0e0a\u0e37\u0e48\u0e2d\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32,SKU,Barcode,\u0e2b\u0e19\u0e48\u0e27\u0e22,\u0e2b\u0e21\u0e27\u0e14\u0e2b\u0e21\u0e39\u0e48,\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e2b\u0e15\u0e38\u0e2a\u0e35,\u0e41\u0e1a\u0e48\u0e07\u0e02\u0e32\u0e22\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32,\u0e41\u0e16\u0e27,\u0e25\u0e47\u0e2d\u0e04,\u0e0a\u0e31\u0e49\u0e19,\u0e2a\u0e16\u0e32\u0e19\u0e30\n';
-    
-    selected.forEach((product, index) => {
-        // Escape quotes and handle special characters
-        const escapeCsv = (str) => {
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                return '"' + str.replace(/"/g, '""') + '"';
-            }
-            return str;
-        };
-        
-        csvData += (index + 1) + ',';
-        csvData += escapeCsv(product.name) + ',';
-        csvData += escapeCsv(product.sku) + ',';
-        csvData += escapeCsv(product.barcode) + ',';
-        csvData += escapeCsv(product.unit) + ',';
-        csvData += escapeCsv(product.category) + ',';
-        csvData += escapeCsv(product.remark_color) + ',';
-        csvData += escapeCsv(product.remark_split) + ',';
-        csvData += escapeCsv(product.row_code) + ',';
-        csvData += escapeCsv(product.bin) + ',';
-        csvData += escapeCsv(product.shelf) + ',';
-        csvData += escapeCsv(product.status) + '\n';
-    });
-    
-    // Create blob and download
-    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', '\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32_' + new Date().getTime() + '.csv');
-    link.click();
-    URL.revokeObjectURL(url);
+
+    // เตรียมข้อมูลเฉพาะคอลัมน์ที่ต้องการ
+    const rows = selected.map((product) => ({
+        SKU: product.sku || '',
+        '\u0e2b\u0e21\u0e27\u0e14\u0e2b\u0e21\u0e39\u0e48': product.category || ''
+    }));
+
+    // สร้างไฟล์ Excel (.xlsx)
+    const worksheet = XLSX.utils.json_to_sheet(rows, { header: ['SKU', '\u0e2b\u0e21\u0e27\u0e14\u0e2b\u0e21\u0e39\u0e48'] });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
+    XLSX.writeFile(workbook, 'excel.xlsx');
 }
 
 // Export to PDF

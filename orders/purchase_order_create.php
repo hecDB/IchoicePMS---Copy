@@ -371,6 +371,21 @@ async function generatePONumber() {
 /* ==================== จัดการสกุลเงิน ==================== */
 const currencySelect = document.getElementById('currencySelect');
 const exchangeRateInput = document.getElementById('exchangeRate');
+const usdCurrencyOption = Array.from(currencySelect.options || []).find(opt => (opt.dataset.code || '').toUpperCase() === 'USD');
+
+function selectUsdCurrencyIfAvailable(triggerChange = false) {
+    if (!usdCurrencyOption) {
+        return false;
+    }
+    if (currencySelect.value !== usdCurrencyOption.value) {
+        currencySelect.value = usdCurrencyOption.value;
+        if (triggerChange) {
+            currencySelect.dispatchEvent(new Event('change'));
+        }
+        return true;
+    }
+    return false;
+}
 
 currencySelect.addEventListener('change', function(){
     const selectedOption = this.options[this.selectedIndex];
@@ -394,6 +409,7 @@ currencySelect.addEventListener('change', function(){
 });
 
 // ตั้งค่าเริ่มต้น
+selectUsdCurrencyIfAvailable(false);
 currencySelect.dispatchEvent(new Event('change'));
 
 /* ==================== รายการสินค้า ==================== */
@@ -495,7 +511,7 @@ function addProductRow(detail={}) {
                 <input type="text" class="unit-input" value="${detail.unit||''}" required readonly style="width:100px;">
             </div>
             <div>
-                <div class="small-label">ราคาต่อหน่วย *</div>
+                <div class="small-label">ราคาต่อหน่วย (US) *</div>
                 <div style="display:flex;align-items:center;">
                     <span class="currency-symbol" style="margin-right:5px;font-weight:bold;color:#1976d2;">${currentSymbol}</span>
                     <input type="number" class="price-input" min="0" step="0.01" value="${detail.price||0}" required style="width:95px;">
@@ -729,6 +745,18 @@ document.getElementById('addProductRowBtn').onclick = ()=>addProductRow();
                                             noImageText.style.display = 'none';
                                             ensureCategoryOption(categorySelect, foundProduct.category_name || '');
                                         }
+
+                                        const mappedProduct = window.productsMap ? window.productsMap[product.product_id] : null;
+                                        if (mappedProduct) {
+                                            applyLatestPriceFromProduct(lastRow, mappedProduct, { setPrice: true });
+                                        } else {
+                                            const priceInputEl = lastRow.querySelector('.price-input');
+                                            if (priceInputEl) {
+                                                updatePriceBaseDisplay(priceInputEl);
+                                            }
+                                        }
+
+                                        calcTotal();
                                     }
                                 }, index * 150);
                             });
@@ -822,6 +850,7 @@ function applyLatestPriceFromProduct(row, productInfo, options) {
     const currencyInfo = (lastCurrencyId !== null && window.currencyMap)
         ? window.currencyMap[lastCurrencyId]
         : null;
+    const lastCurrencyRate = currencyInfo ? parseFloat(currencyInfo.exchange_rate) : null;
     const currencyInfoIsBase = currencyInfo ? (currencyInfo.is_base === 1 || currencyInfo.is_base === '1') : false;
     const isLastCurrencyBase = currencyInfoIsBase || (baseCurrencyId !== null && lastCurrencyId === baseCurrencyId);
     const resolvedSymbol = currencyInfo && currencyInfo.symbol ? currencyInfo.symbol : (lastSymbol || currentSymbol);
@@ -832,9 +861,19 @@ function applyLatestPriceFromProduct(row, productInfo, options) {
 
     const lastCurrencyMatchesCurrent = lastCurrencyId !== null && currentCurrencyId !== null && lastCurrencyId === currentCurrencyId;
     const currentIsBase = baseCurrencyId !== null && currentCurrencyId !== null && currentCurrencyId === baseCurrencyId;
+    const usdCurrency = usdCurrencyOption ? {
+        id: parseInt(usdCurrencyOption.value, 10),
+        symbol: usdCurrencyOption.dataset.symbol || '$',
+        code: (usdCurrencyOption.dataset.code || 'USD').toUpperCase(),
+        rate: parseFloat(usdCurrencyOption.dataset.rate)
+    } : null;
+    const effectiveUsdRate = usdCurrency && usdCurrency.rate && !Number.isNaN(usdCurrency.rate) && usdCurrency.rate > 0
+        ? usdCurrency.rate
+        : null;
 
     let noteValue = null;
     let populateValue = null;
+    let convertedUsdPrice = null;
 
     if (isLastCurrencyBase || (lastCurrencyId === null && baseCurrencyId !== null)) {
         if (!Number.isNaN(lastPricePerUnit) && lastPricePerUnit > 0) {
@@ -860,23 +899,47 @@ function applyLatestPriceFromProduct(row, productInfo, options) {
         }
     }
 
-    if (config.setPrice && priceInput && populateValue !== null) {
-        priceInput.value = populateValue.toFixed(2);
+    if (effectiveUsdRate) {
+        if (!Number.isNaN(lastPriceBase) && lastPriceBase > 0) {
+            convertedUsdPrice = lastPriceBase / effectiveUsdRate;
+        } else if (!Number.isNaN(lastPriceOriginal) && lastPriceOriginal > 0 && lastCurrencyRate && lastCurrencyRate > 0) {
+            convertedUsdPrice = (lastPriceOriginal * lastCurrencyRate) / effectiveUsdRate;
+        } else if (!Number.isNaN(lastPricePerUnit) && lastPricePerUnit > 0 && lastCurrencyRate && lastCurrencyRate > 0) {
+            convertedUsdPrice = (lastPricePerUnit * lastCurrencyRate) / effectiveUsdRate;
+        }
+    }
+
+    const hasUsdPrice = convertedUsdPrice !== null && !Number.isNaN(convertedUsdPrice) && convertedUsdPrice > 0;
+    const priceToUse = hasUsdPrice ? convertedUsdPrice : populateValue;
+
+    if (config.setPrice && priceInput && priceToUse !== null) {
+        priceInput.value = priceToUse.toFixed(2);
         updatePriceBaseDisplay(priceInput);
         calcTotal();
         priceUpdated = true;
     }
 
     if (noteEl) {
+        const dateText = formatThaiDate(lastDate);
+        const segments = [];
+
+        if (hasUsdPrice && usdCurrency) {
+            const usdSymbol = usdCurrency.symbol || '$';
+            const usdCode = usdCurrency.code || 'USD';
+            segments.push(`PO ล่าสุด (USD): ${usdSymbol}${convertedUsdPrice.toFixed(2)} (${usdCode})`);
+        }
+
         if (noteValue !== null) {
             const symbolForNote = resolvedSymbol || currentSymbol;
             const codeForNote = resolvedCode ? resolvedCode.toUpperCase() : '';
-            const dateText = formatThaiDate(lastDate);
-            const displayText = `${symbolForNote}${noteValue.toFixed(2)}${codeForNote ? ' (' + codeForNote + ')' : ''}`;
-            const segments = [`PO ล่าสุด: ${displayText}`];
-            if (dateText) {
-                segments.push(dateText);
-            }
+            segments.push(`เดิม: ${symbolForNote}${noteValue.toFixed(2)}${codeForNote ? ' (' + codeForNote + ')' : ''}`);
+        }
+
+        if (dateText) {
+            segments.push(dateText);
+        }
+
+        if (segments.length > 0) {
             noteEl.textContent = segments.join(' • ');
             noteEl.style.display = 'block';
         } else {
@@ -910,6 +973,8 @@ function calcTotal(){
     const currencySelect = document.getElementById('currencySelect');
     const selectedOption = currencySelect.options[currencySelect.selectedIndex];
     const symbol = selectedOption.dataset.symbol || '฿';
+    const code = (selectedOption.dataset.code || '').toUpperCase();
+    const codeLabel = code ? ` (${code})` : '';
     
     document.querySelectorAll('#productRows .product-item-card').forEach(card=>{
         let qty = parseFloat(card.querySelector('.qty-input').value)||0;
@@ -919,7 +984,7 @@ function calcTotal(){
     
     const sumBase = sumOriginal * rate;
     
-    document.getElementById('totalPriceOriginal').textContent = `ราคาสุทธิ: ${symbol}${sumOriginal.toFixed(2)}`;
+    document.getElementById('totalPriceOriginal').textContent = `ราคาสุทธิ${codeLabel}: ${symbol}${sumOriginal.toFixed(2)}`;
     document.getElementById('totalPriceBase').textContent = `เทียบเท่า: ฿${sumBase.toFixed(2)}`;
 }
 

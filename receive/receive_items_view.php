@@ -1179,7 +1179,7 @@ $(document).ready(function() {
         const weightVal = parseFloat($('#edit-weight').val()) || 0;
         const baseCostVal = parseFloat($('#edit-price-cost').val()) || 0;
         const trueCost = baseCostVal + (weightVal * 850);
-        $('#edit-true-cost').val(trueCost > 0 ? trueCost.toFixed(2) : '');
+        // true-cost display removed; keep computation for potential future use
     }
 
     // Function to bind action button events (delete functionality removed)
@@ -1343,7 +1343,7 @@ $(document).ready(function() {
         }
     });
 
-    $('#edit-price-cost').on('input change', updateTrueCostDisplay);
+    // price inputs are read-only; no need to recompute true cost on change
 
     // Hide default DataTable search box
     setTimeout(function() {
@@ -1588,12 +1588,7 @@ $(document).ready(function() {
             if (isNaN(qty) || $('#edit-receive-qty').val() === '') {
                 Swal.fire('กรุณากรอกจำนวน', '', 'warning'); $btn.prop('disabled', false); return;
             }
-            if (isNaN(priceCost) || $('#edit-price-cost').val() === '') {
-                Swal.fire('กรุณากรอกราคาต้นทุน', '', 'warning'); $btn.prop('disabled', false); return;
-            }
-            if (isNaN(priceSale) || $('#edit-price-sale').val() === '') {
-                Swal.fire('กรุณากรอกราคาขาย', '', 'warning'); $btn.prop('disabled', false); return;
-            }
+            // ราคาและน้ำหนักไม่ให้แก้ไขแล้ว จึงไม่ต้อง validate ช่องราคา
 
             // ปรับจำนวนตามประเภท
             let qtyType = $('#edit-qty-type').val();
@@ -2280,7 +2275,7 @@ $(document).ready(function() {
                     <div class="row g-2 mb-2">
                         <div class="col-6">
                             <label for="edit-price-cost" class="form-label field-accent field-purchase">ราคาซื้อ</label>
-                            <input type="number" step="0.01" class="form-control field-input-purchase" name="price_per_unit" id="edit-price-cost">
+                            <input type="number" step="0.01" class="form-control field-input-purchase" name="price_per_unit" id="edit-price-cost" readonly>
                         </div>
                         <div class="col-6">
                             <label for="edit-weight" class="form-label field-accent field-weight">น้ำหนัก (กก.)</label>
@@ -2288,13 +2283,8 @@ $(document).ready(function() {
                         </div>
                     </div>
                     <div class="mb-2">
-                        <label for="edit-true-cost" class="form-label field-accent field-cost">ราคาต้นทุน</label>
-                        <input type="text" class="form-control field-input-cost" id="edit-true-cost" placeholder="0.00" readonly>
-                        <small class="text-muted">คำนวณจาก ราคาซื้อใบ PO + (น้ำหนัก × 850 บาท/กก.)</small>
-                    </div>
-                    <div class="mb-2">
                         <label for="edit-price-sale" class="form-label field-accent field-sale">ราคาขาย</label>
-                        <input type="number" step="0.01" class="form-control field-input-sale" name="sale_price" id="edit-price-sale">
+                        <input type="number" step="0.01" class="form-control field-input-sale" name="sale_price" id="edit-price-sale" readonly>
                     </div>
                     <div class="mb-2">
                         <label class="form-label">ประเภทการเปลี่ยนแปลง</label>

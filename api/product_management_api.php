@@ -239,10 +239,10 @@ try {
             
         case 'update':
             $product_id = $_POST['product_id'] ?? '';
-            $name = $_POST['name'] ?? '';
-            $sku = $_POST['sku'] ?? '';
-            $barcode = $_POST['barcode'] ?? '';
-            $unit = $_POST['unit'] ?? '';
+            $name = trim($_POST['name'] ?? '');
+            $sku = trim($_POST['sku'] ?? '');
+            $barcode = trim($_POST['barcode'] ?? '');
+            $unit = trim($_POST['unit'] ?? '');
             $product_category_id = $_POST['product_category_id'] ?? null;
             $remark_color = $_POST['remark_color'] ?? '';
             $remark_split = $_POST['remark_split'] ?? '';
@@ -253,19 +253,27 @@ try {
                 throw new Exception('กรุณากรอกข้อมูลที่จำเป็น');
             }
             
-            // ตรวจสอบ SKU และ Barcode ซ้ำ (ยกเว้นตัวเอง)
-            $check_sql = "SELECT product_id FROM products WHERE (sku = ? OR barcode = ?) AND product_id != ?";
-            $check_stmt = $pdo->prepare($check_sql);
-            $check_stmt->execute([$sku, $barcode, $product_id]);
-            if ($check_stmt->fetch()) {
-                throw new Exception('SKU หรือ Barcode นี้มีอยู่แล้ว');
-            }
-            
-            // Get current product data
-            $current_sql = "SELECT image FROM products WHERE product_id = ?";
+            // Get current product data (for unchanged keys and existing image)
+            $current_sql = "SELECT sku, barcode, image FROM products WHERE product_id = ?";
             $current_stmt = $pdo->prepare($current_sql);
             $current_stmt->execute([$product_id]);
             $current_product = $current_stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$current_product) {
+                throw new Exception('ไม่พบข้อมูลสินค้าเดิม');
+            }
+
+            // ตรวจสอบ SKU/Barcode ซ้ำเฉพาะเมื่อมีการเปลี่ยนค่า
+            $skuChanged = $sku !== ($current_product['sku'] ?? '');
+            $barcodeChanged = $barcode !== ($current_product['barcode'] ?? '');
+            if ($skuChanged || $barcodeChanged) {
+                $check_sql = "SELECT product_id FROM products WHERE (sku = ? OR barcode = ?) AND product_id != ?";
+                $check_stmt = $pdo->prepare($check_sql);
+                $check_stmt->execute([$sku, $barcode, $product_id]);
+                if ($check_stmt->fetch()) {
+                    throw new Exception('SKU หรือ Barcode นี้มีอยู่แล้ว');
+                }
+            }
+
             $image = $current_product['image'];
             
             // Handle new image upload and compression
