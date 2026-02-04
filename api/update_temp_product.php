@@ -2,6 +2,21 @@
 session_start();
 require '../config/db_connect.php';
 
+function columnExists(PDO $pdo, string $table, string $column): bool {
+    static $cache = [];
+    $key = strtolower($table . '.' . $column);
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND COLUMN_NAME = :column");
+    $stmt->execute([':table' => $table, ':column' => $column]);
+    $exists = $stmt->fetchColumn() > 0;
+    $cache[$key] = $exists;
+    error_log("Column check {$table}.{$column}: " . ($exists ? 'yes' : 'no'));
+    return $exists;
+}
+
 function saveBinaryImageToFilesystem($binaryData, $temp_product_id, $upload_dir, $gd_available) {
     if (!is_string($binaryData) || $binaryData === '') {
         return null;
@@ -128,6 +143,46 @@ error_log("location_id_raw: " . var_export($location_id_raw, true));
 if (!$temp_product_id) {
     echo json_encode(['success' => false, 'message' => 'ไม่พบ ID สินค้า']);
     exit;
+}
+
+// ตรวจสอบ SKU ซ้ำ (ถ้ามีการใส่ SKU)
+if ($provisional_sku !== '') {
+    $stmtCheckSku = $pdo->prepare("
+        SELECT COUNT(*) as cnt FROM products 
+        WHERE sku = :sku AND sku != ''
+    ");
+    $stmtCheckSku->execute([':sku' => $provisional_sku]);
+    $skuExistsInProducts = $stmtCheckSku->fetchColumn() > 0;
+    
+    if ($skuExistsInProducts) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'SKU นี้มีในระบบแล้ว กรุณาใช้ SKU อื่น'
+        ]);
+        error_log("SKU Validation Error: SKU '{$provisional_sku}' already exists in products table");
+        exit;
+    }
+}
+
+// ตรวจสอบ Barcode ซ้ำ (ถ้ามีการใส่ Barcode)
+if ($provisional_barcode !== '') {
+    $stmtCheckBarcode = $pdo->prepare("
+        SELECT COUNT(*) as cnt FROM products 
+        WHERE barcode = :barcode AND barcode != ''
+    ");
+    $stmtCheckBarcode->execute([':barcode' => $provisional_barcode]);
+    $barcodeExistsInProducts = $stmtCheckBarcode->fetchColumn() > 0;
+    
+    if ($barcodeExistsInProducts) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'บาร์โค้ดนี้มีในระบบแล้ว กรุณาใช้บาร์โค้ดอื่น'
+        ]);
+        error_log("Barcode Validation Error: Barcode '{$provisional_barcode}' already exists in products table");
+        exit;
+    }
 }
 
 // จัดการอัพโหลดรูปภาพ
@@ -461,15 +516,20 @@ try {
     error_log("Linked product_ids for temp_product_id {$temp_product_id}: " . json_encode($linkedProductIds));
 
     if ($remark_weight !== null) {
-        if ($linkedProductIds) {
-            $sqlWeight = "UPDATE products SET remark_weight = :remark_weight WHERE product_id IN (" . implode(',', array_map('intval', $linkedProductIds)) . ")";
-            $stmtWeight = $pdo->prepare($sqlWeight);
-            $stmtWeight->execute([':remark_weight' => $remark_weight]);
-            error_log("Remark weight updated rows: " . $stmtWeight->rowCount());
+        if (columnExists($pdo, 'products', 'remark_weight')) {
+            if ($linkedProductIds) {
+                $sqlWeight = "UPDATE products SET remark_weight = :remark_weight WHERE product_id IN (" . implode(',', array_map('intval', $linkedProductIds)) . ")";
+                $stmtWeight = $pdo->prepare($sqlWeight);
+                $stmtWeight->execute([':remark_weight' => $remark_weight]);
+                error_log("Remark weight updated rows: " . $stmtWeight->rowCount());
+            } else {
+                error_log("Remark weight skip: no linked product_id for temp_product_id {$temp_product_id}");
+            }
         } else {
-            error_log("Remark weight skip: no linked product_id for temp_product_id {$temp_product_id}");
+            error_log('Skipping products.remark_weight update: column missing');
         }
-        // Also store on temp_products for traceability even if not yet linked
+
+        // Always store on temp_products for traceability even if not yet linked
         $stmtWeightTemp = $pdo->prepare("UPDATE temp_products SET remark_weight = :remark_weight WHERE temp_product_id = :temp_product_id");
         $stmtWeightTemp->execute([
             ':remark_weight' => $remark_weight,

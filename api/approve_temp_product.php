@@ -2,6 +2,21 @@
 session_start();
 require '../config/db_connect.php';
 
+function columnExists(PDO $pdo, string $table, string $column): bool {
+    static $cache = [];
+    $key = strtolower($table . '.' . $column);
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND COLUMN_NAME = :column");
+    $stmt->execute([':table' => $table, ':column' => $column]);
+    $exists = $stmt->fetchColumn() > 0;
+    $cache[$key] = $exists;
+    error_log("Column check {$table}.{$column}: " . ($exists ? 'yes' : 'no'));
+    return $exists;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method not allowed']);
@@ -16,6 +31,9 @@ if (!$temp_product_id) {
 }
 
 try {
+    error_log("=== APPROVE_TEMP_PRODUCT START ===");
+    error_log("temp_product_id: " . $temp_product_id);
+    
     // Ensure pending location table exists before starting a transaction
     $pdo->exec("CREATE TABLE IF NOT EXISTS temp_product_locations (
         temp_product_id INT PRIMARY KEY,
@@ -27,12 +45,15 @@ try {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     $pdo->beginTransaction();
+    error_log("Transaction started");
     
     // ดึงข้อมูลจาก temp_products
     $sql_get = "SELECT * FROM temp_products WHERE temp_product_id = :temp_product_id";
     $stmt_get = $pdo->prepare($sql_get);
     $stmt_get->execute([':temp_product_id' => $temp_product_id]);
     $temp_product = $stmt_get->fetch(PDO::FETCH_ASSOC);
+    
+    error_log("Fetched temp_product: " . json_encode($temp_product));
     
     if (!$temp_product) {
         throw new Exception('ไม่พบข้อมูลสินค้า');
@@ -52,11 +73,22 @@ try {
         throw new Exception('SKU นี้มีในระบบแล้ว กรุณาใช้ SKU อื่น');
     }
     
-    // สร้างสินค้าใหม่ในตาราง products
-    $sql_insert = "INSERT INTO products 
-                   (name, sku, barcode, unit, product_category_id, image, remark_color, remark_weight, created_by, created_at) 
-                   VALUES 
-                   (:product_name, :sku, :barcode, :unit, :product_category_id, :product_image, :remark, :remark_weight, :created_by, NOW())";
+    // สร้างสินค้าใหม่ในตาราง products (ตรวจสอบคอลัมน์ remark_weight ก่อนใช้งาน)
+    $productColumns = ['name', 'sku', 'barcode', 'unit', 'product_category_id', 'image', 'remark_color', 'remark_split', 'is_active', 'created_by', 'created_at'];
+    $productValues = [':product_name', ':sku', ':barcode', ':unit', ':product_category_id', ':product_image', ':remark_color', ':remark_split', ':is_active', ':created_by', 'NOW()'];
+
+    $includeRemarkWeight = columnExists($pdo, 'products', 'remark_weight');
+    if ($includeRemarkWeight) {
+        $productColumns[] = 'remark_weight';
+        $productValues[] = ':remark_weight';
+    }
+
+    $sql_insert = 'INSERT INTO products (' . implode(', ', $productColumns) . ')
+                   VALUES (' . implode(', ', $productValues) . ')';
+    
+    error_log("SQL_INSERT: " . $sql_insert);
+    error_log("Columns: " . json_encode($productColumns));
+    error_log("Values: " . json_encode($productValues));
     
     $stmt_insert = $pdo->prepare($sql_insert);
     
@@ -70,19 +102,30 @@ try {
         $category_id = $category_row['category_id'] ?? 1; // Default to 1 if not found
     }
     
-    $stmt_insert->execute([
+    $insertParams = [
         ':product_name' => $temp_product['product_name'],
         ':sku' => $temp_product['provisional_sku'],
         ':barcode' => $temp_product['provisional_barcode'],
         ':unit' => $temp_product['unit'] ?? '',
         ':product_category_id' => $category_id ?? 1,
         ':product_image' => $temp_product['product_image'],
-        ':remark' => $temp_product['remark'] ?? '',
-        ':remark_weight' => $temp_product['remark_weight'] ?? null,
+        ':remark_color' => $temp_product['remark'] ?? '',
+        ':remark_split' => $temp_product['remark_split'] ?? 0,
+        ':is_active' => 1,
         ':created_by' => $_SESSION['user_id'] ?? $temp_product['created_by']
-    ]);
+    ];
+
+    if ($includeRemarkWeight) {
+        $insertParams[':remark_weight'] = $temp_product['remark_weight'] ?? null;
+    }
+
+    error_log("Insert params: " . json_encode($insertParams));
+    
+    $result = $stmt_insert->execute($insertParams);
+    error_log("Insert result: " . ($result ? 'success' : 'failed'));
     
     $new_product_id = $pdo->lastInsertId();
+    error_log("New product_id: " . $new_product_id);
 
     // Set new product as active (ขายอยู่)
     $stmtActivate = $pdo->prepare("UPDATE products SET is_active = 1 WHERE product_id = :product_id");
@@ -144,7 +187,20 @@ try {
         ':temp_product_id' => $temp_product_id
     ]);
     
+    // อัพเดท receive_items.created_at เป็นเวลาปัจจุบัน เพื่อให้แสดงในตารางความเคลื่อนไหวเป็นข้อมูลล่าสุด
+    $sql_update_receive = "UPDATE receive_items 
+                          SET created_at = NOW() 
+                          WHERE item_id IN (
+                              SELECT item_id FROM purchase_order_items 
+                              WHERE temp_product_id = :temp_product_id
+                          )";
+    
+    $stmt_update_receive = $pdo->prepare($sql_update_receive);
+    $stmt_update_receive->execute([':temp_product_id' => $temp_product_id]);
+    error_log("Updated receive_items.created_at for temp_product_id: " . $temp_product_id);
+    
     $pdo->commit();
+    error_log("Transaction committed");
     
     echo json_encode([
         'success' => true, 
@@ -152,8 +208,14 @@ try {
         'new_product_id' => $new_product_id,
         'product_id' => $new_product_id
     ]);
+    error_log("=== APPROVE_TEMP_PRODUCT SUCCESS ===");
     
 } catch (Exception $e) {
+    error_log("=== APPROVE_TEMP_PRODUCT EXCEPTION ===");
+    error_log("Exception message: " . $e->getMessage());
+    error_log("Exception code: " . $e->getCode());
+    error_log("Exception trace: " . $e->getTraceAsString());
+    
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }

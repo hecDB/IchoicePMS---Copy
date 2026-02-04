@@ -1153,29 +1153,29 @@ $(document).ready(function() {
                 console.error('Error:', error);
                 
                 let errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
-                if (xhr.status === 0) {
-                    errorMessage = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
-                } else if (xhr.status === 400) {
-                    errorMessage = 'ข้อมูลไม่ถูกต้อง (400)';
-                } else if (xhr.status === 500) {
-                    errorMessage = 'เซิร์ฟเวอร์เกิดข้อผิดพลาด (500)';
-                    try {
+                let errorTitle = 'เชื่อมต่อล้มเหลว';
+                
+                // Try to parse JSON error response from server
+                try {
+                    if (xhr.responseText) {
                         const errorResponse = JSON.parse(xhr.responseText);
                         if (errorResponse.message) {
-                            errorMessage += '\n' + errorResponse.message;
+                            errorMessage = errorResponse.message;
+                            errorTitle = 'เกิดข้อผิดพลาด';
                         }
-                    } catch (e) {
-                        // ถ้า parse ล้มเหลว ให้ใช้ response text แทน
-                        if (xhr.responseText) {
-                            errorMessage += '\n' + xhr.responseText.substring(0, 200);
-                        }
+                    }
+                } catch (e) {
+                    // If not JSON, try to get responseText
+                    if (xhr.responseText) {
+                        errorMessage = xhr.responseText.substring(0, 500);
                     }
                 }
                 
                 Swal.fire({
                     icon: 'error',
-                    title: 'เชื่อมต่อล้มเหลว',
-                    text: errorMessage
+                    title: errorTitle,
+                    text: errorMessage,
+                    confirmButtonText: 'ตกลง'
                 });
             }
         });
@@ -1263,10 +1263,30 @@ $(document).ready(function() {
                         }
                     },
                     error: function(xhr) {
+                        let errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์';
+                        let errorTitle = 'เชื่อมต่อล้มเหลว';
+                        
+                        // Try to parse JSON error response from server
+                        try {
+                            if (xhr.responseText) {
+                                const errorResponse = JSON.parse(xhr.responseText);
+                                if (errorResponse.message) {
+                                    errorMessage = errorResponse.message;
+                                    errorTitle = 'เกิดข้อผิดพลาด';
+                                }
+                            }
+                        } catch (e) {
+                            // If not JSON, try to get responseText
+                            if (xhr.responseText) {
+                                errorMessage = xhr.responseText.substring(0, 500);
+                            }
+                        }
+                        
                         Swal.fire({
                             icon: 'error',
-                            title: 'เชื่อมต่อล้มเหลว',
-                            text: 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์'
+                            title: errorTitle,
+                            text: errorMessage,
+                            confirmButtonText: 'ตกลง'
                         });
                         console.error(xhr);
                     }
