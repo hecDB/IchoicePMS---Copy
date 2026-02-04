@@ -27,7 +27,8 @@ $sql = "
     poi.sale_price as sale_price,
     poi.price_per_unit as po_price_per_unit,
     poi.unit_price as purchase_price,
-    tp.remark as temp_product_remark
+    tp.remark as temp_product_remark,
+    tp.remark_weight as remark_weight
 FROM receive_items r
 LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
 LEFT JOIN temp_products tp ON poi.temp_product_id = tp.temp_product_id
@@ -54,7 +55,8 @@ UNION ALL
     poi.sale_price as sale_price,
     poi.price_per_unit as po_price_per_unit,
     poi.unit_price as purchase_price,
-    tp.remark as temp_product_remark
+    tp.remark as temp_product_remark,
+    tp.remark_weight as remark_weight
 FROM issue_items ii
 LEFT JOIN receive_items ri ON ii.receive_id = ri.receive_id
 LEFT JOIN purchase_order_items poi ON ri.item_id = poi.item_id
@@ -685,7 +687,7 @@ function resolveTransactionImageSrc($imageValue) {
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-purchase-price="<?= htmlspecialchars($row['purchase_price'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-po-sale-price="<?= htmlspecialchars($row['po_price_per_unit'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" title="แก้ไข SKU/Barcode/รูปภาพ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
+                                    <button class="btn btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-purchase-price="<?= htmlspecialchars($row['purchase_price'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-po-sale-price="<?= htmlspecialchars($row['po_price_per_unit'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-weight="<?= htmlspecialchars($row['remark_weight'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" title="แก้ไข SKU/Barcode/รูปภาพ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
                                         <span class="material-icons" style="font-size: 1rem;">edit</span>
                                     </button>
                                     <button class="btn btn-outline-success approve-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-name="<?= htmlspecialchars($row['product_name']) ?>" title="อนุมัติและย้ายไปคลังปกติ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
@@ -848,6 +850,7 @@ $(document).ready(function() {
         const salePrice = $(this).attr('data-sale-price');
         const poSalePrice = $(this).attr('data-po-sale-price');
         const remarkRaw = $(this).attr('data-remark');
+        const weightValue = $(this).data('weight');
         const unitValue = $(this).data('unit');
         const productName = $(this).attr('data-product-name') || '';
         const rowImageSrc = $(this).closest('tr').find('img.product-image').attr('src');
@@ -862,7 +865,7 @@ $(document).ready(function() {
         $('#provisionalBarcodeInput').val(provisionalBarcode);
         $('#unitInput').val(unitValue || '');
         $('#productNameDisplay').text(productName || '');
-        $('#weightInput').val('');
+        $('#weightInput').val(weightValue ?? '');
         $('#purchasePriceInput').val('');
         $('#salePriceInput').val('');
         $('#remarkInput').val('');
