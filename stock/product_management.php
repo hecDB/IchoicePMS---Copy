@@ -20,11 +20,21 @@ $sql = "
         l.bin,
         l.shelf,
         l.description as location_description,
-        pl.location_id as product_location_id
+        pl.location_id as product_location_id,
+        COALESCE(stock.stock_qty, 0) as stock_qty
     FROM products p
     LEFT JOIN product_category pc ON p.product_category_id = pc.category_id
     LEFT JOIN product_location pl ON p.product_id = pl.product_id
     LEFT JOIN locations l ON pl.location_id = l.location_id
+    LEFT JOIN (
+        SELECT 
+            p.product_id,
+            COALESCE(SUM(ri.receive_qty), 0) AS stock_qty
+        FROM products p
+        LEFT JOIN purchase_order_items poi ON poi.product_id = p.product_id
+        LEFT JOIN receive_items ri ON ri.item_id = poi.item_id
+        GROUP BY p.product_id
+    ) stock ON stock.product_id = p.product_id
     ORDER BY p.name ASC
 ";
 $stmt = $pdo->query($sql);
@@ -468,10 +478,7 @@ $stats = [
                                 <span class="material-icons" style="font-size: 1rem;">table_chart</span>
                                 ส่งออก Excel (รายงาน)
                             </button>
-                            <button type="button" class="btn-modern btn-modern-info btn-sm" onclick="exportForImport()">
-                                <span class="material-icons" style="font-size: 1rem;">file_download</span>
-                                ส่งออก Excel (นำเข้า)
-                            </button>
+                         
                             <button type="button" class="btn-modern btn-modern-info btn-sm" onclick="exportToPDF()">
                                 <span class="material-icons" style="font-size: 1rem;">picture_as_pdf</span>
                                 ส่งออก PDF
@@ -499,6 +506,7 @@ $stats = [
                             <th>รายละเอียด</th>
                             <th>SKU</th>
                             <th>Barcode</th>
+                            <th>คงเหลือ</th>
                             <th>หน่วย</th>
                             <th>หมวดหมู่</th>
                             <th>ตำแหน่งที่จัดเก็บ</th>
@@ -509,7 +517,7 @@ $stats = [
                     <tbody>
                         <?php if (empty($products)): ?>
                         <tr>
-                            <td colspan="10" class="text-center py-4">
+                            <td colspan="11" class="text-center py-4">
                                 <div class="d-flex flex-column align-items-center">
                                     <span class="material-icons mb-2" style="font-size: 3rem; color: #d1d5db;">inbox</span>
                                     <h5 class="text-muted">ไม่มีข้อมูลสินค้า</h5>
@@ -554,6 +562,11 @@ $stats = [
                             </td>
                             <td><?= htmlspecialchars($product['sku']) ?></td>
                             <td><?= htmlspecialchars($product['barcode']) ?></td>
+                            <td>
+                                <span class="fw-bold text-primary">
+                                    <?= number_format((float)($product['stock_qty'] ?? 0), 2) ?>
+                                </span>
+                            </td>
                             <td><?= htmlspecialchars($product['unit']) ?></td>
                             <td><?= htmlspecialchars($product['category_name'] ?? '-') ?></td>
                             <td>
@@ -1145,7 +1158,7 @@ $(document).ready(function() {
             url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/th.json'
         },
         columnDefs: [
-            { orderable: false, targets: [0, 8] } // ปิดการจัดเรียงคอลัมน์เลือก และ จัดการ
+            { orderable: false, targets: [0, 10] } // ปิดการจัดเรียงคอลัมน์เลือก และ คอลัมน์จัดการ
         ]
     });
 
@@ -1235,8 +1248,9 @@ function getSelectedProducts() {
             name: nameText,
             sku: cells[3].textContent.trim(),
             barcode: cells[4].textContent.trim(),
-            unit: cells[5].textContent.trim(),
-            category: cells[6].textContent.trim(),
+            stock_qty: cells[5].textContent.trim(),
+            unit: cells[6].textContent.trim(),
+            category: cells[7].textContent.trim(),
             row_code: rowCode,
             bin: bin,
             shelf: shelf,
@@ -1256,14 +1270,22 @@ function exportToExcel() {
         return;
     }
 
-    // เตรียมข้อมูลเฉพาะคอลัมน์ที่ต้องการ
-    const rows = selected.map((product) => ({
-        SKU: product.sku || '',
-        '\u0e2b\u0e21\u0e27\u0e14\u0e2b\u0e21\u0e39\u0e48': product.category || ''
-    }));
+    // เตรียมข้อมูลด้วย Array-of-Arrays เพื่อบังคับคอลัมน์ให้ครบ
+    const header = ['SKU', '\u0e04\u0e07\u0e40\u0e2b\u0e25\u0e37\u0e2d', '\u0e2b\u0e19\u0e48\u0e27\u0e22', '\u0e2b\u0e21\u0e27\u0e14\u0e2b\u0e21\u0e39\u0e48'];
 
-    // สร้างไฟล์ Excel (.xlsx)
-    const worksheet = XLSX.utils.json_to_sheet(rows, { header: ['SKU', '\u0e2b\u0e21\u0e27\u0e14\u0e2b\u0e21\u0e39\u0e48'] });
+    const sanitizeNumber = (value) => {
+        const num = parseFloat(String(value || '').replace(/,/g, ''));
+        return Number.isFinite(num) ? num : '';
+    };
+
+    const dataRows = selected.map((product) => ([
+        product.sku || '',
+        sanitizeNumber(product.stock_qty),
+        product.unit || '',
+        product.category || ''
+    ]));
+
+    const worksheet = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
     XLSX.writeFile(workbook, 'excel.xlsx');

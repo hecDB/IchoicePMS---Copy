@@ -328,6 +328,14 @@
                     <span class="material-icons">inventory_2</span>
                     <span class="submenu-text">รายงานสินค้า</span>
                 </a>
+                <a href="<?= getPath('reports/tax_invoice.php') ?>" class="submenu-item<?=isActive('tax_invoice.php')?>">
+                    <span class="material-icons">description</span>
+                    <span class="submenu-text">ใบกำกับภาษี</span>
+                </a>
+                <a href="<?= getPath('reports/tax_invoice_list.php') ?>" class="submenu-item<?=isActive('tax_invoice_list.php')?>">
+                    <span class="material-icons">fact_check</span>
+                    <span class="submenu-text">ใบกำกับภาษีที่บันทึก</span>
+                </a>
             </div>
         </div>
 

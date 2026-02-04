@@ -39,6 +39,48 @@ $newPatterns = [
         'example_tags' => 'LEXDO1234567890, LEXDO9876543210, LEXDO0000000000',
         'is_active' => 1
     ],
+
+    // Requests 2026-02 Shopee / Lazada additions
+    [
+        'platform' => 'Shopee',
+        'pattern_name' => 'ShopeeTP',
+        'description' => 'WB หรือ EA นำหน้า ตามด้วยตัวเลข 9 หลัก และลงท้าย TH (Thai Post)',
+        'regex_pattern' => '^(WB|EA)[0-9]{9}TH$',
+        'example_tags' => 'WB123456789TH, EA987654321TH, WB000000000TH',
+        'is_active' => 1
+    ],
+    [
+        'platform' => 'Shopee',
+        'pattern_name' => 'ShopeeFlash',
+        'description' => 'TH ตามด้วยตัวอักษร/ตัวเลข 12-13 ตัว (Flash Express)',
+        'regex_pattern' => '^TH[A-Z0-9]{12,13}$',
+        'example_tags' => 'THA1B2C3D4E5F6, TH1234567890ABC, THZXCVBNM12345',
+        'is_active' => 1
+    ],
+    [
+        'platform' => 'Lazada',
+        'pattern_name' => 'LazadaFlashBulky',
+        'description' => 'TH + ตัวเลข 7 หลัก + อักษร/ตัวเลข 6 ตัว (Flash Bulky)',
+        'regex_pattern' => '^TH[0-9]{7}[A-Z0-9]{6}$',
+        'example_tags' => 'TH1234567ABCDEF, TH7654321ZXCVBN, TH0000000FLASH1',
+        'is_active' => 1
+    ],
+    [
+        'platform' => 'Shopee',
+        'pattern_name' => 'FlashRegular',
+        'description' => 'TH ตามด้วยตัวอักษร/ตัวเลข 12-13 ตัว (Flash Regular)',
+        'regex_pattern' => '^TH[A-Z0-9]{12,13}$',
+        'example_tags' => 'THQWERTY123456, TH1234567890ZX, THFLASH1234567',
+        'is_active' => 1
+    ],
+    [
+        'platform' => 'Shopee',
+        'pattern_name' => 'DeliveryFood',
+        'description' => 'ตัวเลขล้วน 19 หลัก (Food Delivery)',
+        'regex_pattern' => '^[0-9]{19}$',
+        'example_tags' => '1234567890123456789, 9876543210987654321, 5555555555555555555',
+        'is_active' => 1
+    ],
     
     // Shopee
     [

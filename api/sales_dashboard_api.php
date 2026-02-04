@@ -56,6 +56,7 @@ function getSalesDashboardStats($pdo, $dateFrom = null, $dateTo = null) {
                 CASE 
                     WHEN so.issue_tag REGEXP '^[A-Za-z]{5,6}[0-9]{8}$' THEN 'Shopee'
                     WHEN so.issue_tag REGEXP '^[0-9]{11}$' THEN 'Lazada'
+                    WHEN so.issue_tag REGEXP '^[0-9]{12}$' THEN 'TikTok'
                     ELSE 'General'
                 END
             ) as platform,
@@ -104,12 +105,23 @@ function getSalesDashboardStats($pdo, $dateFrom = null, $dateTo = null) {
     $formattedPlatforms = [];
     foreach ($platformStats as $platform) {
         $platformName = $platform['platform'] ?: 'General';
+        $platformDisplay = '📦 ทั่วไป';
+        $platformClass = 'badge bg-secondary';
+        if ($platformName === 'Shopee') {
+            $platformDisplay = '🛍️ Shopee';
+            $platformClass = 'shopee-badge';
+        } elseif ($platformName === 'Lazada') {
+            $platformDisplay = '🛒 Lazada';
+            $platformClass = 'lazada-badge';
+        } elseif ($platformName === 'TikTok') {
+            $platformDisplay = '🎵 TikTok Shop';
+            $platformClass = 'tiktok-badge';
+        }
+
         $formattedPlatforms[] = [
             'platform' => $platformName,
-            'platform_display' => $platformName === 'Shopee' ? '🛍️ Shopee' : 
-                                ($platformName === 'Lazada' ? '🛒 Lazada' : '📦 ทั่วไป'),
-            'platform_class' => $platformName === 'Shopee' ? 'shopee-badge' : 
-                               ($platformName === 'Lazada' ? 'lazada-badge' : 'badge bg-secondary'),
+            'platform_display' => $platformDisplay,
+            'platform_class' => $platformClass,
             'order_count' => (int)($platform['order_count'] ?: 0),
             'tag_count' => (int)($platform['tag_count'] ?: 0),
             'total_qty' => (int)($platform['total_qty'] ?: 0),

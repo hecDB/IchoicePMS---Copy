@@ -8997,3 +8997,83 @@
 [16-Jan-2026 17:06:18 Europe/Berlin] Processing product: ID=38, Name=ถังขยะกดเปิด 12L, Qty=1, Price=299, Receive_ID=6
 [16-Jan-2026 17:06:18 Europe/Berlin] Successfully issued: Product ID 38, Qty 1, Receive ID 6, Sale Order ID 19
 [16-Jan-2026 17:06:18 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[04-Feb-2026 15:26:06 Europe/Berlin] === product_search_api.php START ===
+[04-Feb-2026 15:26:06 Europe/Berlin] Request query: วิ
+[04-Feb-2026 15:26:06 Europe/Berlin] Request method: GET
+[04-Feb-2026 15:26:06 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A7%E0%B8%B4&type=issue&available_only=true
+[04-Feb-2026 15:26:06 Europe/Berlin] Searching for: 'วิ' with limit: 10
+[04-Feb-2026 15:26:06 Europe/Berlin] About to encode 5 results for type: issue
+[04-Feb-2026 15:26:06 Europe/Berlin] Sent JSON response length: 5792
+[04-Feb-2026 15:26:06 Europe/Berlin] === product_search_api.php END ===
+[04-Feb-2026 15:26:13 Europe/Berlin] Issue request: Tag=THA1B2C3D4E5F6, Products=1, User=1, Selected Platform=Shopee
+[04-Feb-2026 15:26:13 Europe/Berlin] Selected platform from request: Shopee
+[04-Feb-2026 15:26:13 Europe/Berlin] Selected pattern_name from request: FlashRegular
+[04-Feb-2026 15:26:13 Europe/Berlin] Validation result: {"valid":true,"platform":"Shopee","pattern_name":"ShopeeFlash","pattern_id":11,"description":"TH \u0e15\u0e32\u0e21\u0e14\u0e49\u0e27\u0e22\u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23\/\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 12-13 \u0e15\u0e31\u0e27 (Flash Express)","matched_count":2,"matched_patterns":[{"pattern_id":11,"platform":"Shopee","pattern_name":"ShopeeFlash","regex_pattern":"^TH[A-Z0-9]{12,13}$","description":"TH \u0e15\u0e32\u0e21\u0e14\u0e49\u0e27\u0e22\u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23\/\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 12-13 \u0e15\u0e31\u0e27 (Flash Express)"},{"pattern_id":13,"platform":"Shopee","pattern_name":"FlashRegular","regex_pattern":"^TH[A-Z0-9]{12,13}$","description":"TH \u0e15\u0e32\u0e21\u0e14\u0e49\u0e27\u0e22\u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23\/\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 12-13 \u0e15\u0e31\u0e27 (Flash Regular)"}],"needs_confirmation":true}
+[04-Feb-2026 15:26:13 Europe/Berlin] Final platform for issue: Shopee, Pattern: FlashRegular
+[04-Feb-2026 15:26:13 Europe/Berlin] Created sale_order_id: 20 with platform: Shopee, remark: แท็คส่งออก: THA1B2C3D4E5F6 | แพลตฟอร์ม: Shopee | รูปแบบ: FlashRegular
+[04-Feb-2026 15:26:13 Europe/Berlin] Raw product data: {"product_id":48,"receive_id":18,"receive_item_id":18,"po_id":21,"name":"(Thorne\u00ae) Daily Greens Plus 207 g \u0e1c\u0e25\u0e34\u0e15\u0e20\u0e31\u0e13\u0e11\u0e4c\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e2a\u0e38\u0e02\u0e20\u0e32\u0e1e \u0e1c\u0e07\u0e1c\u0e31\u0e01 \u0e27\u0e34\u0e15\u0e32\u0e21\u0e34\u0e19\u0e23\u0e27\u0e21 \u0e41\u0e23\u0e48\u0e18\u0e32\u0e15\u0e38","sku":"thorne-daily-greens-plus-207-g","barcode":"693749014225","available_qty":5,"expiry_date":null,"lot_info":"\u0e25\u0e47\u0e2d\u0e15\u0e23\u0e31\u0e1a: 05\/01\/2026","sale_price":0,"image":"images\/20260203143325.jpg","image_url":"..\/images\/20260203143325.jpg","batch_count":1,"receive_batches":[{"receive_id":18,"available_qty":5,"expiry_date":null,"created_at":"2026-01-05 10:59:21","remark_color":"","remark_split":"0"}],"issue_qty":1}
+[04-Feb-2026 15:26:13 Europe/Berlin] Processing product: ID=48, Name=(Thorne®) Daily Greens Plus 207 g ผลิตภัณฑ์เพื่อสุขภาพ ผงผัก วิตามินรวม แร่ธาตุ, Qty=1, Price=0, Receive_ID=18
+[04-Feb-2026 15:26:13 Europe/Berlin] Successfully issued: Product ID 48, Qty 1, Receive ID 18, Sale Order ID 20
+[04-Feb-2026 15:26:13 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[04-Feb-2026 15:26:42 Europe/Berlin] === product_search_api.php START ===
+[04-Feb-2026 15:26:42 Europe/Berlin] Request query: เต
+[04-Feb-2026 15:26:42 Europe/Berlin] Request method: GET
+[04-Feb-2026 15:26:42 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B9%80%E0%B8%95&type=issue&available_only=true
+[04-Feb-2026 15:26:42 Europe/Berlin] Searching for: 'เต' with limit: 10
+[04-Feb-2026 15:26:42 Europe/Berlin] About to encode 1 results for type: issue
+[04-Feb-2026 15:26:42 Europe/Berlin] Sent JSON response length: 937
+[04-Feb-2026 15:26:42 Europe/Berlin] === product_search_api.php END ===
+[04-Feb-2026 15:26:45 Europe/Berlin] Issue request: Tag=1234567890123456789, Products=1, User=1, Selected Platform=Shopee
+[04-Feb-2026 15:26:45 Europe/Berlin] Selected platform from request: Shopee
+[04-Feb-2026 15:26:45 Europe/Berlin] Selected pattern_name from request: Shopee-TH-Express Delivery (SHP Food)
+[04-Feb-2026 15:26:45 Europe/Berlin] Validation result: {"valid":true,"platform":"Shopee","pattern_name":"DeliveryFood","pattern_id":14,"description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 19 \u0e2b\u0e25\u0e31\u0e01 (Food Delivery)","matched_count":3,"matched_patterns":[{"pattern_id":14,"platform":"Shopee","pattern_name":"DeliveryFood","regex_pattern":"^[0-9]{19}$","description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 19 \u0e2b\u0e25\u0e31\u0e01 (Food Delivery)"},{"pattern_id":15,"platform":"Shopee","pattern_name":"Shopee-TH-Instant Delivery (\u0e2a\u0e48\u0e07\u0e17\u0e31\u0e19\u0e17\u0e35)","regex_pattern":"^[0-9]{19}$","description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 19 \u0e2b\u0e25\u0e31\u0e01"},{"pattern_id":5,"platform":"Shopee","pattern_name":"Shopee-TH-Express Delivery (SHP Food)","regex_pattern":"^[0-9]{19}$","description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 19 \u0e2b\u0e25\u0e31\u0e01"}],"needs_confirmation":true}
+[04-Feb-2026 15:26:45 Europe/Berlin] Final platform for issue: Shopee, Pattern: Shopee-TH-Express Delivery (SHP Food)
+[04-Feb-2026 15:26:45 Europe/Berlin] Created sale_order_id: 21 with platform: Shopee, remark: แท็คส่งออก: 1234567890123456789 | แพลตฟอร์ม: Shopee | รูปแบบ: Shopee-TH-Express Delivery (SHP Food)
+[04-Feb-2026 15:26:45 Europe/Berlin] Raw product data: {"product_id":56,"receive_id":12,"receive_item_id":12,"po_id":20,"name":"\u0e40\u0e15\u0e49\u0e19\u0e17\u0e4c","sku":"new_Pro","barcode":"88888888","available_qty":2,"expiry_date":"2026-04-30","lot_info":"\u0e25\u0e47\u0e2d\u0e15\u0e23\u0e31\u0e1a: 19\/12\/2025 | \u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38: 30\/04\/2026","sale_price":250,"image":"images\/temp_product_1_1768577844_ffee80bc.jpg","image_url":"..\/images\/temp_product_1_1768577844_ffee80bc.jpg","batch_count":1,"receive_batches":[{"receive_id":12,"available_qty":2,"expiry_date":"2026-04-30","created_at":"2025-12-19 23:15:20","remark_color":null,"remark_split":null}],"issue_qty":1}
+[04-Feb-2026 15:26:45 Europe/Berlin] Processing product: ID=56, Name=เต้นท์, Qty=1, Price=250, Receive_ID=12
+[04-Feb-2026 15:26:45 Europe/Berlin] Successfully issued: Product ID 56, Qty 1, Receive ID 12, Sale Order ID 21
+[04-Feb-2026 15:26:45 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[04-Feb-2026 15:27:18 Europe/Berlin] === product_search_api.php START ===
+[04-Feb-2026 15:27:18 Europe/Berlin] Request query: ผ้า
+[04-Feb-2026 15:27:18 Europe/Berlin] Request method: GET
+[04-Feb-2026 15:27:18 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%9C%E0%B9%89%E0%B8%B2&type=issue&available_only=true
+[04-Feb-2026 15:27:18 Europe/Berlin] Searching for: 'ผ้า' with limit: 10
+[04-Feb-2026 15:27:18 Europe/Berlin] About to encode 2 results for type: issue
+[04-Feb-2026 15:27:18 Europe/Berlin] Sent JSON response length: 2582
+[04-Feb-2026 15:27:18 Europe/Berlin] === product_search_api.php END ===
+[04-Feb-2026 15:27:21 Europe/Berlin] Issue request: Tag=TH123456ABCDE, Products=1, User=1, Selected Platform=TikTok
+[04-Feb-2026 15:27:21 Europe/Berlin] Selected platform from request: TikTok
+[04-Feb-2026 15:27:21 Europe/Berlin] Selected pattern_name from request: TikTok-TH-Flash Express (Pickup)
+[04-Feb-2026 15:27:21 Europe/Berlin] Validation result: {"valid":true,"platform":"TikTok","pattern_name":"TikTok-TH-Flash Express (Pickup)","pattern_id":16,"description":"TH + \u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 6 \u0e2b\u0e25\u0e31\u0e01 + \u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23\/\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 5-7 \u0e15\u0e31\u0e27","matched_count":1,"matched_patterns":[{"pattern_id":16,"platform":"TikTok","pattern_name":"TikTok-TH-Flash Express (Pickup)","regex_pattern":"^TH[0-9]{6}[A-Z0-9]{5,7}$","description":"TH + \u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 6 \u0e2b\u0e25\u0e31\u0e01 + \u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23\/\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 5-7 \u0e15\u0e31\u0e27"}]}
+[04-Feb-2026 15:27:21 Europe/Berlin] Final platform for issue: TikTok, Pattern: TikTok-TH-Flash Express (Pickup)
+[04-Feb-2026 15:27:21 Europe/Berlin] Created sale_order_id: 22 with platform: TikTok, remark: แท็คส่งออก: TH123456ABCDE | แพลตฟอร์ม: TikTok | รูปแบบ: TikTok-TH-Flash Express (Pickup)
+[04-Feb-2026 15:27:21 Europe/Berlin] Raw product data: {"product_id":52,"receive_id":24,"receive_item_id":24,"po_id":18,"name":"\u0e1c\u0e49\u0e32\u0e40\u0e0a\u0e47\u0e14\u0e17\u0e33\u0e04\u0e27\u0e32\u0e21\u0e2a\u0e30\u0e2d\u0e32\u0e14\u0e40\u0e14\u0e47\u0e01 (\u0e42\u0e1b\u0e23\u0e42\u0e21\u0e0a\u0e31\u0e48\u0e19\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e43\u0e01\u0e25\u0e49\u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38)","sku":"EXP04-26-mom-004","barcode":"8851234500042","available_qty":40,"expiry_date":"2026-04-10","lot_info":"\u0e25\u0e47\u0e2d\u0e15\u0e23\u0e31\u0e1a: 05\/01\/2026 | \u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38: 10\/04\/2026","sale_price":63.2,"image":"images\/img4.jpg","image_url":"..\/images\/img4.jpg","batch_count":1,"receive_batches":[{"receive_id":24,"available_qty":40,"expiry_date":"2026-04-10","created_at":"2026-01-05 12:21:21","remark_color":"-","remark_split":"0"}],"issue_qty":1}
+[04-Feb-2026 15:27:21 Europe/Berlin] Processing product: ID=52, Name=ผ้าเช็ดทำความสะอาดเด็ก (โปรโมชั่นสินค้าใกล้หมดอายุ), Qty=1, Price=63.2, Receive_ID=24
+[04-Feb-2026 15:27:21 Europe/Berlin] Successfully issued: Product ID 52, Qty 1, Receive ID 24, Sale Order ID 22
+[04-Feb-2026 15:27:21 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[04-Feb-2026 15:28:07 Europe/Berlin] === product_search_api.php START ===
+[04-Feb-2026 15:28:07 Europe/Berlin] Request query: ยา
+[04-Feb-2026 15:28:07 Europe/Berlin] Request method: GET
+[04-Feb-2026 15:28:07 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%A2%E0%B8%B2&type=issue&available_only=true
+[04-Feb-2026 15:28:07 Europe/Berlin] Searching for: 'ยา' with limit: 10
+[04-Feb-2026 15:28:07 Europe/Berlin] About to encode 0 results for type: issue
+[04-Feb-2026 15:28:07 Europe/Berlin] Sent JSON response length: 15
+[04-Feb-2026 15:28:07 Europe/Berlin] === product_search_api.php END ===
+[04-Feb-2026 15:28:11 Europe/Berlin] === product_search_api.php START ===
+[04-Feb-2026 15:28:11 Europe/Berlin] Request query: กด
+[04-Feb-2026 15:28:11 Europe/Berlin] Request method: GET
+[04-Feb-2026 15:28:11 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%81%E0%B8%94&type=issue&available_only=true
+[04-Feb-2026 15:28:11 Europe/Berlin] Searching for: 'กด' with limit: 10
+[04-Feb-2026 15:28:11 Europe/Berlin] About to encode 1 results for type: issue
+[04-Feb-2026 15:28:11 Europe/Berlin] Sent JSON response length: 979
+[04-Feb-2026 15:28:11 Europe/Berlin] === product_search_api.php END ===
+[04-Feb-2026 15:28:16 Europe/Berlin] Issue request: Tag=TH123456ABCDE, Products=1, User=1, Selected Platform=ทั่วไป
+[04-Feb-2026 15:28:16 Europe/Berlin] Selected platform from request: ทั่วไป
+[04-Feb-2026 15:28:16 Europe/Berlin] Selected pattern_name from request: Pickup
+[04-Feb-2026 15:28:16 Europe/Berlin] Validation result: {"valid":true,"platform":"\u0e17\u0e31\u0e48\u0e27\u0e44\u0e1b","pattern_name":"Pickup","pattern_id":9,"description":"TH + \u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 6 \u0e2b\u0e25\u0e31\u0e01 + \u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23\/\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 5-7 \u0e15\u0e31\u0e27","matched_count":1,"matched_patterns":[{"pattern_id":9,"platform":"\u0e17\u0e31\u0e48\u0e27\u0e44\u0e1b","pattern_name":"Pickup","regex_pattern":"^TH[0-9]{6}[A-Z0-9]{5,7}$","description":"TH + \u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 6 \u0e2b\u0e25\u0e31\u0e01 + \u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23\/\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02 5-7 \u0e15\u0e31\u0e27"}]}
+[04-Feb-2026 15:28:16 Europe/Berlin] Final platform for issue: ทั่วไป, Pattern: Pickup
+[04-Feb-2026 15:28:16 Europe/Berlin] Created sale_order_id: 23 with platform: ทั่วไป, remark: แท็คส่งออก: TH123456ABCDE | แพลตฟอร์ม: ทั่วไป | รูปแบบ: Pickup
+[04-Feb-2026 15:28:16 Europe/Berlin] Raw product data: {"product_id":38,"receive_id":6,"receive_item_id":6,"po_id":18,"name":"\u0e16\u0e31\u0e07\u0e02\u0e22\u0e30\u0e01\u0e14\u0e40\u0e1b\u0e34\u0e14 12L","sku":"home-006","barcode":"8851234500066","available_qty":9,"expiry_date":"1970-01-01","lot_info":"\u0e25\u0e47\u0e2d\u0e15\u0e23\u0e31\u0e1a: 19\/12\/2025 | \u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38: 01\/01\/1970","sale_price":299,"image":"images\/img6.jpg","image_url":"..\/images\/img6.jpg","batch_count":1,"receive_batches":[{"receive_id":6,"available_qty":9,"expiry_date":"1970-01-01","created_at":"2025-12-19 22:54:51","remark_color":"\u0e14\u0e33","remark_split":"0"}],"issue_qty":1}
+[04-Feb-2026 15:28:16 Europe/Berlin] Processing product: ID=38, Name=ถังขยะกดเปิด 12L, Qty=1, Price=299, Receive_ID=6
+[04-Feb-2026 15:28:16 Europe/Berlin] Successfully issued: Product ID 38, Qty 1, Receive ID 6, Sale Order ID 23
+[04-Feb-2026 15:28:16 Europe/Berlin] Issue completed: 1 successful, 0 errors
