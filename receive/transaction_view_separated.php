@@ -693,6 +693,11 @@ function resolveTransactionImageSrc($imageValue) {
                                     <button class="btn btn-outline-success approve-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-name="<?= htmlspecialchars($row['product_name']) ?>" title="อนุมัติและย้ายไปคลังปกติ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
                                         <span class="material-icons" style="font-size: 1rem;">check_circle</span>
                                     </button>
+                                    <?php if ($status === 'converted'): ?>
+                                    <button class="btn btn-outline-info view-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-category="<?= htmlspecialchars($row['product_category'] ?? '') ?>" data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>" data-purchase-price="<?= htmlspecialchars($row['purchase_price'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-po-sale-price="<?= htmlspecialchars($row['po_price_per_unit'] ?? '') ?>" data-weight="<?= htmlspecialchars($row['remark_weight'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-image="<?= htmlspecialchars(resolveTransactionImageSrc($row['image'] ?? null)) ?>" title="ดูรายละเอียดสินค้า">
+                                        <span class="material-icons" style="font-size: 1rem;">visibility</span>
+                                    </button>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -1181,6 +1186,61 @@ $(document).ready(function() {
         });
     }
     
+    // Handle view button click
+    $(document).on('click', '.view-btn', function() {
+        const tempId = $(this).data('temp-id');
+        const productName = $(this).data('product-name');
+        const provisionalSku = $(this).data('provisional-sku');
+        const provisionalBarcode = $(this).data('provisional-barcode');
+        const unitValue = $(this).data('unit');
+        const category = $(this).data('category');
+        const expiryDate = $(this).data('expiry');
+        const purchasePrice = $(this).data('purchase-price');
+        const salePrice = $(this).data('sale-price');
+        const poSalePrice = $(this).data('po-sale-price');
+        const weightValue = $(this).data('weight');
+        const remarkValue = $(this).data('remark');
+        const imageSrc = $(this).data('image');
+        
+        // Set modal content
+        $('#viewProductNameDisplay').text(productName || '-');
+        $('#viewProductImagePreview').attr('src', imageSrc);
+        $('#viewProvisionalSkuDisplay').text(provisionalSku || '-');
+        $('#viewProvisionalBarcodeDisplay').text(provisionalBarcode || '-');
+        $('#viewUnitDisplay').text(unitValue || '-');
+        $('#viewCategoryDisplay').text(category || '-');
+        $('#viewExpiryDisplay').text(expiryDate ? new Date(expiryDate).toLocaleDateString('th-TH') : '-');
+        $('#viewPurchasePriceDisplay').text(purchasePrice ? parseFloat(purchasePrice).toFixed(2) : '-');
+        $('#viewSalePriceDisplay').text(salePrice ? parseFloat(salePrice).toFixed(2) : '-');
+        
+        // Calculate net profit
+        if (salePrice) {
+            const netProfit = (parseFloat(salePrice) * 0.8 * 0.8 * 0.8).toFixed(2);
+            $('#viewNetProfitDisplay').text(netProfit + ' บาท');
+        } else {
+            $('#viewNetProfitDisplay').text('-');
+        }
+        
+        $('#viewWeightDisplay').text(weightValue ? parseFloat(weightValue).toFixed(2) : '-');
+        
+        // Calculate cost if weight exists
+        if (purchasePrice && weightValue) {
+            const baseCost = parseFloat(purchasePrice);
+            const weightCost = parseFloat(weightValue) * 850;
+            const trueCost = (baseCost + weightCost).toFixed(2);
+            $('#viewTrueCostDisplay').text(trueCost);
+        } else if (purchasePrice) {
+            $('#viewTrueCostDisplay').text(parseFloat(purchasePrice).toFixed(2));
+        } else {
+            $('#viewTrueCostDisplay').text('-');
+        }
+        
+        $('#viewRemarkDisplay').text(remarkValue || '-');
+        
+        const viewModal = new bootstrap.Modal(document.getElementById('viewModal'));
+        viewModal.show();
+    });
+    
     // Handle approve button click
     $(document).on('click', '.approve-btn', function() {
         const tempId = $(this).data('temp-id');
@@ -1555,6 +1615,92 @@ function selectLocationEdit(locationId, rowCode, bin, shelf) {
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
                 <button type="button" class="btn btn-primary" id="saveEditBtn">บันทึก</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Modal -->
+<div class="modal fade" id="viewModal" tabindex="-1" aria-labelledby="viewModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewModalLabel">ดูรายละเอียดสินค้า</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div id="viewProductNameDisplay" class="fw-bold" style="font-size: 1.05rem;"></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">รูปภาพสินค้า</label>
+                    <div>
+                        <img id="viewProductImagePreview" src="" alt="Product" style="max-width: 100%; max-height: 250px; border: 2px solid #e5e7eb; border-radius: 8px;">
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">SKU สำรอง</label>
+                    <div class="form-control-plaintext"><code id="viewProvisionalSkuDisplay">-</code></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">บาร์โค้ดสำรอง</label>
+                    <div class="form-control-plaintext"><code id="viewProvisionalBarcodeDisplay">-</code></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">หน่วยนับ</label>
+                    <div class="form-control-plaintext" id="viewUnitDisplay">-</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">หมวดหมู่</label>
+                    <div class="form-control-plaintext" id="viewCategoryDisplay">-</div>
+                </div>
+                
+                <div class="mb-3 p-3" style="background: #dae9f8; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">ราคาซื้อ</label>
+                            <div class="form-control-plaintext text-danger fw-semibold" id="viewPurchasePriceDisplay">-</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">น้ำหนัก (กิโลกรัม)</label>
+                            <div class="form-control-plaintext" id="viewWeightDisplay">-</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">ราคาต้นทุน (PO + น้ำหนัก)</label>
+                        <div class="form-control-plaintext" id="viewTrueCostDisplay">-</div>
+                        <small class="text-muted">คำนวณจาก ราคาซื้อ PO + (น้ำหนัก × 850 บาท/กก. หรือ 85 บาท/ขีด)</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">ราคาขาย (บาท)</label>
+                        <div class="form-control-plaintext" id="viewSalePriceDisplay">-</div>
+                        <div class="d-flex align-items-center justify-content-between mt-2">
+                            <span class="badge bg-danger-subtle text-danger fw-semibold">กำไรสุทธิ (หัก 20% × 3)</span>
+                            <span id="viewNetProfitDisplay" class="fw-bold text-danger">-</span>
+                        </div>
+                        <small class="text-muted">สูตร: ราคาขาย × 0.8 × 0.8 × 0.8</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">วันหมดอายุ</label>
+                    <div class="form-control-plaintext" id="viewExpiryDisplay">-</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">หมายเหตุการบันทึก</label>
+                    <div class="form-control-plaintext" id="viewRemarkDisplay" style="white-space: pre-wrap;">-</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
             </div>
         </div>
     </div>
