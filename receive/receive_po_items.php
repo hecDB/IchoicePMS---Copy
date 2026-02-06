@@ -741,6 +741,33 @@ $fully_received = $status_counts['completed'] ?? 0; // รับครบแล�
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Damaged Unsellable Section -->
+                <div id="damagedUnsellableSection" style="display: none;">
+                    <div class="mt-4 pt-4 border-top">
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <span class="material-icons align-middle me-2" style="font-size: 1.2rem;">error</span>
+                            <strong>สินค้าชำรุดขายไม่ได้</strong> - ของรายการสั่งซื้อนี้
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 10%;">รูปภาพ</th>
+                                        <th>ชื่อสินค้า</th>
+                                        <th style="width: 12%; text-align: center;">SKU</th>
+                                        <th style="width: 10%; text-align: right;">จำนวน</th>
+                                        <th style="width: 15%; text-align: center;">วันหมดอายุ</th>
+                                        <th style="width: 15%; text-align: center;">บันทึกเมื่อ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="damagedunsellablePoTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
@@ -1068,6 +1095,69 @@ function formatThaiDate(dateString) {
     const month = months[date.getMonth()];
     const year = date.getFullYear() + 543;
     return `${day} ${month} ${year}`;
+}
+
+// Load damaged unsellable items for specific PO
+function loadDamagedUnsellableByPo(poId) {
+    $.ajax({
+        url: '../api/get_damaged_unsellable_by_po.php?po_id=' + encodeURIComponent(poId),
+        method: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                displayDamagedUnsellableByPo(response.data || []);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading damaged items by PO:', error);
+        }
+    });
+}
+
+function displayDamagedUnsellableByPo(items) {
+    if (!items || items.length === 0) {
+        $('#damagedUnsellableSection').hide();
+        return;
+    }
+    
+    let html = '';
+    items.forEach((item) => {
+        const imageSrc = resolveProductImage(item);
+        const productName = escapeHtml(item.product_name || '-');
+        const sku = escapeHtml(item.sku || '-');
+        const returnCode = escapeHtml(item.return_code || '-');
+        const expiryDisplay = item.expiry_date ? formatThaiDate(item.expiry_date) : '-';
+        const createdDate = item.created_at ? formatThaiDateTime(item.created_at) : '-';
+        
+        html += `
+            <tr>
+                <td class="text-center">
+                    <img src="${imageSrc}" alt="${productName}" class="po-item-image" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
+                </td>
+                <td>
+                    <div>
+                        <strong>${productName}</strong>
+                        <div class="text-muted small">${returnCode}</div>
+                    </div>
+                </td>
+                <td class="text-center">
+                    <small class="badge bg-secondary">${sku}</small>
+                </td>
+                <td class="text-center">
+                    <strong>${Number(item.return_qty || 0).toLocaleString()}</strong>
+                </td>
+                <td class="text-center">
+                    <small class="badge bg-danger">${expiryDisplay}</small>
+                </td>
+                <td class="text-center">
+                    <small class="text-muted">${createdDate}</small>
+                </td>
+            </tr>
+        `;
+    });
+    
+    $('#damagedunsellablePoTableBody').html(html);
+    $('#damagedUnsellableSection').show();
 }
 
 function formatThaiDateTime(dateTimeString) {
@@ -1618,6 +1708,9 @@ function displayPoItems(items, mode) {
     }
     
     $('#poItemsTableBody').html(html);
+    
+    // Load damaged unsellable items for this PO
+    loadDamagedUnsellableByPo(currentPoData.poId);
     
     // Show/hide save button
     if (mode === 'receive') {

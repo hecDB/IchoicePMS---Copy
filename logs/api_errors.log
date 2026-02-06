@@ -9077,3 +9077,5 @@
 [04-Feb-2026 15:28:16 Europe/Berlin] Processing product: ID=38, Name=ถังขยะกดเปิด 12L, Qty=1, Price=299, Receive_ID=6
 [04-Feb-2026 15:28:16 Europe/Berlin] Successfully issued: Product ID 38, Qty 1, Receive ID 6, Sale Order ID 23
 [04-Feb-2026 15:28:16 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[06-Feb-2026 17:35:58 Europe/Berlin] update_po_section.php called with: {"po_id":"40","item_id":"47","product_id":"42","product_name":"\u0e1c\u0e49\u0e32\u0e44\u0e21\u0e42\u0e04\u0e23\u0e44\u0e1f\u0e40\u0e1a\u0e2d\u0e23\u0e4c 3 \u0e1c\u0e37\u0e19","qty":"9","price_per_unit":"254","currency_id":"1","price_original":"254","exchange_rate":"1","update_type":"item"}
+[06-Feb-2026 17:35:58 Europe/Berlin] Processing update: po_id=40, type=item

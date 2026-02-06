@@ -514,13 +514,15 @@ try {
 }
 
 function updatePOStatus($pdo, $po_id) {
-    // Check completion status considering both received AND cancelled quantities
+    // Check completion status considering received, cancelled, AND damaged items
     $status_sql = "
         SELECT 
             poi.item_id,
+            poi.product_id,
             poi.qty as ordered_qty,
             COALESCE(received_summary.total_received, 0) as received_qty,
             COALESCE(poi.cancel_qty, 0) as cancel_qty,
+            COALESCE(damaged_summary.total_damaged, 0) as damaged_qty,
             poi.is_cancelled,
             poi.is_partially_cancelled
         FROM purchase_order_items poi
@@ -529,16 +531,22 @@ function updatePOStatus($pdo, $po_id) {
             FROM receive_items 
             GROUP BY item_id
         ) received_summary ON poi.item_id = received_summary.item_id
+        LEFT JOIN (
+            SELECT product_id, SUM(return_qty) as total_damaged
+            FROM returned_items
+            WHERE po_id = ? AND is_returnable = 0
+            GROUP BY product_id
+        ) damaged_summary ON poi.product_id = damaged_summary.product_id
         WHERE poi.po_id = ?
     ";
     
     $status_stmt = $pdo->prepare($status_sql);
-    $status_stmt->execute([$po_id]);
+    $status_stmt->execute([$po_id, $po_id]);
     $items_data = $status_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     if ($items_data && count($items_data) > 0) {
         $total_items = 0;
-        $fully_processed_items = 0; // Items that are fully received OR fully/partially cancelled
+        $fully_processed_items = 0; // Items that are fully received OR fully/partially cancelled OR damaged
         $any_partial_processing = false; // Track if any item has partial processing
         
         foreach ($items_data as $item) {
@@ -547,16 +555,18 @@ function updatePOStatus($pdo, $po_id) {
             $ordered_qty = floatval($item['ordered_qty']);
             $received_qty = floatval($item['received_qty']);
             $cancel_qty = floatval($item['cancel_qty']);
+            $damaged_qty = floatval($item['damaged_qty']);
             $is_cancelled = $item['is_cancelled'];
             $is_partially_cancelled = $item['is_partially_cancelled'];
             
-            // Calculate total processed (received + cancelled)
-            $total_processed = $received_qty + $cancel_qty;
+            // Calculate total processed (received + cancelled + damaged unsellable items)
+            // Damaged items count towards fulfillment because they've been inspected and determined unsellable
+            $total_processed = $received_qty + $cancel_qty + $damaged_qty;
             
-            // Check if item is fully processed (received + cancelled = ordered)
+            // Check if item is fully processed (received + cancelled + damaged >= ordered)
             if ($total_processed >= $ordered_qty) {
                 $fully_processed_items++;
-            } else if ($received_qty > 0 || $cancel_qty > 0) {
+            } else if ($received_qty > 0 || $cancel_qty > 0 || $damaged_qty > 0) {
                 // Item has partial processing
                 $any_partial_processing = true;
             }
@@ -565,7 +575,7 @@ function updatePOStatus($pdo, $po_id) {
         // Determine new status
         $new_status = 'pending'; // Default
         
-        // If all items have been fully processed (received + cancelled >= ordered)
+        // If all items have been fully processed (received + cancelled + damaged >= ordered)
         if ($fully_processed_items >= $total_items) {
             $new_status = 'completed';
         } elseif ($any_partial_processing || $fully_processed_items > 0) {

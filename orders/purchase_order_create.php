@@ -32,7 +32,9 @@ try {
             poi.currency_id,
             po.order_date,
             c.symbol AS currency_symbol,
-            c.code AS currency_code
+            c.code AS currency_code,
+            c.exchange_rate AS currency_exchange_rate,
+            c.is_base AS currency_is_base
         FROM purchase_order_items poi
         INNER JOIN purchase_orders po ON poi.po_id = po.po_id
         LEFT JOIN currencies c ON poi.currency_id = c.currency_id
@@ -74,6 +76,8 @@ foreach ($products as &$product) {
     $product['last_currency_id'] = $latest['currency_id'] ?? null;
     $product['last_currency_symbol'] = $latest['currency_symbol'] ?? null;
     $product['last_currency_code'] = $latest['currency_code'] ?? null;
+    $product['last_currency_exchange_rate'] = $latest['currency_exchange_rate'] ?? null;
+    $product['last_currency_is_base'] = $latest['currency_is_base'] ?? null;
     $product['last_order_date'] = $latest['order_date'] ?? null;
     $product['is_active'] = $product['is_active'] ?? 1;
 }
@@ -801,7 +805,12 @@ function formatThaiDate(dateStr) {
 }
 
 function applyLatestPriceFromProduct(row, productInfo, options) {
-    if (!row) {
+    if (!row || !productInfo) {
+        const noteEl = row ? row.querySelector('.last-price-note') : null;
+        if (noteEl) {
+            noteEl.textContent = '';
+            noteEl.style.display = 'none';
+        }
         return false;
     }
 
@@ -810,131 +819,167 @@ function applyLatestPriceFromProduct(row, productInfo, options) {
     const noteEl = row.querySelector('.last-price-note');
     let priceUpdated = false;
 
-    if (!productInfo) {
-        if (noteEl) {
-            noteEl.textContent = '';
-            noteEl.style.display = 'none';
-        }
-        return priceUpdated;
-    }
-
-    const rate = parseFloat(exchangeRateInput.value) || 1;
-    const currencyOption = currencySelect.options[currencySelect.selectedIndex];
-    const currentSymbol = currencyOption ? (currencyOption.dataset.symbol || '฿') : '฿';
-    const parsedCurrentCurrencyId = currencySelect.value ? parseInt(currencySelect.value, 10) : NaN;
-    const currentCurrencyId = Number.isNaN(parsedCurrentCurrencyId) ? null : parsedCurrentCurrencyId;
-
-    const lastPriceBase = parseFloat(productInfo.last_price_base);
+    // ดึงข้อมูลราคาล่าสุด
     const lastPriceOriginal = parseFloat(productInfo.last_price_original);
     const lastPricePerUnit = parseFloat(productInfo.last_price_per_unit);
-    const lastSymbol = productInfo.last_currency_symbol || '';
-    const lastCode = productInfo.last_currency_code || '';
-    const lastDate = productInfo.last_order_date || '';
-    let lastCurrencyId = null;
-    if (productInfo.last_currency_id !== undefined && productInfo.last_currency_id !== null && productInfo.last_currency_id !== '') {
-        const parsed = parseInt(productInfo.last_currency_id, 10);
-        lastCurrencyId = Number.isNaN(parsed) ? null : parsed;
-    }
+    const lastPriceBase = parseFloat(productInfo.last_price_base);
+    const lastCurrencyId = productInfo.last_currency_id ? parseInt(productInfo.last_currency_id, 10) : null;
+    const lastCurrencyCode = (productInfo.last_currency_code || '').toUpperCase();
+    const lastCurrencySymbol = productInfo.last_currency_symbol || '';
+    const lastCurrencyExchangeRate = parseFloat(productInfo.last_currency_exchange_rate) || 1;
+    const lastCurrencyIsBase = productInfo.last_currency_is_base ? (productInfo.last_currency_is_base === 1 || productInfo.last_currency_is_base === '1') : false;
+    const lastOrderDate = productInfo.last_order_date || '';
 
-    row.dataset.lastPriceBase = Number.isNaN(lastPriceBase) ? '' : lastPriceBase;
-    row.dataset.lastPriceOriginal = Number.isNaN(lastPriceOriginal) ? '' : lastPriceOriginal;
-    row.dataset.lastPricePerUnit = Number.isNaN(lastPricePerUnit) ? '' : lastPricePerUnit;
-    row.dataset.lastCurrencySymbol = lastSymbol || '';
-    row.dataset.lastCurrencyCode = lastCode || '';
-    row.dataset.lastOrderDate = lastDate;
-    row.dataset.lastCurrencyId = lastCurrencyId ?? '';
-
-    const baseCurrencyId = (typeof window.baseCurrencyId === 'number' && !Number.isNaN(window.baseCurrencyId))
-        ? window.baseCurrencyId
-        : null;
-    const currencyInfo = (lastCurrencyId !== null && window.currencyMap)
-        ? window.currencyMap[lastCurrencyId]
-        : null;
-    const lastCurrencyRate = currencyInfo ? parseFloat(currencyInfo.exchange_rate) : null;
-    const currencyInfoIsBase = currencyInfo ? (currencyInfo.is_base === 1 || currencyInfo.is_base === '1') : false;
-    const isLastCurrencyBase = currencyInfoIsBase || (baseCurrencyId !== null && lastCurrencyId === baseCurrencyId);
-    const resolvedSymbol = currencyInfo && currencyInfo.symbol ? currencyInfo.symbol : (lastSymbol || currentSymbol);
-    let resolvedCode = currencyInfo && currencyInfo.code ? currencyInfo.code : lastCode;
-    if (!resolvedCode && isLastCurrencyBase && currencyOption) {
-        resolvedCode = currencyOption.dataset.code || '';
-    }
-
-    const lastCurrencyMatchesCurrent = lastCurrencyId !== null && currentCurrencyId !== null && lastCurrencyId === currentCurrencyId;
-    const currentIsBase = baseCurrencyId !== null && currentCurrencyId !== null && currentCurrencyId === baseCurrencyId;
+    // ดึงข้อมูลสกุลเงิน USD (currency_id = 2)
     const usdCurrency = usdCurrencyOption ? {
         id: parseInt(usdCurrencyOption.value, 10),
         symbol: usdCurrencyOption.dataset.symbol || '$',
         code: (usdCurrencyOption.dataset.code || 'USD').toUpperCase(),
-        rate: parseFloat(usdCurrencyOption.dataset.rate)
+        rate: parseFloat(usdCurrencyOption.dataset.rate) || 1
     } : null;
-    const effectiveUsdRate = usdCurrency && usdCurrency.rate && !Number.isNaN(usdCurrency.rate) && usdCurrency.rate > 0
-        ? usdCurrency.rate
-        : null;
 
-    let noteValue = null;
-    let populateValue = null;
-    let convertedUsdPrice = null;
+    // สกุลเงินปัจจุบันที่เลือก
+    const currencyOption = currencySelect.options[currencySelect.selectedIndex];
+    const currentCurrencyId = currencySelect.value ? parseInt(currencySelect.value, 10) : null;
+    const currentSymbol = currencyOption ? (currencyOption.dataset.symbol || '฿') : '฿';
+    const currentCode = (currencyOption ? (currencyOption.dataset.code || '') : '').toUpperCase();
 
-    if (isLastCurrencyBase || (lastCurrencyId === null && baseCurrencyId !== null)) {
-        if (!Number.isNaN(lastPricePerUnit) && lastPricePerUnit > 0) {
-            noteValue = lastPricePerUnit;
-        } else if (!Number.isNaN(lastPriceBase) && lastPriceBase > 0) {
-            noteValue = lastPriceBase;
+    // บันทึกข้อมูลล่าสุดใน data attribute
+    row.dataset.lastPriceOriginal = !Number.isNaN(lastPriceOriginal) ? lastPriceOriginal : '';
+    row.dataset.lastPricePerUnit = !Number.isNaN(lastPricePerUnit) ? lastPricePerUnit : '';
+    row.dataset.lastPriceBase = !Number.isNaN(lastPriceBase) ? lastPriceBase : '';
+    row.dataset.lastCurrencySymbol = lastCurrencySymbol;
+    row.dataset.lastCurrencyCode = lastCurrencyCode;
+    row.dataset.lastOrderDate = lastOrderDate;
+    row.dataset.lastCurrencyId = lastCurrencyId ?? '';
+
+    // Debug log
+    console.log('applyLatestPriceFromProduct Debug:', {
+        lastPriceOriginal,
+        lastCurrencyId,
+        lastCurrencyCode,
+        isUSD: lastCurrencyId === 2 || lastCurrencyCode === 'USD',
+        lastCurrencyExchangeRate,
+        usdRate: usdCurrency ? usdCurrency.rate : 'N/A'
+    });
+
+    // ============ คำนวณราคา USD ============
+    let usdPrice = null;
+    let originalPriceForDisplay = null;
+    let originalCurrencyForDisplay = lastCurrencyCode;
+
+    // ใช้ price_original เป็นหลัก (ราคาล่าสุดจริง ๆ ที่บันทึกไว้)
+    if (!Number.isNaN(lastPriceOriginal) && lastPriceOriginal > 0) {
+        originalPriceForDisplay = lastPriceOriginal;
+        
+        // ตรวจสอบ currency_id ของ price_original
+        // USD currency_id = 2
+        if (lastCurrencyId === 2 || lastCurrencyCode === 'USD') {
+            // ราคา price_original เป็น USD แล้ว ไม่ต้องแปลง
+            usdPrice = lastPriceOriginal;
+            console.log('ราคาเป็น USD แล้ว:', usdPrice);
+        } else if (lastCurrencyIsBase || lastCurrencyCode === 'THB') {
+            // ราคา price_original เป็นบาท แปลงเป็น USD
+            if (usdCurrency && usdCurrency.rate > 0) {
+                usdPrice = lastPriceOriginal / usdCurrency.rate;
+                console.log('แปลงจากบาท เป็น USD:', {
+                    originalPrice: lastPriceOriginal,
+                    usdRate: usdCurrency.rate,
+                    calculatedUSD: usdPrice
+                });
+            }
+        } else {
+            // ราคา price_original เป็นสกุลเงินอื่น แปลงเป็นบาทก่อน แล้วแปลงเป็น USD
+            if (lastCurrencyExchangeRate > 0 && usdCurrency && usdCurrency.rate > 0) {
+                const priceInBase = lastPriceOriginal * lastCurrencyExchangeRate;
+                usdPrice = priceInBase / usdCurrency.rate;
+                console.log('แปลงจากสกุลเงินอื่น เป็น USD:', {
+                    originalPrice: lastPriceOriginal,
+                    currencyCode: lastCurrencyCode,
+                    toBaseRate: lastCurrencyExchangeRate,
+                    priceInBase,
+                    usdRate: usdCurrency.rate,
+                    calculatedUSD: usdPrice
+                });
+            }
         }
-
-        if ((lastCurrencyMatchesCurrent || (currentIsBase && (isLastCurrencyBase || lastCurrencyId === null))) && noteValue !== null) {
-            populateValue = noteValue;
+    } 
+    // ถ้า price_original ไม่มี ลองใช้ price_per_unit
+    else if (!Number.isNaN(lastPricePerUnit) && lastPricePerUnit > 0) {
+        originalPriceForDisplay = lastPricePerUnit;
+        
+        // ตรวจสอบ currency_id ของ price_per_unit
+        if (lastCurrencyId === 2 || lastCurrencyCode === 'USD') {
+            // ราคาเป็น USD แล้ว
+            usdPrice = lastPricePerUnit;
+            console.log('ราคา per unit เป็น USD แล้ว:', usdPrice);
+        } else if (lastCurrencyIsBase || lastCurrencyCode === 'THB') {
+            // ราคาเป็นบาท แปลงเป็น USD
+            if (usdCurrency && usdCurrency.rate > 0) {
+                usdPrice = lastPricePerUnit / usdCurrency.rate;
+                console.log('แปลง per unit จากบาท เป็น USD:', {
+                    originalPrice: lastPricePerUnit,
+                    usdRate: usdCurrency.rate,
+                    calculatedUSD: usdPrice
+                });
+            }
+        } else {
+            // ราคาเป็นสกุลเงินอื่น แปลงเป็นบาทก่อน แล้วแปลงเป็น USD
+            if (lastCurrencyExchangeRate > 0 && usdCurrency && usdCurrency.rate > 0) {
+                const priceInBase = lastPricePerUnit * lastCurrencyExchangeRate;
+                usdPrice = priceInBase / usdCurrency.rate;
+                console.log('แปลง per unit จากสกุลเงินอื่น เป็น USD:', {
+                    originalPrice: lastPricePerUnit,
+                    currencyCode: lastCurrencyCode,
+                    toBaseRate: lastCurrencyExchangeRate,
+                    priceInBase,
+                    usdRate: usdCurrency.rate,
+                    calculatedUSD: usdPrice
+                });
+            }
         }
-    } else {
-        if (!Number.isNaN(lastPriceOriginal) && lastPriceOriginal > 0) {
-            noteValue = lastPriceOriginal;
-        } else if (!Number.isNaN(lastPricePerUnit) && lastPricePerUnit > 0) {
-            noteValue = lastPricePerUnit;
-        } else if (!Number.isNaN(lastPriceBase) && lastPriceBase > 0 && rate > 0) {
-            noteValue = lastPriceBase / rate;
-        }
-
-        if (lastCurrencyMatchesCurrent && noteValue !== null) {
-            populateValue = noteValue;
+    } 
+    // ถ้าไม่มี price_original และ price_per_unit ลองใช้ price_base (เป็นบาท)
+    else if (!Number.isNaN(lastPriceBase) && lastPriceBase > 0) {
+        originalPriceForDisplay = lastPriceBase;
+        originalCurrencyForDisplay = 'THB';
+        
+        if (usdCurrency && usdCurrency.rate > 0) {
+            usdPrice = lastPriceBase / usdCurrency.rate;
+            console.log('แปลง price_base จากบาท เป็น USD:', {
+                originalPrice: lastPriceBase,
+                usdRate: usdCurrency.rate,
+                calculatedUSD: usdPrice
+            });
         }
     }
 
-    if (effectiveUsdRate) {
-        if (!Number.isNaN(lastPriceBase) && lastPriceBase > 0) {
-            convertedUsdPrice = lastPriceBase / effectiveUsdRate;
-        } else if (!Number.isNaN(lastPriceOriginal) && lastPriceOriginal > 0 && lastCurrencyRate && lastCurrencyRate > 0) {
-            convertedUsdPrice = (lastPriceOriginal * lastCurrencyRate) / effectiveUsdRate;
-        } else if (!Number.isNaN(lastPricePerUnit) && lastPricePerUnit > 0 && lastCurrencyRate && lastCurrencyRate > 0) {
-            convertedUsdPrice = (lastPricePerUnit * lastCurrencyRate) / effectiveUsdRate;
-        }
-    }
-
-    const hasUsdPrice = convertedUsdPrice !== null && !Number.isNaN(convertedUsdPrice) && convertedUsdPrice > 0;
-    const priceToUse = hasUsdPrice ? convertedUsdPrice : populateValue;
-
-    if (config.setPrice && priceInput && priceToUse !== null) {
-        priceInput.value = priceToUse.toFixed(2);
+    // ============ ตั้งค่าราคาในช่อง input ============
+    if (config.setPrice && priceInput && usdPrice !== null && usdPrice > 0) {
+        priceInput.value = usdPrice.toFixed(2);
         updatePriceBaseDisplay(priceInput);
         calcTotal();
         priceUpdated = true;
     }
 
+    // ============ แสดงข้อมูล note ของราคา ============
     if (noteEl) {
-        const dateText = formatThaiDate(lastDate);
+        const dateText = formatThaiDate(lastOrderDate);
         const segments = [];
 
-        if (hasUsdPrice && usdCurrency) {
-            const usdSymbol = usdCurrency.symbol || '$';
-            const usdCode = usdCurrency.code || 'USD';
-            segments.push(`PO ล่าสุด (USD): ${usdSymbol}${convertedUsdPrice.toFixed(2)} (${usdCode})`);
+        // แสดง USD ราคา (ถ้ามี)
+        if (usdPrice !== null && usdPrice > 0 && usdCurrency) {
+            segments.push(`PO ล่าสุด: $${usdPrice.toFixed(4)} (USD)`);
         }
 
-        if (noteValue !== null) {
-            const symbolForNote = resolvedSymbol || currentSymbol;
-            const codeForNote = resolvedCode ? resolvedCode.toUpperCase() : '';
-            segments.push(`เดิม: ${symbolForNote}${noteValue.toFixed(2)}${codeForNote ? ' (' + codeForNote + ')' : ''}`);
+        // แสดงราคาต้นฉบับ
+        if (originalPriceForDisplay !== null && !Number.isNaN(originalPriceForDisplay) && originalPriceForDisplay > 0) {
+            const displaySymbol = lastCurrencySymbol || '?';
+            const displayCode = originalCurrencyForDisplay || 'Unknown';
+            segments.push(`ต้นฉบับ: ${displaySymbol}${originalPriceForDisplay.toFixed(4)} (${displayCode})`);
         }
 
+        // แสดงวันที่สั่งซื้อ
         if (dateText) {
             segments.push(dateText);
         }

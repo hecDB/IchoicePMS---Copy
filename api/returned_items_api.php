@@ -180,6 +180,76 @@ function buildDefectSku(string $originalSku): string
     return mb_strpos($trimmed, $prefix) === 0 ? $trimmed : $prefix . $trimmed;
 }
 
+function updatePOStatusInline(PDO $pdo, int $po_id): void
+{
+    // Check completion status considering received, cancelled, AND damaged items
+    $status_sql = "
+        SELECT 
+            poi.item_id,
+            poi.product_id,
+            poi.qty as ordered_qty,
+            COALESCE(received_summary.total_received, 0) as received_qty,
+            COALESCE(poi.cancel_qty, 0) as cancel_qty,
+            COALESCE(damaged_summary.total_damaged, 0) as damaged_qty,
+            poi.is_cancelled,
+            poi.is_partially_cancelled
+        FROM purchase_order_items poi
+        LEFT JOIN (
+            SELECT item_id, SUM(receive_qty) as total_received 
+            FROM receive_items 
+            GROUP BY item_id
+        ) received_summary ON poi.item_id = received_summary.item_id
+        LEFT JOIN (
+            SELECT product_id, SUM(return_qty) as total_damaged
+            FROM returned_items
+            WHERE po_id = ? AND is_returnable = 0
+            GROUP BY product_id
+        ) damaged_summary ON poi.product_id = damaged_summary.product_id
+        WHERE poi.po_id = ?
+    ";
+    
+    $status_stmt = $pdo->prepare($status_sql);
+    $status_stmt->execute([$po_id, $po_id]);
+    $items_data = $status_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    if ($items_data && count($items_data) > 0) {
+        $total_items = 0;
+        $fully_processed_items = 0;
+        $any_partial_processing = false;
+        
+        foreach ($items_data as $item) {
+            $total_items++;
+            
+            $ordered_qty = floatval($item['ordered_qty']);
+            $received_qty = floatval($item['received_qty']);
+            $cancel_qty = floatval($item['cancel_qty']);
+            $damaged_qty = floatval($item['damaged_qty']);
+            
+            $total_processed = $received_qty + $cancel_qty + $damaged_qty;
+            
+            if ($total_processed >= $ordered_qty) {
+                $fully_processed_items++;
+            } else if ($received_qty > 0 || $cancel_qty > 0 || $damaged_qty > 0) {
+                $any_partial_processing = true;
+            }
+        }
+        
+        $new_status = 'pending';
+        
+        if ($fully_processed_items >= $total_items) {
+            $new_status = 'completed';
+        } elseif ($any_partial_processing || $fully_processed_items > 0) {
+            $new_status = 'partial';
+        }
+        
+        error_log("PO Status Update: PO_ID=$po_id, Total Items=$total_items, Fully Processed=$fully_processed_items, New Status=$new_status");
+        
+        $update_sql = "UPDATE purchase_orders SET status = ? WHERE po_id = ?";
+        $update_stmt = $pdo->prepare($update_sql);
+        $update_stmt->execute([$new_status, $po_id]);
+    }
+}
+
 function logProductActivity(PDO $pdo, int $productId, int $userId, float $quantity, string $reference, string $sku, ?string $notes = null): void
 {
     try {
@@ -1183,12 +1253,15 @@ if ($action === 'process_damaged_inspection') {
         }
 
         $noteLine = "\n[INSPECTED] เปลี่ยน SKU เป็น {$newSku} ({$restockQty}) โดยผู้ใช้ {$user_id} เวลา " . date('Y-m-d H:i:s');
+        $isReturnableValue = $isSellable ? 1 : 0;
         $updateReturn = $pdo->prepare("UPDATE returned_items SET 
-                return_status = 'completed', 
+                return_status = 'completed',
+                is_returnable = :is_returnable,
                 notes = CONCAT(COALESCE(notes, ''), :note_append),
                 updated_at = NOW()
             WHERE return_id = :return_id");
         $updateReturn->execute([
+            ':is_returnable' => $isReturnableValue,
             ':note_append' => $noteLine,
             ':return_id' => $inspection['return_id']
         ]);
@@ -1218,6 +1291,13 @@ if ($action === 'process_damaged_inspection') {
                 $newSku,
                 $combinedNotes !== '' ? $combinedNotes : null
             );
+        }
+
+        // Update PO status to check if all items have been processed
+        // Get the original PO ID from the inspection record
+        $originalPoId = $inspection['po_id'] ?? null;
+        if ($originalPoId) {
+            updatePOStatusInline($pdo, $originalPoId);
         }
 
         $pdo->commit();
