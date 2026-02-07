@@ -850,6 +850,9 @@ if ($action === 'create_return') {
         ]);
         
         $return_id = $pdo->lastInsertId();
+        
+        // Debug log
+        error_log("📝 Created return record: return_id=$return_id, po_id=$po_id, reason_name=" . $reason['reason_name'] . ", is_returnable=" . $reason['is_returnable']);
         $reasonNameForQueue = trim((string)($reason['reason_name'] ?? ''));
         if ($reasonNameForQueue === 'สินค้าชำรุดบางส่วน') {
             try {

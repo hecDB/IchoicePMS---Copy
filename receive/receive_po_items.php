@@ -1074,15 +1074,35 @@ function fetchDamagedReasonId() {
         method: 'GET',
         dataType: 'json',
         success: function(response) {
+            console.log('🔍 All return reasons fetched:', response);
             if (!response || response.status !== 'success' || !Array.isArray(response.data)) {
-                console.warn('Cannot load return reasons');
+                console.warn('❌ Cannot load return reasons - Invalid response');
                 return;
             }
+            
+            console.log('📋 Total reasons:', response.data.length);
+            response.data.forEach(r => {
+                console.log(`  - ${r.reason_id}: ${r.reason_name} (is_returnable: ${r.is_returnable})`);
+            });
+            
             const match = response.data.find(r => (r.reason_name || '').trim() === 'สินค้าชำรุดบางส่วน');
-            damagedReasonId = match ? match.reason_id : null;
+            
+            if (match) {
+                damagedReasonId = match.reason_id;
+                console.log('✅ Found damaged reason: reason_id =', damagedReasonId);
+            } else {
+                console.warn('⚠️ Cannot find "สินค้าชำรุดบางส่วน" reason');
+                console.log('Available non-zero returnable reasons:');
+                response.data.forEach(r => {
+                    if (r.is_returnable === '0' || r.is_returnable === 0) {
+                        console.log(`  - ${r.reason_id}: ${r.reason_name}`);
+                    }
+                });
+                damagedReasonId = null;
+            }
         },
         error: function(xhr, status, error) {
-            console.error('Failed to fetch reasons', error);
+            console.error('❌ Failed to fetch reasons', error, xhr.responseText);
         }
     });
 }
@@ -1099,29 +1119,41 @@ function formatThaiDate(dateString) {
 
 // Load damaged unsellable items for specific PO
 function loadDamagedUnsellableByPo(poId) {
+    console.log('🔍 loadDamagedUnsellableByPo called with poId:', poId);
+    
     $.ajax({
         url: '../api/get_damaged_unsellable_by_po.php?po_id=' + encodeURIComponent(poId),
         method: 'GET',
         dataType: 'json',
         success: function(response) {
+            console.log('📥 API Response from get_damaged_unsellable_by_po:', response);
             if (response.status === 'success') {
+                console.log('✅ Data received:', response.data);
                 displayDamagedUnsellableByPo(response.data || []);
+            } else {
+                console.warn('⚠️ API returned unsuccessful status:', response);
             }
         },
         error: function(xhr, status, error) {
-            console.error('Error loading damaged items by PO:', error);
+            console.error('❌ Error loading damaged items by PO:', error, xhr.responseText);
         }
     });
 }
 
 function displayDamagedUnsellableByPo(items) {
+    console.log('📋 displayDamagedUnsellableByPo called with items:', items);
+    
     if (!items || items.length === 0) {
+        console.log('ℹ️ No damaged unsellable items found, hiding section');
         $('#damagedUnsellableSection').hide();
         return;
     }
     
+    console.log('✅ Found ' + items.length + ' damaged unsellable item(s)');
+    
     let html = '';
     items.forEach((item) => {
+        console.log('Processing item:', item);
         const imageSrc = resolveProductImage(item);
         const productName = escapeHtml(item.product_name || '-');
         const sku = escapeHtml(item.sku || '-');
@@ -1158,6 +1190,7 @@ function displayDamagedUnsellableByPo(items) {
     
     $('#damagedunsellablePoTableBody').html(html);
     $('#damagedUnsellableSection').show();
+    console.log('✅ Damaged unsellable section displayed');
 }
 
 function formatThaiDateTime(dateTimeString) {
@@ -1710,6 +1743,8 @@ function displayPoItems(items, mode) {
     $('#poItemsTableBody').html(html);
     
     // Load damaged unsellable items for this PO
+    console.log('📍 Current PO Data:', currentPoData);
+    console.log('🔄 Attempting to load damaged items for PO ID:', currentPoData.poId);
     loadDamagedUnsellableByPo(currentPoData.poId);
     
     // Show/hide save button
