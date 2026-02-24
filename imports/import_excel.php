@@ -43,20 +43,14 @@ if(isset($_POST['submit'])) {
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray();
 
-            // ====== คำนวณยอดรวม ======
-            $total_amount = 0;
-            for ($i = 1; $i < count($rows); $i++) {
-                $qty = floatval($rows[$i][9] ?? 0);      // Column J (0-indexed 9)
-                $price = floatval($rows[$i][10] ?? 0);   // Column K (0-indexed 10)
-                $total_amount += $qty * $price;
-            }
-
-            // ====== เพิ่ม PO ======
+            // ====== เพิ่ม PO ก่อน (จะอัพเดต total_amount หลังคำนวณได้) ======
             $stmt = $pdo->prepare("INSERT INTO purchase_orders 
                 (po_number, supplier_id, order_date, total_amount, ordered_by, status, remark, created_at) 
                 VALUES (?,?,?,?,?,?,?,NOW())");
-            $stmt->execute([$po_number, 1, date('Y-m-d H:i:s'), $total_amount, $user_id, 'completed', 'imported from excel']);
+            $stmt->execute([$po_number, 1, date('Y-m-d H:i:s'), 0, $user_id, 'completed', 'imported from excel']);
             $po_id = $pdo->lastInsertId();
+            
+            $items_imported = 0;  // นับจำนวนแถวที่นำเข้าสำเร็จ
 
             // ====== Loop เพิ่มสินค้า / PO Items / Receive Items ======
             for ($i = 1; $i < count($rows); $i++) {
@@ -149,12 +143,13 @@ if(isset($_POST['submit'])) {
                     } else {
                         try {
                             $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, remark_color, remark_split, product_category_id, is_active, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW())");
+                            $image_path = empty($image) ? null : 'images/'.$image;
                             $stmt->execute([
                                 $name,
                                 $sku === '' ? null : $sku,
                                 $barcode === '' ? null : $barcode,
                                 $unit,
-                                'images/'.$image,
+                                $image_path,
                                 $remark_color,
                                 $remark_split,
                                 $product_category_id,
@@ -248,12 +243,14 @@ if(isset($_POST['submit'])) {
                         (po_id, product_id, qty, price_per_unit, sale_price, total, currency, original_price) 
                         VALUES (?,?,?,?,?,?,?,?)");
                     $stmt->execute([$po_id, $product_id, $qty, $price_thb, $sale_price_thb, $qty*$price_thb, $currency, $price]);
+                    $item_id = $pdo->lastInsertId();
                 } else {
                     // เก่า: ไม่มีคอลัมน์สกุลเงิน - ใช้รูปแบบเดิม
                     $stmt = $pdo->prepare("INSERT INTO purchase_order_items 
                         (po_id, product_id, qty, price_per_unit, sale_price, total) 
                         VALUES (?,?,?,?,?,?)");
                     $stmt->execute([$po_id, $product_id, $qty, $price_thb, $sale_price_thb, $qty*$price_thb]);
+                    $item_id = $pdo->lastInsertId();
                     
                     // บันทึกข้อมูลสกุลเงินไว้ใน remark ของ PO ชั่วคราว
                     if ($currency !== 'THB') {
@@ -262,23 +259,30 @@ if(isset($_POST['submit'])) {
                         $stmt_update_po->execute([$currency_info, $po_id]);
                     }
                 }
-                $item_id = $pdo->lastInsertId();
 
                 // ====== เพิ่ม Receive Item ======
                 $stmt = $pdo->prepare("INSERT INTO receive_items 
                     (po_id, item_id, receive_qty, remark_color, remark_split, created_by, expiry_date, remark) 
                     VALUES (?,?,?,?,?,?,?,?)");
                 $stmt->execute([$po_id, $item_id, $qty, $remark_color, $remark_split, $user_id, $expiry_date, $remark]);
+                
+                $items_imported++;  // นับแถวที่บันทึกสำเร็จ
             }
+
+            // ====== คำนวณยอดรวมจากราคา THB และอัพเดต PO ======
+            $stmt = $pdo->prepare("SELECT SUM(total) as total_amount FROM purchase_order_items WHERE po_id = ?");
+            $stmt->execute([$po_id]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $final_total = floatval($result['total_amount'] ?? 0);
+            
+            $stmt = $pdo->prepare("UPDATE purchase_orders SET total_amount = ? WHERE po_id = ?");
+            $stmt->execute([$final_total, $po_id]);
 
             $pdo->commit();
             
-            $currency_support_msg = "";
-            if (!$has_currency_column || !$has_original_price_column) {
-                $currency_support_msg = "<br><small style='color: #ff6b35; font-weight: 500;'>⚠️ ตารางยังไม่รองรับสกุลเงินเต็มรูปแบบ - กรุณารัน migration script</small>";
-            }
-            
-            $message = "Import สำเร็จ! PO = $po_number" . $currency_support_msg . "<br><small style='color: #666;'>หากมีสกุลเงินอื่น ระบบจะปรับเป็น THB อัตโนมัติ</small>";
+            $message = "Import สำเร็จ! PO = $po_number ({$items_imported} รายการ)";
+            $message .= "<br><small style='color: #ff6b35; font-weight: 500;'>⚠️ ตารางยังไม่รองรับสกุลเงินเต็มรูปแบบ - กรุณารัน migration script</small>";
+            $message .= "<br><small style='color: #666;'>หากมีสกุลเงินอื่น ระบบจะปรับเป็น THB อัตโนมัติ</small>";
 
         } catch (Exception $e) {
             $pdo->rollBack();

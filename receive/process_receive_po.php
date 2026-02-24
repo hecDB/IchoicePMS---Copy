@@ -17,7 +17,7 @@ function initializeCancelSchema() {
     global $pdo;
     
     try {
-        // Check and add missing columns
+        // Check and add missing columns for purchase_order_items
         $columns_to_check = [
             'is_cancelled' => "ALTER TABLE purchase_order_items ADD COLUMN is_cancelled TINYINT(1) DEFAULT 0 AFTER unit_price",
             'is_partially_cancelled' => "ALTER TABLE purchase_order_items ADD COLUMN is_partially_cancelled TINYINT(1) DEFAULT 0 AFTER is_cancelled",
@@ -29,12 +29,12 @@ function initializeCancelSchema() {
             'cancel_notes' => "ALTER TABLE purchase_order_items ADD COLUMN cancel_notes TEXT AFTER cancel_reason"
         ];
         
-        // Get existing columns
+        // Get existing columns for purchase_order_items
         $columns_sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='purchase_order_items' AND TABLE_SCHEMA=DATABASE()";
         $stmt = $pdo->query($columns_sql);
         $existing_columns = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'COLUMN_NAME');
         
-        // Add missing columns
+        // Add missing columns to purchase_order_items
         foreach ($columns_to_check as $col_name => $alter_sql) {
             if (!in_array($col_name, $existing_columns)) {
                 try {
@@ -138,6 +138,44 @@ if ($action === 'update_expiry_only') {
     }
 }
 
+// Function to get selling price from purchase order item
+function getSellingPriceFromPO($pdo, $item_id) {
+    try {
+        $sql = "SELECT sale_price FROM purchase_order_items WHERE item_id = ? LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$item_id]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        return isset($result['sale_price']) ? (float)$result['sale_price'] : 0;
+    } catch (Exception $e) {
+        error_log("Error getting selling price: " . $e->getMessage());
+        return 0;
+    }
+}
+
+// Function to get latest selling price from previous PO for same product
+function getLatestSellingPriceFromPreviousPO($pdo, $product_id, $current_po_id) {
+    try {
+        // Find the latest sale_price from previous POs for the same product (where sale_price > 0)
+        $sql = "SELECT poi.sale_price 
+                FROM purchase_order_items poi
+                JOIN purchase_orders po ON poi.po_id = po.po_id
+                WHERE poi.product_id = ? 
+                AND po.po_id != ?
+                AND poi.sale_price > 0
+                ORDER BY po.created_at DESC, poi.item_id DESC
+                LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$product_id, $current_po_id]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        return isset($result['sale_price']) ? (float)$result['sale_price'] : 0;
+    } catch (Exception $e) {
+        error_log("Error getting latest selling price from previous PO: " . $e->getMessage());
+        return 0;
+    }
+}
+
 // รองรับทั้ง POST และ JSON input
 $input = json_decode(file_get_contents('php://input'), true);
 if ($input) {
@@ -179,7 +217,7 @@ if ($input) {
                 }
 
                 // Get PO information from item_id
-                $check_sql = "SELECT poi.po_id, poi.qty as ordered_qty, p.name as product_name 
+                $check_sql = "SELECT poi.po_id, poi.qty as ordered_qty, poi.product_id, p.name as product_name 
                               FROM purchase_order_items poi 
                               LEFT JOIN products p ON poi.product_id = p.product_id
                               WHERE poi.item_id = ?";
@@ -202,6 +240,12 @@ if ($input) {
                     throw new Exception("จำนวนที่รับมากเกินไป สำหรับ {$item['product_name']} (เหลือ $remaining)");
                 }
 
+                // Get latest selling price from previous PO for same product
+                $selling_price = 0;
+                if ($item['product_id']) {
+                    $selling_price = getLatestSellingPriceFromPreviousPO($pdo, $item['product_id'], $item['po_id']);
+                }
+
                 // Insert receive record
                 $insert_sql = "INSERT INTO receive_items (item_id, po_id, receive_qty, created_by, created_at, remark, expiry_date) 
                                VALUES (?, ?, ?, ?, NOW(), ?, ?)";
@@ -214,6 +258,17 @@ if ($input) {
                     $notes,
                     $expiry_date
                 ]);
+
+                // Update sale_price in purchase_order_items if found
+                if ($selling_price > 0) {
+                    try {
+                        $update_sql = "UPDATE purchase_order_items SET sale_price = ? WHERE item_id = ?";
+                        $update_stmt = $pdo->prepare($update_sql);
+                        $update_stmt->execute([$selling_price, $item_id]);
+                    } catch (Exception $e) {
+                        error_log("Error updating sale_price: " . $e->getMessage());
+                    }
+                }
 
                 $received_count++;
             }
@@ -369,7 +424,7 @@ try {
         }
 
         // Verify item belongs to PO
-        $check_sql = "SELECT poi.item_id, poi.qty as quantity, p.name FROM purchase_order_items poi 
+        $check_sql = "SELECT poi.item_id, poi.qty as quantity, poi.product_id, p.name FROM purchase_order_items poi 
                       LEFT JOIN products p ON poi.product_id = p.product_id
                       WHERE poi.item_id = ? AND poi.po_id = ?";
         $check_stmt = $pdo->prepare($check_sql);
@@ -405,6 +460,12 @@ try {
             $expiry_date = null;
         }
 
+        // Get latest selling price from previous PO for same product
+        $selling_price = 0;
+        if ($item['product_id']) {
+            $selling_price = getLatestSellingPriceFromPreviousPO($pdo, $item['product_id'], $po_id);
+        }
+
         // Insert receive record
         $insert_sql = "INSERT INTO receive_items (item_id, receive_qty, created_by, created_at, po_id, remark, expiry_date) 
                        VALUES (?, ?, ?, NOW(), ?, ?, ?)";
@@ -417,6 +478,17 @@ try {
             "รับสินค้าจาก PO: " . $_POST['po_number'] ?? '',
             $expiry_date
         ]);
+
+        // Update sale_price in purchase_order_items if found
+        if ($selling_price > 0) {
+            try {
+                $update_sql = "UPDATE purchase_order_items SET sale_price = ? WHERE item_id = ?";
+                $update_stmt = $pdo->prepare($update_sql);
+                $update_stmt->execute([$selling_price, $item_id]);
+            } catch (Exception $e) {
+                error_log("Error updating sale_price: " . $e->getMessage());
+            }
+        }
 
         $message = "รับสินค้า {$item['name']} จำนวน $quantity เรียบร้อย";
 
@@ -450,7 +522,7 @@ try {
             }
 
             // Verify item belongs to PO
-            $check_sql = "SELECT poi.qty as quantity FROM purchase_order_items poi WHERE poi.item_id = ? AND poi.po_id = ?";
+            $check_sql = "SELECT poi.qty as quantity, poi.product_id FROM purchase_order_items poi WHERE poi.item_id = ? AND poi.po_id = ?";
             $check_stmt = $pdo->prepare($check_sql);
             $check_stmt->execute([$item_id, $po_id]);
             $po_item = $check_stmt->fetch(PDO::FETCH_ASSOC);
@@ -471,6 +543,12 @@ try {
             }
 
             if ($quantity > 0) {
+                // Get latest selling price from previous PO for same product
+                $selling_price = 0;
+                if ($po_item['product_id']) {
+                    $selling_price = getLatestSellingPriceFromPreviousPO($pdo, $po_item['product_id'], $po_id);
+                }
+
                 // Insert receive record
                 $insert_sql = "INSERT INTO receive_items (item_id, receive_qty, created_by, created_at, po_id, remark, expiry_date) 
                                VALUES (?, ?, ?, NOW(), ?, ?, ?)";
@@ -483,6 +561,18 @@ try {
                     "รับสินค้าจาก PO (Batch)",
                     $expiry_date
                 ]);
+
+                // Update sale_price in purchase_order_items if found
+                if ($selling_price > 0) {
+                    try {
+                        $update_sql = "UPDATE purchase_order_items SET sale_price = ? WHERE item_id = ?";
+                        $update_stmt = $pdo->prepare($update_sql);
+                        $update_stmt->execute([$selling_price, $item_id]);
+                    } catch (Exception $e) {
+                        error_log("Error updating sale_price: " . $e->getMessage());
+                    }
+                }
+
                 $received_count++;
             }
         }
