@@ -62,8 +62,8 @@ try {
 
     // เพิ่มรายการสินค้า
     $stmt2 = $pdo->prepare("INSERT INTO purchase_order_items
-        (po_id, product_id, qty, price_per_unit, total, currency_id, price_original, price_base)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        (po_id, product_id, qty, price_per_unit, sale_price, total, currency_id, price_original, price_base)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
     foreach($orderItems as $item){
         $qty = floatval($item['qty']);
@@ -76,6 +76,7 @@ try {
             $item['product_id'],
             $qty,
             $price_base, // เก็บราคาฐานใน price_per_unit เพื่อ backward compatibility
+            0.00, // sale_price - default to 0 (will be set during receiving)
             $total_base,
             $item['currency_id'] ?? $currency_id,
             $price_original,

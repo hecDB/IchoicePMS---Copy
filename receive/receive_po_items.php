@@ -29,7 +29,8 @@ $sql_pos = "
         ), 0) as partially_received_items,
         COALESCE(SUM(poi.qty), 0) as total_ordered_qty,
         COALESCE(SUM(COALESCE(received_summary.total_received, 0)), 0) as total_received_qty,
-        COALESCE(SUM(COALESCE(poi.cancel_qty, 0)), 0) as total_cancelled_qty
+        COALESCE(SUM(COALESCE(poi.cancel_qty, 0)), 0) as total_cancelled_qty,
+        COALESCE(SUM(COALESCE(damaged_summary.total_damaged, 0)), 0) as total_damaged_qty
     FROM purchase_orders po
     LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
     LEFT JOIN currencies c ON po.currency_id = c.currency_id
@@ -39,6 +40,13 @@ $sql_pos = "
         FROM receive_items 
         GROUP BY item_id
     ) received_summary ON poi.item_id = received_summary.item_id
+    LEFT JOIN (
+        SELECT poi2.item_id, COUNT(ri.return_id) as total_damaged
+        FROM purchase_order_items poi2
+        LEFT JOIN returned_items ri ON poi2.item_id = ri.item_id
+        WHERE ri.reason_id IN (SELECT reason_id FROM return_reasons WHERE reason_name LIKE '%ชำรุด%' OR reason_name LIKE '%ขาย%ได้%')
+        GROUP BY poi2.item_id
+    ) damaged_summary ON poi.item_id = damaged_summary.item_id
     WHERE po.status IN ('pending', 'partial')
     GROUP BY po.po_id, po.po_number, s.name, po.order_date, po.total_amount, c.code, po.remark, po.status
     ORDER BY po.order_date DESC, po.po_number DESC
@@ -392,6 +400,28 @@ $fully_received = $status_counts['completed'] ?? 0; // รับครบแล�
             color: rgba(255, 255, 255, 0.9);
         }
 
+        /* Warning Indicator Badge */
+        .po-warning-badge {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+            border: 2px solid white;
+            z-index: 10;
+        }
+
+        .po-card-header {
+            position: relative;
+        }
 
         /* PO Card Container for filtering */
         .po-card-container {
@@ -579,6 +609,11 @@ $fully_received = $status_counts['completed'] ?? 0; // รับครบแล�
                     ?>">
                         <div class="po-card">
                             <div class="po-card-header">
+                                <?php if (floatval($po['total_cancelled_qty']) > 0 || floatval($po['total_damaged_qty']) > 0): ?>
+                                <div class="po-warning-badge" title="มีรายการสินค้าที่ยกเลิก หรือชำรุด">
+                                    <span class="material-icons" style="font-size: 1.2rem;">warning</span>
+                                </div>
+                                <?php endif; ?>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1 fw-bold"><?= htmlspecialchars($po['po_number']) ?></h6>
@@ -659,6 +694,11 @@ $fully_received = $status_counts['completed'] ?? 0; // รับครบแล�
                     ?>">
                         <div class="po-card" style="border-left: 4px solid #f59e0b;">
                             <div class="po-card-header" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);">
+                                <?php if (floatval($po['total_cancelled_qty']) > 0 || floatval($po['total_damaged_qty']) > 0): ?>
+                                <div class="po-warning-badge" title="มีรายการสินค้าที่ยกเลิก หรือชำรุด">
+                                    <span class="material-icons" style="font-size: 1.2rem;">warning</span>
+                                </div>
+                                <?php endif; ?>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1 fw-bold"><?= htmlspecialchars($po['po_number']) ?></h6>
@@ -1022,6 +1062,12 @@ $fully_received = $status_counts['completed'] ?? 0; // รับครบแล�
                     <strong id="completedPoSupplier" class="fs-6"></strong>
                 </div>
                 
+                <div id="completedPoRemarksSection" class="alert alert-success alert-dismissible mb-3" role="alert" style="display: none;">
+                    <span class="material-icons align-middle me-2" style="font-size: 1rem;">check_circle</span>
+                    <strong>สรุปการรับเข้า:</strong>
+                    <div id="completedPoRemarks" class="mt-2" style="font-weight: 500; white-space: pre-wrap;"></div>
+                </div>
+                
                 <div class="table-responsive">
                     <table class="table table-hover table-sm">
                         <thead class="table-light">
@@ -1038,6 +1084,33 @@ $fully_received = $status_counts['completed'] ?? 0; // รับครบแล�
                         <tbody id="completedPoItemsTableBody">
                         </tbody>
                     </table>
+                </div>
+                
+                <!-- Damaged Unsellable Section for Completed POs -->
+                <div id="completedDamagedUnsellableSection" style="display: none;">
+                    <div class="mt-4 pt-4 border-top">
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            <span class="material-icons align-middle me-2" style="font-size: 1.2rem;">warning</span>
+                            <strong>สินค้าชำรุดขายไม่ได้</strong> - ของรายการสั่งซื้อนี้
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 10%;">รูปภาพ</th>
+                                        <th>ชื่อสินค้า</th>
+                                        <th style="width: 12%; text-align: center;">SKU</th>
+                                        <th style="width: 10%; text-align: right;">จำนวน</th>
+                                        <th style="width: 15%; text-align: center;">วันหมดอายุ</th>
+                                        <th style="width: 15%; text-align: center;">บันทึกเมื่อ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="completedDamagedUnsellablePoTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1425,6 +1498,24 @@ function loadPoItems(poId, poNumber, supplier, mode, remark) {
     $('#modalPoNumber').text(poNumber);
     $('#modalSupplier').text(supplier);
     
+    // Display completion remarks if this is a newly completed PO
+    if (remark && remark.includes('ครบตามสั่ง') && mode === 'view') {
+        // Show alert for completed PO with remarks
+        const remarksHtml = `
+            <div class="alert alert-success alert-dismissible mb-3" role="alert">
+                <span class="material-icons align-middle me-2" style="font-size: 1.2rem;">check_circle</span>
+                <strong>ใบสั่งซื้อสมบูรณ์</strong>
+                <div class="mt-2" style="font-weight: 500; white-space: pre-wrap;">${escapeHtml(remark)}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        // Insert before table
+        const currentHtml = $('#poItemsTableBody').parent().parent().html() || '';
+        // Will show after loading
+        currentPoData.showRemarks = true;
+        currentPoData.remarksHtml = remarksHtml;
+    }
+    
     // Show loading
     $('#poItemsTableBody').html(`
         <tr>
@@ -1483,9 +1574,18 @@ function loadPoItems(poId, poNumber, supplier, mode, remark) {
 // Load completed PO items - GLOBAL FUNCTION
 function loadCompletedPoItems(poId, poNumber, supplier, remark) {
     console.log('loadCompletedPoItems called with:', { poId, poNumber, supplier, remark });
+    currentPoData = { poId, poNumber, supplier, remark }; // Store data for reference
     
     $('#completedPoNumber').text(poNumber);
     $('#completedPoSupplier').text(supplier);
+    
+    // Display remarks if available
+    if (remark && remark.includes('ครบตามสั่ง')) {
+        $('#completedPoRemarks').text(remark);
+        $('#completedPoRemarksSection').show();
+    } else {
+        $('#completedPoRemarksSection').hide();
+    }
     
     // Show loading
     $('#completedPoItemsTableBody').html(`
@@ -1516,6 +1616,8 @@ function loadCompletedPoItems(poId, poNumber, supplier, remark) {
             if (response.success) {
                 console.log('Items:', response.items);
                 displayCompletedPoItems(response.items);
+                // Load damaged items for completed PO
+                loadDamagedUnsellableByPoCompleted(poId);
             } else {
                 console.error('API Error:', response.error);
                 $('#completedPoItemsTableBody').html(`
@@ -1605,6 +1707,78 @@ function displayCompletedPoItems(items) {
     }
     
     $('#completedPoItemsTableBody').html(html);
+}
+
+// Load damaged unsellable items for completed PO
+function loadDamagedUnsellableByPoCompleted(poId) {
+    console.log('🔍 loadDamagedUnsellableByPoCompleted called with poId:', poId);
+    
+    $.ajax({
+        url: '../api/get_damaged_unsellable_by_po.php?po_id=' + encodeURIComponent(poId),
+        method: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            console.log('📥 API Response from get_damaged_unsellable_by_po:', response);
+            if (response.status === 'success') {
+                console.log('✅ Data received:', response.data);
+                displayCompletedDamagedUnsellableByPo(response.data || []);
+            } else {
+                console.warn('⚠️ API returned unsuccessful status:', response);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Error loading damaged items by PO:', error, xhr.responseText);
+        }
+    });
+}
+
+// Display damaged items for completed PO
+function displayCompletedDamagedUnsellableByPo(items) {
+    console.log('📋 displayCompletedDamagedUnsellableByPo called with items:', items);
+    
+    if (!items || items.length === 0) {
+        console.log('ℹ️ No damaged unsellable items found, hiding section');
+        $('#completedDamagedUnsellableSection').hide();
+        return;
+    }
+    
+    console.log('✅ Found ' + items.length + ' damaged unsellable item(s)');
+    
+    let html = '';
+    items.forEach((item) => {
+        console.log('Processing item:', item);
+        const imageSrc = resolveProductImage(item);
+        const productName = escapeHtml(item.product_name || '-');
+        const sku = escapeHtml(item.sku || '-');
+        const returnCode = escapeHtml(item.return_code || '-');
+        const expiryDisplay = item.expiry_date ? formatThaiDate(item.expiry_date) : '-';
+        const createdDate = item.created_at ? formatThaiDateTime(item.created_at) : '-';
+        const damageQty = parseFloat(item.return_qty || item.quantity || 0);
+        
+        html += `
+            <tr>
+                <td class="text-center">
+                    <img src="${imageSrc}" alt="${productName}" class="po-item-image" onerror="this.onerror=null;this.src='../images/noimg.png';">
+                </td>
+                <td>
+                    <div class="fw-bold">${productName}</div>
+                    <small class="text-muted d-block">รหัสคืน: ${returnCode}</small>
+                </td>
+                <td class="text-center">
+                    <span class="badge bg-secondary">${sku}</span>
+                </td>
+                <td class="text-end">
+                    <div class="fw-bold text-warning">${damageQty.toLocaleString()}</div>
+                </td>
+                <td class="text-center">${expiryDisplay}</td>
+                <td class="text-center"><small>${createdDate}</small></td>
+            </tr>
+        `;
+    });
+    
+    $('#completedDamagedUnsellablePoTableBody').html(html);
+    $('#completedDamagedUnsellableSection').show();
+    console.log('✅ Damaged unsellable section displayed for completed PO');
 }
 
 // Display PO items - GLOBAL FUNCTION
@@ -1742,6 +1916,11 @@ function displayPoItems(items, mode) {
     
     $('#poItemsTableBody').html(html);
     
+    // Display remarks alert if available
+    if (currentPoData.showRemarks && currentPoData.remarksHtml) {
+        $('#poItemsTableBody').parent().prepend(currentPoData.remarksHtml);
+    }
+    
     // Load damaged unsellable items for this PO
     console.log('📍 Current PO Data:', currentPoData);
     console.log('🔄 Attempting to load damaged items for PO ID:', currentPoData.poId);
@@ -1826,69 +2005,6 @@ $(document).ready(function() {
         
         loadPoItems(poId, poNumber, supplier, mode, remark);
     });
-    
-    // Load PO items
-    function loadPoItems(poId, poNumber, supplier, mode, remark) {
-        console.log('loadPoItems called with:', { poId, poNumber, supplier, mode, remark });
-        currentPoData = { poId, poNumber, supplier, mode, remark };
-        
-        $('#modalPoNumber').text(poNumber);
-        $('#modalSupplier').text(supplier);
-        
-        // Show loading
-        $('#poItemsTableBody').html(`
-            <tr>
-                <td colspan="12" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">กำลังโหลด...</span>
-                    </div>
-                    <div class="mt-2">กำลังโหลดข้อมูล...</div>
-                </td>
-            </tr>
-        `);
-        
-        $('#poItemsModal').modal('show');
-        
-        // Determine which API to use based on remark
-        const isNewProduct = remark && remark.toLowerCase().includes('new product');
-        const apiUrl = isNewProduct ? '../api/get_po_items_new_product.php' : '../api/get_po_items.php';
-        
-        // Load data via AJAX
-        $.ajax({
-            url: apiUrl,
-            method: 'GET',
-            data: { po_id: poId },
-            dataType: 'json',
-            success: function(response) {
-                console.log('API Response:', response);
-                if (response.success) {
-                    console.log('Items:', response.items);
-                    displayPoItems(response.items, mode);
-                } else {
-                    console.error('API Error:', response.error);
-                    $('#poItemsTableBody').html(`
-                        <tr>
-                            <td colspan="12" class="text-center py-4 text-danger">
-                                <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
-                                <div>${response.error}</div>
-                            </td>
-                        </tr>
-                    `);
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('Error loading PO items:', error);
-                $('#poItemsTableBody').html(`
-                    <tr>
-                        <td colspan="12" class="text-center py-4 text-danger">
-                            <span class="material-icons mb-2" style="font-size: 2rem;">error</span>
-                            <div>เกิดข้อผิดพลาดในการโหลดข้อมูล</div>
-                        </td>
-                    </tr>
-                `);
-            }
-        });
-    }
     
     // Parse date from Thai display format back to ISO format
     function parseDateFromDisplay(dateString) {

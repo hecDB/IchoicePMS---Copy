@@ -604,7 +604,7 @@ try {
 }
 
 function updatePOStatus($pdo, $po_id) {
-    // Check completion status considering received, cancelled, AND damaged items
+    // Check completion status considering: received + cancelled + damaged items
     $status_sql = "
         SELECT 
             poi.item_id,
@@ -612,7 +612,8 @@ function updatePOStatus($pdo, $po_id) {
             poi.qty as ordered_qty,
             COALESCE(received_summary.total_received, 0) as received_qty,
             COALESCE(poi.cancel_qty, 0) as cancel_qty,
-            COALESCE(damaged_summary.total_damaged, 0) as damaged_qty,
+            COALESCE(damaged_unsellable_summary.total_damaged_unsellable, 0) as damaged_unsellable_qty,
+            COALESCE(damaged_sellable_summary.total_damaged_sellable, 0) as damaged_sellable_qty,
             poi.is_cancelled,
             poi.is_partially_cancelled
         FROM purchase_order_items poi
@@ -622,22 +623,33 @@ function updatePOStatus($pdo, $po_id) {
             GROUP BY item_id
         ) received_summary ON poi.item_id = received_summary.item_id
         LEFT JOIN (
-            SELECT product_id, SUM(return_qty) as total_damaged
+            SELECT item_id, SUM(return_qty) as total_damaged_unsellable
             FROM returned_items
-            WHERE po_id = ? AND is_returnable = 0
-            GROUP BY product_id
-        ) damaged_summary ON poi.product_id = damaged_summary.product_id
+            WHERE is_returnable = 0
+            GROUP BY item_id
+        ) damaged_unsellable_summary ON poi.item_id = damaged_unsellable_summary.item_id
+        LEFT JOIN (
+            SELECT item_id, SUM(return_qty) as total_damaged_sellable
+            FROM returned_items
+            WHERE is_returnable = 1
+            GROUP BY item_id
+        ) damaged_sellable_summary ON poi.item_id = damaged_sellable_summary.item_id
         WHERE poi.po_id = ?
     ";
     
     $status_stmt = $pdo->prepare($status_sql);
-    $status_stmt->execute([$po_id, $po_id]);
+    $status_stmt->execute([$po_id]);
     $items_data = $status_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     if ($items_data && count($items_data) > 0) {
         $total_items = 0;
-        $fully_processed_items = 0; // Items that are fully received OR fully/partially cancelled OR damaged
-        $any_partial_processing = false; // Track if any item has partial processing
+        $fully_processed_items = 0;
+        $any_partial_processing = false;
+        $summary_notes = [];
+        $total_received = 0;
+        $total_damaged_unsellable = 0;
+        $total_damaged_sellable = 0;
+        $total_cancelled = 0;
         
         foreach ($items_data as $item) {
             $total_items++;
@@ -645,18 +657,23 @@ function updatePOStatus($pdo, $po_id) {
             $ordered_qty = floatval($item['ordered_qty']);
             $received_qty = floatval($item['received_qty']);
             $cancel_qty = floatval($item['cancel_qty']);
-            $damaged_qty = floatval($item['damaged_qty']);
-            $is_cancelled = $item['is_cancelled'];
-            $is_partially_cancelled = $item['is_partially_cancelled'];
+            $damaged_unsellable_qty = floatval($item['damaged_unsellable_qty']);
+            $damaged_sellable_qty = floatval($item['damaged_sellable_qty']);
             
-            // Calculate total processed (received + cancelled + damaged unsellable items)
-            // Damaged items count towards fulfillment because they've been inspected and determined unsellable
-            $total_processed = $received_qty + $cancel_qty + $damaged_qty;
+            // Accumulate totals
+            $total_received += $received_qty;
+            $total_damaged_unsellable += $damaged_unsellable_qty;
+            $total_damaged_sellable += $damaged_sellable_qty;
+            $total_cancelled += $cancel_qty;
             
-            // Check if item is fully processed (received + cancelled + damaged >= ordered)
-            if ($total_processed >= $ordered_qty) {
+            // Calculate total processed: received + damaged (both types) + cancelled
+            // All count toward fulfillment because they've been accounted for
+            $total_processed = $received_qty + $damaged_unsellable_qty + $damaged_sellable_qty + $cancel_qty;
+            
+            // Check if item is fully processed (allow small floating point rounding error)
+            if ($total_processed >= $ordered_qty - 0.0001) {
                 $fully_processed_items++;
-            } else if ($received_qty > 0 || $cancel_qty > 0 || $damaged_qty > 0) {
+            } else if ($received_qty > 0 || $cancel_qty > 0 || $damaged_unsellable_qty > 0 || $damaged_sellable_qty > 0) {
                 // Item has partial processing
                 $any_partial_processing = true;
             }
@@ -664,21 +681,50 @@ function updatePOStatus($pdo, $po_id) {
         
         // Determine new status
         $new_status = 'pending'; // Default
+        $remarks = '';
         
-        // If all items have been fully processed (received + cancelled + damaged >= ordered)
+        // If all items have been fully processed
         if ($fully_processed_items >= $total_items) {
             $new_status = 'completed';
+            
+            // Build summary remarks
+            $remark_parts = [];
+            if ($total_received > 0) {
+                $remark_parts[] = "รับดี: " . round($total_received, 2);
+            }
+            if ($total_damaged_sellable > 0) {
+                $remark_parts[] = "ชำรุด(ขายได้): " . round($total_damaged_sellable, 2);
+            }
+            if ($total_damaged_unsellable > 0) {
+                $remark_parts[] = "ชำรุด(ขายไม่ได้): " . round($total_damaged_unsellable, 2);
+            }
+            if ($total_cancelled > 0) {
+                $remark_parts[] = "ยกเลิก: " . round($total_cancelled, 2);
+            }
+            
+            if (!empty($remark_parts)) {
+                $remarks = "ครบตามสั่ง [" . implode(" + ", $remark_parts) . "]";
+            } else {
+                $remarks = "ครบตามสั่ง";
+            }
+            
         } elseif ($any_partial_processing || $fully_processed_items > 0) {
             // Some items have partial processing
             $new_status = 'partial';
         }
         
-        error_log("PO Status Update: PO_ID=$po_id, Total Items=$total_items, Fully Processed=$fully_processed_items, New Status=$new_status");
+        error_log("PO Status Update: PO_ID=$po_id, Total Items=$total_items, Fully Processed=$fully_processed_items, New Status=$new_status, Remarks=$remarks");
         
-        // Update PO status
-        $update_sql = "UPDATE purchase_orders SET status = ? WHERE po_id = ?";
-        $update_stmt = $pdo->prepare($update_sql);
-        $update_stmt->execute([$new_status, $po_id]);
+        // Update PO status and remarks
+        if (!empty($remarks)) {
+            $update_sql = "UPDATE purchase_orders SET status = ?, remark = CONCAT(COALESCE(remark, ''), '\n', ?) WHERE po_id = ?";
+            $update_stmt = $pdo->prepare($update_sql);
+            $update_stmt->execute([$new_status, $remarks, $po_id]);
+        } else {
+            $update_sql = "UPDATE purchase_orders SET status = ? WHERE po_id = ?";
+            $update_stmt = $pdo->prepare($update_sql);
+            $update_stmt->execute([$new_status, $po_id]);
+        }
     }
 }
 ?>
