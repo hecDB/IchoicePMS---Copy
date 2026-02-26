@@ -721,6 +721,7 @@ function resolveTransactionImageSrc($imageValue) {
 <script>
 let transactionTable;
 let currentBasePurchasePrice = 0;
+let currentSavedSalePrice = 0;  // เก็บราคาขายที่บันทึกไว้
 
 function formatPrice(value) {
     const num = Number(value);
@@ -745,8 +746,14 @@ function updatePricingFromWeight() {
 
     if (baseCost > 0 || hasWeight) {
         $('#trueCostInput').val(trueCost.toFixed(2));
+        // เพียงแนะนำราคาต้นทุน เมื่อยังไม่มีการตั้งราคาขาย หรือราคาขายเป็นศูนย์
         if (hasWeight) {
-            $('#salePriceInput').val(trueCost.toFixed(2));
+            const currentSalePrice = Number($('#salePriceInput').val());
+            // ถ้าไม่มีราคาขายหรือเป็น 0 จึงตั้งจากต้นทุน
+            if (!Number.isFinite(currentSalePrice) || currentSalePrice === 0) {
+                $('#salePriceInput').val(trueCost.toFixed(2));
+            }
+            // ถ้ามีราคาขายบันทึกไว้แล้ว ให้ใช้ค่านั้น (ไม่ overwrite)
         }
     } else {
         $('#trueCostInput').val('');
@@ -755,17 +762,56 @@ function updatePricingFromWeight() {
     updateNetProfitLabel();
 }
 
+function calculateDetailedProfit(salePrice, cost) {
+    if (!Number.isFinite(salePrice) || salePrice < 0) {
+        return null;
+    }
+    
+    // 1. ค่าธรรมเนียม 15%
+    const fee15 = salePrice * 0.15;
+    
+    // 2. ค่าใช้จ่าย 17%
+    const expense17 = salePrice * 0.17;
+    
+    // 3. ค่าคอมมิชชั่น 5%
+    const commission5 = (salePrice - fee15) * 0.05;
+    
+    // 4. กำไรขั้นต้น
+    const grossProfit = salePrice - cost - fee15 - expense17 - commission5;
+    
+    // 5. ภาษีนิติบุคคล 20%
+    const corporateTax20 = grossProfit * 0.20;
+    
+    // 6. กำไรสุทธิ
+    const netProfit = grossProfit - corporateTax20;
+    
+    // 7. %กำไรสุทธิ
+    const netProfitPercent = (netProfit * 100) / salePrice;
+    
+    return {
+        netProfit: netProfit,
+        netProfitPercent: netProfitPercent
+    };
+}
+
 function updateNetProfitLabel() {
     const saleVal = Number($('#salePriceInput').val());
+    const trueCostVal = Number($('#trueCostInput').val());
+    
     if (!Number.isFinite(saleVal) || saleVal < 0) {
         $('#netProfitDisplay').text('-');
         return;
     }
-
-    const result1 = saleVal * 0.8;
-    const result2 = result1 * 0.8;
-    const netProfit = result2 * 0.8;
-    $('#netProfitDisplay').text(netProfit.toFixed(2) + ' บาท');
+    
+    const cost = Number.isFinite(trueCostVal) && trueCostVal > 0 ? trueCostVal : 0;
+    const profitData = calculateDetailedProfit(saleVal, cost);
+    
+    if (profitData) {
+        const profitDisplay = profitData.netProfit.toFixed(2) + ' บาท (' + profitData.netProfitPercent.toFixed(2) + '%)';
+        $('#netProfitDisplay').text(profitDisplay);
+    } else {
+        $('#netProfitDisplay').text('-');
+    }
 }
 
 $(document).ready(function() {
@@ -883,10 +929,17 @@ $(document).ready(function() {
         } else {
             $('#purchasePriceInput').val('');
         }
+        
+        // โหลดราคาขายที่บันทึกไว้ (priority: สำถามจากฐานข้อมูลก่อน)
         if (resolvedSalePrice !== '') {
             const numericSalePrice = Number(resolvedSalePrice);
+            currentSavedSalePrice = !Number.isNaN(numericSalePrice) ? numericSalePrice : 0;
             $('#salePriceInput').val(!Number.isNaN(numericSalePrice) ? numericSalePrice.toFixed(2) : resolvedSalePrice);
+        } else {
+            currentSavedSalePrice = 0;
         }
+        
+        // อัปเดตต้นทุนจากน้ำหนัก แต่ไม่ overwrite ราคาขายที่มีในข้อมูล
         updatePricingFromWeight();
         updateNetProfitLabel();
         if (remarkRaw) {
@@ -1213,10 +1266,27 @@ $(document).ready(function() {
         $('#viewPurchasePriceDisplay').text(purchasePrice ? parseFloat(purchasePrice).toFixed(2) : '-');
         $('#viewSalePriceDisplay').text(salePrice ? parseFloat(salePrice).toFixed(2) : '-');
         
-        // Calculate net profit
+        // Calculate net profit with detailed formula
         if (salePrice) {
-            const netProfit = (parseFloat(salePrice) * 0.8 * 0.8 * 0.8).toFixed(2);
-            $('#viewNetProfitDisplay').text(netProfit + ' บาท');
+            const salePriceNum = parseFloat(salePrice);
+            let cost = 0;
+            
+            // Calculate cost based on purchase price and weight
+            if (purchasePrice && weightValue) {
+                const baseCost = parseFloat(purchasePrice);
+                const weightCost = parseFloat(weightValue) * 850;
+                cost = baseCost + weightCost;
+            } else if (purchasePrice) {
+                cost = parseFloat(purchasePrice);
+            }
+            
+            const profitData = calculateDetailedProfit(salePriceNum, cost);
+            if (profitData) {
+                const profitDisplay = profitData.netProfit.toFixed(2) + ' บาท (' + profitData.netProfitPercent.toFixed(2) + '%)';
+                $('#viewNetProfitDisplay').text(profitDisplay);
+            } else {
+                $('#viewNetProfitDisplay').text('-');
+            }
         } else {
             $('#viewNetProfitDisplay').text('-');
         }
@@ -1551,10 +1621,10 @@ function selectLocationEdit(locationId, rowCode, bin, shelf) {
                             <label for="salePriceInput" class="form-label">ราคาขาย (บาท)</label>
                             <input type="number" class="form-control" id="salePriceInput" name="sale_price" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
                             <div class="d-flex align-items-center justify-content-between mt-2">
-                                <span class="badge bg-danger-subtle text-danger fw-semibold" style="letter-spacing: 0.2px;">กำไรสุทธิ (หัก 20% × 3)</span>
+                                <span class="badge bg-danger-subtle text-danger fw-semibold" style="letter-spacing: 0.2px;">กำไรสุทธิ & %กำไรสุทธิ</span>
                                 <span id="netProfitDisplay" class="fw-bold text-danger">-</span>
                             </div>
-                            <small class="text-muted">สูตร: ราคาขาย × 0.8 × 0.8 × 0.8</small>
+                            <small class="text-muted">สูตร: ค่าธรรมเนียม15% + ค่าใช้จ่าย17% + ค่าคอมมิชชั่น5% + ภาษีนิติบุคคล20%</small>
                         </div>
 
                        
