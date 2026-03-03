@@ -4,27 +4,32 @@ header('Content-Type: application/json');
 require '../config/db_connect.php';
 
 $receive_id = isset($_GET['receive_id']) ? intval($_GET['receive_id']) : 0;
-if ($receive_id <= 0) {
+$temp_product_id = isset($_GET['temp_product_id']) ? intval($_GET['temp_product_id']) : 0;
+if ($receive_id <= 0 && $temp_product_id <= 0) {
     echo json_encode(['success' => false, 'msg' => 'ไม่พบ ID']);
     exit;
 }
 
 try {
-    // หา item_id, ราคา และ product_id จาก receive_items
-    $sql = "SELECT poi.product_id, poi.temp_product_id, poi.price_per_unit, poi.sale_price, r.remark, r.expiry_date
-            FROM receive_items r
-            LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
-            WHERE r.receive_id = ? LIMIT 1";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$receive_id]);
-    $receiveData = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$receiveData || (!$receiveData['product_id'] && !$receiveData['temp_product_id'])) {
-        echo json_encode(['success' => false, 'msg' => 'ไม่พบสินค้า']);
-        exit;
+    $receiveData = null;
+    if ($receive_id > 0) {
+        // หา item_id, ราคา และ product_id จาก receive_items
+        $sql = "SELECT poi.product_id, poi.temp_product_id, poi.price_per_unit, poi.sale_price, r.remark, r.expiry_date
+                FROM receive_items r
+                LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
+                WHERE r.receive_id = ? LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$receive_id]);
+        $receiveData = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$receiveData || (!$receiveData['product_id'] && !$receiveData['temp_product_id'])) {
+            echo json_encode(['success' => false, 'msg' => 'ไม่พบสินค้า']);
+            exit;
+        }
+        $temp_product_id = (int)($receiveData['temp_product_id'] ?? 0);
     }
 
     $locationData = null;
-    if (!empty($receiveData['product_id'])) {
+    if ($receiveData && !empty($receiveData['product_id'])) {
         $sql2 = "SELECT l.location_id, l.row_code, l.bin, l.shelf
                  FROM product_location pl
                  LEFT JOIN locations l ON pl.location_id = l.location_id
@@ -32,7 +37,7 @@ try {
         $stmt2 = $pdo->prepare($sql2);
         $stmt2->execute([$receiveData['product_id']]);
         $locationData = $stmt2->fetch(PDO::FETCH_ASSOC);
-    } elseif (!empty($receiveData['temp_product_id'])) {
+    } elseif ($temp_product_id > 0) {
         $pdo->exec("CREATE TABLE IF NOT EXISTS temp_product_locations (
             temp_product_id INT PRIMARY KEY,
             location_id INT DEFAULT NULL,
@@ -49,7 +54,7 @@ try {
                         LEFT JOIN locations l ON tpl.location_id = l.location_id
                         WHERE tpl.temp_product_id = ? LIMIT 1";
         $stmtPending = $pdo->prepare($sqlPending);
-        $stmtPending->execute([$receiveData['temp_product_id']]);
+        $stmtPending->execute([$temp_product_id]);
         $locationData = $stmtPending->fetch(PDO::FETCH_ASSOC);
     }
 

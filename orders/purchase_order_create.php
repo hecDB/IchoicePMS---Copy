@@ -51,7 +51,7 @@ try {
     error_log('Failed to load latest PO prices: ' . $e->getMessage());
 }
 
-// ดึงสินค้า
+// ดึงสินค้า (ไม่รวมสินค้าที่มี ID นำหน้า "ว่าตำหนิ")
 $stmt2 = $pdo->query("
     SELECT 
         p.product_id,
@@ -64,6 +64,8 @@ $stmt2 = $pdo->query("
     FROM products p
     LEFT JOIN product_category pc ON p.product_category_id = pc.category_id
     WHERE COALESCE(p.is_active, 1) = 1
+    AND p.sku NOT LIKE 'ตำหนิ%'
+    AND p.name NOT LIKE 'ตำหนิ%'
 ");
 $products = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
@@ -540,11 +542,16 @@ function addProductRow(detail={}) {
             autoList.style.display = "none";
             return;
         }
-        const matches = window.products.filter(p =>
-            (p.name && p.name.toLowerCase().includes(q)) ||
-            (p.sku && p.sku.toLowerCase().includes(q)) ||
-            (p.unit && p.unit.toLowerCase().includes(q))
-        );
+        const matches = window.products.filter(p => {
+            // ไม่แสดงสินค้าที่มี ID หรือชื่อเริ่มต้นด้วย "ว่าตำหนิ"
+            if ((p.product_id && p.product_id.toString().startsWith('ว่าตำหนิ')) ||
+                (p.name && p.name.startsWith('ว่าตำหนิ'))) {
+                return false;
+            }
+            return (p.name && p.name.toLowerCase().includes(q)) ||
+                   (p.sku && p.sku.toLowerCase().includes(q)) ||
+                   (p.unit && p.unit.toLowerCase().includes(q));
+        });
         if(matches.length === 0) {autoList.style.display='none'; autoList.innerHTML=''; return;}
         autoList.innerHTML = matches.map(p =>
             `<div data-id="${p.product_id}" data-name="${p.name}" data-unit="${p.unit}" data-price="0" data-image="${p.image||''}" data-category="${(p.category_name || '').replace(/"/g, '&quot;')}" style="display:flex;align-items:center;padding:8px;">

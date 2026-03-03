@@ -104,6 +104,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Ensure temp_products has expiry_date column (if not already exists)
+if (!columnExists($pdo, 'temp_products', 'expiry_date')) {
+    try {
+        $pdo->exec("ALTER TABLE temp_products ADD COLUMN expiry_date DATE NULL COMMENT 'วันหมดอายุ' AFTER po_id");
+    } catch (Exception $e) {
+        error_log("Note: Could not add expiry_date column (may already exist): " . $e->getMessage());
+    }
+}
+
+if (!columnExists($pdo, 'temp_products', 'sale_price')) {
+    try {
+        $pdo->exec("ALTER TABLE temp_products ADD COLUMN sale_price DECIMAL(12,2) NULL COMMENT 'ราคาขาย' AFTER expiry_date");
+    } catch (Exception $e) {
+        error_log("Note: Could not add sale_price column (may already exist): " . $e->getMessage());
+    }
+}
+
 $temp_product_id = isset($_POST['temp_product_id']) ? (int)$_POST['temp_product_id'] : 0;
 $provisional_sku = isset($_POST['provisional_sku']) ? trim($_POST['provisional_sku']) : '';
 $provisional_barcode = isset($_POST['provisional_barcode']) ? trim($_POST['provisional_barcode']) : '';
@@ -410,7 +427,9 @@ try {
             provisional_sku = :provisional_sku,
             provisional_barcode = :provisional_barcode,
             unit = :unit,
-            remark = :remark";
+            remark = :remark,
+            expiry_date = :expiry_date,
+            sale_price = :sale_price";
     
     if ($stored_image_path !== null) {
         $sql .= ", product_image = :product_image";
@@ -425,6 +444,8 @@ try {
         ':provisional_barcode' => $provisional_barcode,
         ':unit' => $unit,
         ':remark' => $remark,
+        ':expiry_date' => $expiry_date,
+        ':sale_price' => $sale_price,
         ':temp_product_id' => $temp_product_id
     ];
     

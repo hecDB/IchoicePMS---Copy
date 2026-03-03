@@ -2,14 +2,37 @@
 session_start();
 require '../config/db_connect.php';
 
+// Ensure temp_products has expiry_date column (if not already exists)
+try {
+    $columnsStmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'temp_products' AND COLUMN_NAME = 'expiry_date'");
+    $columnsStmt->execute();
+    
+    if ($columnsStmt->rowCount() === 0) {
+        // Add expiry_date column if it doesn't exist
+        $pdo->exec("ALTER TABLE temp_products ADD COLUMN expiry_date DATE NULL COMMENT 'วันหมดอายุ' AFTER po_id");
+    }
+} catch (Exception $e) {
+    error_log('Failed to ensure temp_products expiry_date column: ' . $e->getMessage());
+}
+
+try {
+    $columnsStmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'temp_products' AND COLUMN_NAME = 'sale_price'");
+    $columnsStmt->execute();
+
+    if ($columnsStmt->rowCount() === 0) {
+        $pdo->exec("ALTER TABLE temp_products ADD COLUMN sale_price DECIMAL(12,2) NULL COMMENT 'ราคาขาย' AFTER expiry_date");
+    }
+} catch (Exception $e) {
+    error_log('Failed to ensure temp_products sale_price column: ' . $e->getMessage());
+}
+
 // ตัวแปรสำหรับกรอง
 $filter_type = isset($_GET['type']) ? $_GET['type'] : 'new'; // 'all', 'existing', 'new'
 $filter_transaction = isset($_GET['transaction']) ? $_GET['transaction'] : 'all'; // 'all', 'receive', 'issue'
 
-// สร้าง Query สำหรับสินค้าซื้อใหม่ (temp_product_id > 0)
-// ดึงข้อมูลทั้ง temp_products และ transaction details ที่แยกกัน
-$sql = "
-(SELECT 
+// Query 1: สินค้าใหม่รับเข้าปกติ (receive items)
+$sql_receive = "
+SELECT 
     'receive' as transaction_type,
     r.receive_id as transaction_id, 
     tp.product_image as image,
@@ -24,7 +47,7 @@ $sql = "
     tp.provisional_sku,
     tp.provisional_barcode,
     tp.status as temp_product_status,
-    poi.sale_price as sale_price,
+    COALESCE(tp.sale_price, poi.sale_price) as sale_price,
     poi.price_per_unit as po_price_per_unit,
     poi.unit_price as purchase_price,
     tp.remark as temp_product_remark,
@@ -33,18 +56,20 @@ FROM receive_items r
 LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
 LEFT JOIN temp_products tp ON poi.temp_product_id = tp.temp_product_id
 LEFT JOIN users u ON r.created_by = u.user_id
-WHERE COALESCE(poi.temp_product_id, 0) > 0)
+WHERE COALESCE(poi.temp_product_id, 0) > 0
+AND (tp.provisional_sku IS NULL OR tp.provisional_sku NOT LIKE '%ตำหนิ%')
+ORDER BY r.created_at DESC LIMIT 500";
 
-UNION ALL
-
-(SELECT 
-    'issue' as transaction_type,
-    ii.issue_id as transaction_id,
+// Query 2: สินค้าใหม่รับเข้าจากการตรวจสอบชำรุด (damaged inspection)
+$sql_damaged = "
+SELECT 
+    'damaged_inspection' as transaction_type,
+    poi.temp_product_id as transaction_id,
     tp.product_image as image,
     u.name AS created_by,
-    ii.created_at,
-    ii.issue_qty as quantity,
-    ri.expiry_date,
+    tp.created_at,
+    COALESCE(ri.return_qty, 0) as quantity,
+    tp.expiry_date,
     tp.product_name AS product_name,
     tp.product_category,
     tp.unit,
@@ -52,40 +77,48 @@ UNION ALL
     tp.provisional_sku,
     tp.provisional_barcode,
     tp.status as temp_product_status,
-    poi.sale_price as sale_price,
+    COALESCE(tp.sale_price, poi.sale_price) as sale_price,
     poi.price_per_unit as po_price_per_unit,
     poi.unit_price as purchase_price,
     tp.remark as temp_product_remark,
     tp.remark_weight as remark_weight
-FROM issue_items ii
-LEFT JOIN receive_items ri ON ii.receive_id = ri.receive_id
-LEFT JOIN purchase_order_items poi ON ri.item_id = poi.item_id
-LEFT JOIN temp_products tp ON poi.temp_product_id = tp.temp_product_id
-LEFT JOIN users u ON ii.issued_by = u.user_id
-WHERE COALESCE(poi.temp_product_id, 0) > 0)
-ORDER BY created_at DESC LIMIT 500";
+FROM temp_products tp
+LEFT JOIN returned_items ri ON ri.temp_product_id = tp.temp_product_id
+LEFT JOIN purchase_order_items poi ON poi.item_id = ri.item_id
+LEFT JOIN users u ON tp.created_by = u.user_id
+WHERE ((tp.remark LIKE '%สินค้าชำรุดบางส่วน%' 
+    OR tp.remark LIKE '%damaged%' 
+    OR tp.remark LIKE '%Damaged%')
+    OR COALESCE(ri.return_qty, 0) > 0)
+AND COALESCE(tp.temp_product_id, 0) > 0
+AND ri.temp_product_id IS NOT NULL
+ORDER BY tp.created_at DESC LIMIT 500";
+
+$receive_rows = [];
+$damaged_rows = [];
+$rows = []; // สำหรับการ debug รวม
 
 try {
-    $stmt = $pdo->query($sql);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Fetch receive items
+    $stmt_receive = $pdo->query($sql_receive);
+    $receive_rows = $stmt_receive->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Fetch damaged items
+    $stmt_damaged = $pdo->query($sql_damaged);
+    $damaged_rows = $stmt_damaged->fetchAll(PDO::FETCH_ASSOC);
+    
+    // รวมข้อมูลสำหรับตัวแปร debug
+    $rows = array_merge($receive_rows, $damaged_rows);
     
     // Debug log
     error_log("Transaction View Query Debug:");
-    error_log("- SQL: " . substr($sql, 0, 200) . "...");
-    error_log("- Rows returned: " . count($rows));
-    
-    // Debug: แสดงข้อมูลละเอียด
-    error_log("DEBUG - Row Details:");
-    foreach($rows as $idx => $row) {
-        error_log($idx . ": temp_id=" . $row['temp_product_id'] . 
-                  " | name=" . $row['product_name'] . 
-                  " | sku=" . $row['provisional_sku'] . 
-                  " | barcode=" . $row['provisional_barcode'] . 
-                  " | type=" . $row['transaction_type'] . 
-                  " | tid=" . $row['transaction_id']);
-    }
+    error_log("- Receive rows: " . count($receive_rows));
+    error_log("- Damaged rows: " . count($damaged_rows));
+    error_log("- Total rows: " . count($rows));
     
 } catch (Exception $e) {
+    $receive_rows = [];
+    $damaged_rows = [];
     $rows = [];
     $error_msg = $e->getMessage();
     error_log("Query Error in transaction_view_separated.php: " . $error_msg);
@@ -536,13 +569,13 @@ function resolveTransactionImageSrc($imageValue) {
             </div>
         </div>
 
-        <!-- Main Table -->
-        <div class="table-card">
+        <!-- Receive Items Table -->
+        <div class="table-card mb-5">
             <div class="table-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="table-title mb-0">
-                        <span class="material-icons">table_view</span>
-                        รายการความเคลื่อนไหว (<span id="row-count"><?= count($rows) ?></span> รายการ)
+                        <span class="material-icons" style="color: #10b981;">add_box</span>
+                        1. สินค้าใหม่รับเข้าปกติ (<span id="receive-count"><?= count($receive_rows) ?></span> รายการ)
                     </h5>
                     <div class="table-actions d-flex align-items-center">
                         <div class="search-box me-3">
@@ -550,7 +583,7 @@ function resolveTransactionImageSrc($imageValue) {
                                 <span class="input-group-text">
                                     <span class="material-icons" style="font-size: 1.25rem; color: #6b7280;">search</span>
                                 </span>
-                                <input type="text" class="form-control" id="custom-search" placeholder="ค้นหา...">
+                                <input type="text" class="form-control" id="custom-search-receive" placeholder="ค้นหา...">
                             </div>
                         </div>
                         <button class="btn-modern btn-modern-secondary btn-sm" onclick="location.reload()">
@@ -562,7 +595,7 @@ function resolveTransactionImageSrc($imageValue) {
             </div>
             <div class="table-body">
                 <div class="table-responsive">
-                    <table id="transaction-table" class="table modern-table table-striped table-hover">
+                    <table id="receive-table" class="table modern-table table-striped table-hover">
                     <thead>
                         <tr>
                             <th class="text-center no-sort">รูปภาพ</th>
@@ -570,7 +603,6 @@ function resolveTransactionImageSrc($imageValue) {
                             <th>SKU สำรอง</th>
                             <th>บาร์โค้ดสำรอง</th>
                             <th>หมวดหมู่</th>
-                            <th class="no-sort">ประเภท</th>
                             <th>ผู้ทำรายการ</th>
                             <th class="text-center">วันที่</th>
                             <th class="text-center no-sort">จำนวน</th>
@@ -580,20 +612,18 @@ function resolveTransactionImageSrc($imageValue) {
                         </tr>
                     </thead>
                     <tbody>
-                    <?php if (empty($rows)): ?>
+                    <?php if (empty($receive_rows)): ?>
                     <tr>
-                        <td colspan="12" class="text-center py-4">
+                        <td colspan="11" class="text-center py-4">
                             <div class="text-muted mb-2">
                                 <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">inbox</span>
                             </div>
-                            <p class="text-muted">ไม่มีข้อมูลรายการ</p>
+                            <p class="text-muted">ไม่มีข้อมูลรายการรับเข้าปกติ</p>
                         </td>
                     </tr>
                     <?php else: ?>
-                    <?php foreach($rows as $row): ?>
-                        <tr data-id="<?= $row['transaction_id'] ?>" 
-                            class="<?= $row['transaction_type'] === 'issue' ? 'table-danger' : '' ?>"
-                            data-type="new">
+                    <?php foreach($receive_rows as $row): ?>
+                        <tr data-id="<?= $row['transaction_id'] ?>" data-type="receive">
                             <td class="text-center">
                                 <?php $imageSrc = resolveTransactionImageSrc($row['image'] ?? null); ?>
                                 <img src="<?= htmlspecialchars($imageSrc) ?>" class="product-image" alt="<?= htmlspecialchars($row['product_name']) ?>" title="<?= htmlspecialchars($row['product_name']) ?>">
@@ -618,19 +648,6 @@ function resolveTransactionImageSrc($imageValue) {
                                     <span class="badge bg-secondary"><?= htmlspecialchars($row['product_category']) ?></span>
                                 <?php else: ?>
                                     <span class="text-muted">-</span>
-                                <?php endif; ?>
-                            </td>
-                            <td class="text-center">
-                                <?php if ($row['transaction_type'] === 'receive'): ?>
-                                    <span class="badge bg-success">
-                                        <span class="material-icons" style="font-size: 0.9rem; vertical-align: middle;">add_box</span>
-                                        รับเข้า
-                                    </span>
-                                <?php else: ?>
-                                    <span class="badge bg-danger">
-                                        <span class="material-icons" style="font-size: 0.9rem; vertical-align: middle;">remove_circle</span>
-                                        ออกไป
-                                    </span>
                                 <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($row['created_by'] ?? '-') ?></td>
@@ -687,17 +704,163 @@ function resolveTransactionImageSrc($imageValue) {
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-purchase-price="<?= htmlspecialchars($row['purchase_price'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-po-sale-price="<?= htmlspecialchars($row['po_price_per_unit'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-weight="<?= htmlspecialchars($row['remark_weight'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" title="แก้ไข SKU/Barcode/รูปภาพ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
+                                    <button class="btn btn-outline-primary edit-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-receive-id="<?= $row['transaction_id'] ?>" data-expiry="<?= $row['expiry_date'] ?? '' ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-category="<?= htmlspecialchars($row['product_category'] ?? '') ?>" data-quantity="<?= htmlspecialchars($row['quantity'] ?? 0) ?>" data-purchase-price="<?= htmlspecialchars($row['purchase_price'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-po-sale-price="<?= htmlspecialchars($row['po_price_per_unit'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-weight="<?= htmlspecialchars($row['remark_weight'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" title="แก้ไข SKU/Barcode/รูปภาพ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
                                         <span class="material-icons" style="font-size: 1rem;">edit</span>
                                     </button>
                                     <button class="btn btn-outline-success approve-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-name="<?= htmlspecialchars($row['product_name']) ?>" title="อนุมัติและย้ายไปคลังปกติ" <?php if ($status === 'converted'): ?>disabled<?php endif; ?>>
                                         <span class="material-icons" style="font-size: 1rem;">check_circle</span>
                                     </button>
                                     <?php if ($status === 'converted'): ?>
-                                    <button class="btn btn-outline-info view-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-category="<?= htmlspecialchars($row['product_category'] ?? '') ?>" data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>" data-purchase-price="<?= htmlspecialchars($row['purchase_price'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-po-sale-price="<?= htmlspecialchars($row['po_price_per_unit'] ?? '') ?>" data-weight="<?= htmlspecialchars($row['remark_weight'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-image="<?= htmlspecialchars(resolveTransactionImageSrc($row['image'] ?? null)) ?>" title="ดูรายละเอียดสินค้า">
+                                    <button class="btn btn-outline-info view-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-category="<?= htmlspecialchars($row['product_category'] ?? '') ?>" data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>" data-quantity="<?= htmlspecialchars($row['quantity'] ?? 0) ?>" data-purchase-price="<?= htmlspecialchars($row['purchase_price'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-po-sale-price="<?= htmlspecialchars($row['po_price_per_unit'] ?? '') ?>" data-weight="<?= htmlspecialchars($row['remark_weight'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-image="<?= htmlspecialchars(resolveTransactionImageSrc($row['image'] ?? null)) ?>" title="ดูรายละเอียดสินค้า">
                                         <span class="material-icons" style="font-size: 1rem;">visibility</span>
                                     </button>
                                     <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+                    </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Damaged Inspection Items Table -->
+        <div class="table-card">
+            <div class="table-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="table-title mb-0">
+                        <span class="material-icons" style="color: #f59e0b;">warning</span>
+                        2. สินค้าใหม่รับเข้าจากการตรวจสอบชำรุด (<span id="damaged-count"><?= count($damaged_rows) ?></span> รายการ)
+                    </h5>
+                    <div class="table-actions d-flex align-items-center">
+                        <div class="search-box me-3">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <span class="material-icons" style="font-size: 1.25rem; color: #6b7280;">search</span>
+                                </span>
+                                <input type="text" class="form-control" id="custom-search-damaged" placeholder="ค้นหา...">
+                            </div>
+                        </div>
+                        <button class="btn-modern btn-modern-secondary btn-sm" onclick="location.reload()">
+                            <span class="material-icons" style="font-size: 1.25rem;">refresh</span>
+                            รีเฟรช
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="table-body">
+                <div class="table-responsive">
+                    <table id="damaged-table" class="table modern-table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th class="text-center no-sort">รูปภาพ</th>
+                            <th>ชื่อสินค้า</th>
+                            <th>SKU สำรอง</th>
+                            <th>บาร์โค้ดสำรอง</th>
+                            <th>หมวดหมู่</th>
+                            <th>ผู้บันทึก</th>
+                            <th class="text-center">วันที่</th>
+                            <th class="text-center no-sort">จำนวน</th>
+                            <th class="text-center no-sort">วันหมดอายุ</th>
+                            <th class="text-center no-sort">สถานะ</th>
+                            <th class="text-center no-sort">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if (empty($damaged_rows)): ?>
+                    <tr>
+                        <td colspan="11" class="text-center py-4">
+                            <div class="text-muted mb-2">
+                                <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">inbox</span>
+                            </div>
+                            <p class="text-muted">ไม่มีข้อมูลรายการตรวจสอบชำรุด</p>
+                        </td>
+                    </tr>
+                    <?php else: ?>
+                    <?php foreach($damaged_rows as $row): ?>
+                        <tr data-id="<?= $row['transaction_id'] ?>" data-type="damaged">
+                            <td class="text-center">
+                                <?php $imageSrc = resolveTransactionImageSrc($row['image'] ?? null); ?>
+                                <img src="<?= htmlspecialchars($imageSrc) ?>" class="product-image" alt="<?= htmlspecialchars($row['product_name']) ?>" title="<?= htmlspecialchars($row['product_name']) ?>">
+                            </td>
+                            <td><strong><?= htmlspecialchars($row['product_name'] ?? '-') ?></strong></td>
+                            <td>
+                                <?php if (!empty($row['provisional_sku'])): ?>
+                                    <code><?= htmlspecialchars($row['provisional_sku']) ?></code>
+                                <?php else: ?>
+                                    <span class="badge bg-warning text-dark">ยังไม่มีข้อมูล</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if (!empty($row['provisional_barcode'])): ?>
+                                    <code><?= htmlspecialchars($row['provisional_barcode']) ?></code>
+                                <?php else: ?>
+                                    <span class="badge bg-warning text-dark">ยังไม่มีข้อมูล</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($row['product_category']): ?>
+                                    <span class="badge bg-secondary"><?= htmlspecialchars($row['product_category']) ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= htmlspecialchars($row['created_by'] ?? '-') ?></td>
+                            <td class="text-center" data-order="<?= htmlspecialchars($row['created_at']) ?>">
+                                <small><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></small>
+                            </td>
+                            <td class="text-center">
+                                <span class="text-muted" title="จำนวนรอการอนุมัติ"><?= htmlspecialchars($row['quantity'] ?? 0) ?></span>
+                            </td>
+                            <td class="text-center">
+                                <?php if ($row['expiry_date']): ?>
+                                    <?php
+                                    $expiry = new DateTime($row['expiry_date']);
+                                    $today = new DateTime();
+                                    $is_expired = $expiry < $today;
+                                    $badge_class = $is_expired ? 'bg-danger' : 'bg-info';
+                                    ?>
+                                    <span class="badge <?= $badge_class ?>">
+                                        <?= $expiry->format('d/m/Y') ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-center">
+                                <?php
+                                $status = $row['temp_product_status'] ?? 'pending';
+                                if ($status === 'converted'):
+                                ?>
+                                    <span class="badge bg-success">
+                                        <span class="material-icons" style="font-size: 0.85rem; vertical-align: middle;">check_circle</span>
+                                        ย้ายไปคลังแล้ว
+                                    </span>
+                                <?php elseif ($status === 'approved'): ?>
+                                    <span class="badge bg-info">
+                                        <span class="material-icons" style="font-size: 0.85rem; vertical-align: middle;">pending_actions</span>
+                                        อนุมัติแล้ว
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge bg-warning text-dark">
+                                        <span class="material-icons" style="font-size: 0.85rem; vertical-align: middle;">schedule</span>
+                                        รอดำเนิน
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button class="btn btn-outline-warning view-damaged-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-category="<?= htmlspecialchars($row['product_category'] ?? '') ?>" data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>" data-quantity="<?= htmlspecialchars($row['quantity'] ?? 0) ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-image="<?= htmlspecialchars(resolveTransactionImageSrc($row['image'] ?? null)) ?>" title="ดูรายละเอียดตรวจสอบชำรุด">
+                                        <span class="material-icons" style="font-size: 1rem;">visibility</span>
+                                    </button>
+                                    <button class="btn btn-outline-info edit-damaged-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-category="<?= htmlspecialchars($row['product_category'] ?? '') ?>" data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>" data-quantity="<?= htmlspecialchars($row['quantity'] ?? 0) ?>" data-purchase-price="<?= htmlspecialchars($row['purchase_price'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-po-sale-price="<?= htmlspecialchars($row['po_price_per_unit'] ?? '') ?>" data-weight="<?= htmlspecialchars($row['remark_weight'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-image="<?= htmlspecialchars(resolveTransactionImageSrc($row['image'] ?? null)) ?>" title="แก้ไข SKU/Barcode">
+                                        <span class="material-icons" style="font-size: 1rem;">edit</span>
+                                    </button>
+                                    <button class="btn btn-outline-success approve-damaged-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-name="<?= htmlspecialchars($row['product_name']) ?>" title="อนุมัติและนำเข้าคลังเก็บ">
+                                        <span class="material-icons" style="font-size: 1rem;">check_circle</span>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -817,17 +980,13 @@ function updateNetProfitLabel() {
 $(document).ready(function() {
     // Debug Info
     console.log('Page loaded');
-    console.log('Total rows from PHP:', <?= count($rows) ?>);
-    console.log('Rows data:', <?= json_encode($rows) ?>);
+    console.log('Receive rows from PHP:', <?= count($receive_rows) ?>);
+    console.log('Damaged rows from PHP:', <?= count($damaged_rows) ?>);
+    console.log('Receive data:', <?= json_encode($receive_rows) ?>);
+    console.log('Damaged data:', <?= json_encode($damaged_rows) ?>);
     
-    // Show debug info
-    if (<?= count($rows) ?> === 0) {
-        $('#debug-alert').show();
-        $('#debug-content').html('<p>❌ No data returned from Query</p>');
-    }
-    
-    // Initialize DataTable
-    transactionTable = $('#transaction-table').DataTable({
+    // Initialize DataTable for Receive Items
+    let receiveTable = $('#receive-table').DataTable({
         pageLength: 25,
         language: {
             "decimal": "",
@@ -854,11 +1013,11 @@ $(document).ready(function() {
                     if(type === 'display') return data;
                     return data;
                 },
-                targets: [1, 2, 3, 4, 6, 7]  // Sortable columns
+                targets: [1, 2, 3, 4, 5, 6]  // Sortable columns
             },
-            { className: "text-center", targets: [0, 8, 9, 10] }  // Center: Image, Qty, Expiry, Actions
+            { className: "text-center", targets: [0, 7, 8, 9, 10] }  // Center: Image, Qty, Expiry, Actions
         ],
-        order: [[7, 'desc']], // Sort by date (column 7)
+        order: [[6, 'desc']], // Sort by date (column 6)
         scrollX: true,
         scrollCollapse: true,
         searching: true,
@@ -877,9 +1036,65 @@ $(document).ready(function() {
         }
     });
 
-    // Custom search
-    $('#custom-search').on('keyup', function() {
-        transactionTable.search(this.value).draw();
+    // Initialize DataTable for Damaged Items
+    let damagedTable = $('#damaged-table').DataTable({
+        pageLength: 25,
+        language: {
+            "decimal": "",
+            "emptyTable": "ไม่มีข้อมูลในตาราง",
+            "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+            "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
+            "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
+            "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
+            "loadingRecords": "กำลังโหลด...",
+            "processing": "กำลังประมวลผล...",
+            "search": "ค้นหา:",
+            "zeroRecords": "ไม่พบรายการที่ตรงกัน",
+            "paginate": {
+                "first": "หน้าแรก",
+                "last": "หน้าสุดท้าย",
+                "next": "ถัดไป",
+                "previous": "ก่อนหน้า"
+            }
+        },
+        columnDefs: [
+            { orderable: false, targets: 'no-sort' },
+            { 
+                render: function(data, type, row) {
+                    if(type === 'display') return data;
+                    return data;
+                },
+                targets: [1, 2, 3, 4, 5, 6]  // Sortable columns
+            },
+            { className: "text-center", targets: [0, 7, 8, 9, 10] }  // Center: Image, Qty, Expiry, Actions
+        ],
+        order: [[6, 'desc']], // Sort by date (column 6)
+        scrollX: true,
+        scrollCollapse: true,
+        searching: true,
+        paging: true,
+        info: true,
+        lengthChange: true,
+        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
+        responsive: true,
+        processing: true,
+        drawCallback: function(settings) {
+            updateStats();
+            $('[title]').tooltip();
+        },
+        initComplete: function() {
+            updateStats();
+        }
+    });
+
+    // Custom search for Receive Table
+    $('#custom-search-receive').on('keyup', function() {
+        receiveTable.search(this.value).draw();
+    });
+
+    // Custom search for Damaged Table
+    $('#custom-search-damaged').on('keyup', function() {
+        damagedTable.search(this.value).draw();
     });
 
     $('#weightInput').on('input change', updatePricingFromWeight);
@@ -897,6 +1112,8 @@ $(document).ready(function() {
         const expiry = $(this).data('expiry');
         const provisionalSku = $(this).data('provisional-sku');
         const provisionalBarcode = $(this).data('provisional-barcode');
+        const categoryValue = $(this).data('category');
+        const quantityValue = $(this).data('quantity');
         const purchasePrice = $(this).attr('data-purchase-price');
         const salePrice = $(this).attr('data-sale-price');
         const poSalePrice = $(this).attr('data-po-sale-price');
@@ -916,6 +1133,8 @@ $(document).ready(function() {
         $('#provisionalBarcodeInput').val(provisionalBarcode);
         $('#unitInput').val(unitValue || '');
         $('#productNameDisplay').text(productName || '');
+        $('#categoryDisplay').text(categoryValue || '-');
+        $('#quantityDisplay').text(quantityValue ? parseFloat(quantityValue) : '-');
         $('#weightInput').val(weightValue ?? '');
         $('#purchasePriceInput').val('');
         $('#salePriceInput').val('');
@@ -1248,6 +1467,7 @@ $(document).ready(function() {
         const unitValue = $(this).data('unit');
         const category = $(this).data('category');
         const expiryDate = $(this).data('expiry');
+        const quantityValue = $(this).data('quantity');
         const purchasePrice = $(this).data('purchase-price');
         const salePrice = $(this).data('sale-price');
         const poSalePrice = $(this).data('po-sale-price');
@@ -1263,6 +1483,7 @@ $(document).ready(function() {
         $('#viewUnitDisplay').text(unitValue || '-');
         $('#viewCategoryDisplay').text(category || '-');
         $('#viewExpiryDisplay').text(expiryDate ? new Date(expiryDate).toLocaleDateString('th-TH') : '-');
+        $('#viewQuantityDisplay').text(quantityValue ? parseFloat(quantityValue) : '-');
         $('#viewPurchasePriceDisplay').text(purchasePrice ? parseFloat(purchasePrice).toFixed(2) : '-');
         $('#viewSalePriceDisplay').text(salePrice ? parseFloat(salePrice).toFixed(2) : '-');
         
@@ -1424,6 +1645,270 @@ $(document).ready(function() {
             }
         });
     });
+    
+    // Handle view damaged button click
+    $(document).on('click', '.view-damaged-btn', function() {
+        const tempId = $(this).data('temp-id');
+        const productName = $(this).data('product-name');
+        const provisionalSku = $(this).data('provisional-sku');
+        const provisionalBarcode = $(this).data('provisional-barcode');
+        const unitValue = $(this).data('unit');
+        const category = $(this).data('category');
+        const expiryDate = $(this).data('expiry');
+        const quantityValue = $(this).data('quantity');
+        const remarkValue = $(this).data('remark');
+        const imageSrc = $(this).data('image');
+        
+        // Set modal content for damaged items
+        $('#viewProductNameDisplay').text(productName || '-');
+        $('#viewProductImagePreview').attr('src', imageSrc);
+        $('#viewProvisionalSkuDisplay').text(provisionalSku || '-');
+        $('#viewProvisionalBarcodeDisplay').text(provisionalBarcode || '-');
+        $('#viewUnitDisplay').text(unitValue || '-');
+        $('#viewCategoryDisplay').text(category || '-');
+        $('#viewExpiryDisplay').text(expiryDate ? new Date(expiryDate).toLocaleDateString('th-TH') : '-');
+        $('#viewQuantityDisplay').text(quantityValue ? parseFloat(quantityValue) : '-');
+        $('#viewPurchasePriceDisplay').text('-');
+        $('#viewSalePriceDisplay').text('-');
+        $('#viewNetProfitDisplay').text('-');
+        $('#viewWeightDisplay').text('-');
+        $('#viewTrueCostDisplay').text('-');
+        $('#viewRemarkDisplay').text(remarkValue || '-');
+        
+        const viewModal = new bootstrap.Modal(document.getElementById('viewModal'));
+        viewModal.show();
+    });
+    
+    // Handle edit damaged button click
+    $(document).on('click', '.edit-damaged-btn', function() {
+        const tempId = $(this).data('temp-id');
+        const productName = $(this).data('product-name');
+        const provisionalSku = $(this).data('provisional-sku');
+        const provisionalBarcode = $(this).data('provisional-barcode');
+        const unitValue = $(this).data('unit');
+        const category = $(this).data('category');
+        const expiryDate = $(this).data('expiry');
+        const quantityValue = $(this).data('quantity');
+        const purchasePrice = $(this).attr('data-purchase-price');
+        const salePrice = $(this).attr('data-sale-price');
+        const poSalePrice = $(this).attr('data-po-sale-price');
+        const weightValue = $(this).data('weight');
+        const remarkRaw = $(this).attr('data-remark');
+        const imageSrc = $(this).data('image');
+        const rowImageSrc = $(this).closest('tr').find('img.product-image').attr('src');
+        const resolvedPurchasePrice = [purchasePrice, poSalePrice, salePrice].find(v => v !== undefined && v !== null && v !== '');
+        const resolvedSalePrice = (salePrice !== undefined && salePrice !== null && salePrice !== '') ? salePrice : '';
+        const numericPurchaseBase = Number(resolvedPurchasePrice);
+        
+        // Show modal to edit damaged item SKU/Barcode
+        $('#tempProductId').val(tempId);
+        $('#receiveId').val(''); // No receive ID for damaged items
+        $('#expiryInput').val(expiryDate);
+        $('#provisionalSkuInput').val(provisionalSku);
+        $('#provisionalBarcodeInput').val(provisionalBarcode);
+        $('#unitInput').val(unitValue || '');
+        $('#productNameDisplay').text(productName || '');
+        $('#categoryDisplay').text(category || '-');
+        $('#quantityDisplay').text(quantityValue ? parseFloat(quantityValue) : '-');
+        $('#weightInput').val(weightValue ?? '');
+        $('#remarkInput').val(remarkRaw ? decodeHtml(remarkRaw) : '');
+        $('#productImageInput').val('');
+        $('#purchasePriceInput').removeClass('text-danger fw-semibold');
+        
+        // Debug logging
+        console.log('=== Edit Damaged Debug ===');
+        console.log('purchasePrice (raw):', purchasePrice);
+        console.log('salePrice (raw):', salePrice);
+        console.log('poSalePrice (raw):', poSalePrice);
+        console.log('resolvedPurchasePrice:', resolvedPurchasePrice);
+        console.log('resolvedSalePrice:', resolvedSalePrice);
+        console.log('numericPurchaseBase:', numericPurchaseBase);
+        
+        // Set purchase price from PO
+        if (resolvedPurchasePrice !== undefined && resolvedPurchasePrice !== null && resolvedPurchasePrice !== '') {
+            const numericPurchasePrice = Number(resolvedPurchasePrice);
+            if (!Number.isNaN(numericPurchasePrice) && numericPurchasePrice !== 0) {
+                $('#purchasePriceInput').val(numericPurchasePrice.toFixed(2)).addClass('text-danger fw-semibold');
+                currentBasePurchasePrice = numericPurchasePrice;
+            } else {
+                $('#purchasePriceInput').val('');
+                currentBasePurchasePrice = 0;
+            }
+        } else {
+            $('#purchasePriceInput').val('');
+            currentBasePurchasePrice = 0;
+        }
+        
+        // Load saved sale price
+        if (resolvedSalePrice !== '' && resolvedSalePrice !== undefined && resolvedSalePrice !== null) {
+            const numericSalePrice = Number(resolvedSalePrice);
+            if (!Number.isNaN(numericSalePrice) && numericSalePrice !== 0) {
+                currentSavedSalePrice = numericSalePrice;
+                $('#salePriceInput').val(numericSalePrice.toFixed(2));
+            } else {
+                currentSavedSalePrice = 0;
+                $('#salePriceInput').val('');
+            }
+        } else {
+            currentSavedSalePrice = 0;
+            $('#salePriceInput').val('');
+        }
+        
+        $('#salePriceDisplay').text('ราคาขายจาก PO: ' + formatPrice(resolvedSalePrice) + ' บาท');
+        
+        // Update pricing from weight
+        updatePricingFromWeight();
+        updateNetProfitLabel();
+        
+        if (rowImageSrc) {
+            $('#previewImg').attr('src', rowImageSrc);
+            $('#imagePreview').show();
+        } else {
+            $('#previewImg').attr('src', '');
+            $('#imagePreview').hide();
+        }
+        
+        // Clear location fields
+        $('#locationSearchEdit').val('');
+        $('#editRowCodeInput').val('');
+        $('#editBinInput').val('');
+        $('#editShelfInput').val('');
+        $('#editProductLocation').val('');
+        $('#locationSuggestionsEdit').hide();
+
+        if (tempId) {
+            $.get('../api/receive_position_api.php', { temp_product_id: tempId }, function(resp){
+                if (resp && resp.success) {
+                    $('#editRowCodeInput').val(resp.row_code || '');
+                    $('#editBinInput').val(resp.bin || '');
+                    $('#editShelfInput').val(resp.shelf || '');
+                    if (resp.location_id) {
+                        $('#editProductLocation').val(resp.location_id);
+                    }
+                }
+            }, 'json').fail(function(){
+                console.log('Could not load temp product location data');
+            });
+        }
+        
+        // Change button text to indicate this is damaged item
+        $('#editModalLabel').text('แก้ไขสินค้าชำรุด');
+        
+        const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        editModal.show();
+    });
+    
+    // Handle approve damaged button click
+    $(document).on('click', '.approve-damaged-btn', function() {
+        const tempId = $(this).data('temp-id');
+        const productName = $(this).data('name');
+        
+        // Get the row element to check SKU and Barcode values
+        const $row = $(this).closest('tr');
+        const $skuCell = $row.find('td:eq(2)'); // SKU column (3rd column)
+        const $barcodeCell = $row.find('td:eq(3)'); // Barcode column (4th column)
+        
+        // Check if SKU and Barcode have the "ยังไม่มีข้อมูล" badge
+        const hasNoSku = $skuCell.find('.badge.bg-warning').length > 0;
+        const hasNoBarcode = $barcodeCell.find('.badge.bg-warning').length > 0;
+        
+        // If SKU or Barcode is missing, show warning
+        if (hasNoSku || hasNoBarcode) {
+            let missingFields = [];
+            if (hasNoSku) missingFields.push('SKU');
+            if (hasNoBarcode) missingFields.push('บาร์โค้ด');
+            
+            Swal.fire({
+                icon: 'warning',
+                title: 'ข้อมูลยังไม่ครบถ้วน',
+                html: 'กรุณากรอกข้อมูลของสินค้าชำรุดต่อไปนี้ก่อนอนุมัติ:<br><br>' +
+                      '<strong style="color: #dc2626;">' + missingFields.join(' และ ') + '</strong><br><br>' +
+                      'คลิก "แก้ไข" เพื่ออัปเดตข้อมูล',
+                confirmButtonText: 'ตกลง',
+                confirmButtonColor: '#f97316'
+            });
+            return;
+        }
+        
+        Swal.fire({
+            title: 'ยืนยันการอนุมัติสินค้าชำรุด',
+            text: 'ต้องการอนุมัติสินค้าชำรุด "' + productName + '" และนำเข้าคลังเก็บใช่หรือไม่?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ใช่ อนุมัติ',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading state
+                Swal.fire({
+                    title: 'กำลังประมวลผล',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                $.ajax({
+                    url: '../api/approve_temp_product.php',
+                    type: 'POST',
+                    data: {
+                        temp_product_id: tempId
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            const productId = response.product_id || response.new_product_id || '-';
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'อนุมัติสำเร็จ!',
+                                text: 'สินค้าชำรุดถูกอนุมัติและนำเข้าคลังแล้ว\nรหัสสินค้า: ' + productId,
+                                confirmButtonText: 'ตกลง'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    location.reload();
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'เกิดข้อผิดพลาด',
+                                text: response.message || 'ไม่สามารถอนุมัติสินค้าได้'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์';
+                        let errorTitle = 'เชื่อมต่อล้มเหลว';
+                        
+                        try {
+                            if (xhr.responseText) {
+                                const errorResponse = JSON.parse(xhr.responseText);
+                                if (errorResponse.message) {
+                                    errorMessage = errorResponse.message;
+                                    errorTitle = 'เกิดข้อผิดพลาด';
+                                }
+                            }
+                        } catch (e) {
+                            if (xhr.responseText) {
+                                errorMessage = xhr.responseText.substring(0, 500);
+                            }
+                        }
+                        
+                        Swal.fire({
+                            icon: 'error',
+                            title: errorTitle,
+                            text: errorMessage,
+                            confirmButtonText: 'ตกลง'
+                        });
+                        console.error(xhr);
+                    }
+                });
+            }
+        });
+    });
 });
 
 function filterByType(type) {
@@ -1433,32 +1918,23 @@ function filterByType(type) {
 }
 
 function updateStats() {
-    if (!transactionTable) return;
-    
-    const table = transactionTable.rows({ filter: 'applied' }).nodes();
-    let newCount = 0;
+    // Count rows from receive table
     let receiveCount = 0;
-    let issueCount = 0;
+    let damagedCount = 0;
     
-    $(table).each(function() {
-        const type = $(this).data('type');
-        // หาคอลัมน์ประเภท (column 5)
-        const transactionBadge = $(this).find('td:eq(5) span.badge').first().text().trim();
-        
-        if (type === 'new') {
-            newCount++;
-            if (transactionBadge.includes('รับเข้า')) {
-                receiveCount++;
-            } else if (transactionBadge.includes('ออกไป')) {
-                issueCount++;
-            }
-        }
-    });
+    // Count receive items
+    const receiveTableRows = $('#receive-table tbody tr');
+    receiveCount = receiveTableRows.length;
     
-    $('#new-count').text(newCount);
-    $('#receive-count').text('+' + receiveCount);
-    $('#issue-count').text('-' + issueCount);
-    $('#row-count').text(newCount);
+    // Count damaged items
+    const damagedTableRows = $('#damaged-table tbody tr');
+    damagedCount = damagedTableRows.length;
+    
+    const totalCount = receiveCount + damagedCount;
+    
+    // Update stat displays
+    $('#receive-count').text(receiveCount);
+    $('#damaged-count').text(damagedCount);
 }
 
 // Location search data from AJAX (load on page load)
@@ -1595,10 +2071,19 @@ function selectLocationEdit(locationId, rowCode, bin, shelf) {
                         <label for="unitInput" class="form-label">หน่วยนับ</label>
                         <input type="text" class="form-control" id="unitInput" name="unit" placeholder="เช่น ชิ้น, กล่อง, แพ็ค">
                     </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">หมวดหมู่</label>
+                            <div class="form-control-plaintext" id="categoryDisplay">-</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">จำนวน</label>
+                            <div class="form-control-plaintext" id="quantityDisplay">-</div>
+                        </div>
+                    </div>
                     
                     <div class="mb-3 p-3" style="background: #dae9f8; border: 1px solid #e5e7eb; border-radius: 8px;">
-                       
-
                         <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label for="purchasePriceInput" class="form-label">ราคาซื้อ</label>
@@ -1626,7 +2111,6 @@ function selectLocationEdit(locationId, rowCode, bin, shelf) {
                             </div>
                             <small class="text-muted">สูตร: ค่าธรรมเนียม15% + ค่าใช้จ่าย17% + ค่าคอมมิชชั่น5% + ภาษีนิติบุคคล20%</small>
                         </div>
-
                        
                     </div>
                     
@@ -1723,6 +2207,11 @@ function selectLocationEdit(locationId, rowCode, bin, shelf) {
                 <div class="mb-3">
                     <label class="form-label">หน่วยนับ</label>
                     <div class="form-control-plaintext" id="viewUnitDisplay">-</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">จำนวน</label>
+                    <div class="form-control-plaintext" id="viewQuantityDisplay">-</div>
                 </div>
 
                 <div class="mb-3">

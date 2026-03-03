@@ -1175,17 +1175,9 @@ $(document).ready(function() {
                         $('#loadingIndicator').hide();
                         loadRecentActivities();
                         
-                        // Show ready for next scan message
+                        // Reload page to refresh PO list and status
                         setTimeout(() => {
-                            Swal.fire({
-                                toast: true,
-                                position: 'top-end',
-                                icon: 'info',
-                                title: 'พร้อมสแกนต่อ',
-                                text: 'สแกนบาร์โค้ดสินค้าถัดไป',
-                                showConfirmButton: false,
-                                timer: 2000
-                            });
+                            location.reload();
                         }, 500);
                     });
                 } else {

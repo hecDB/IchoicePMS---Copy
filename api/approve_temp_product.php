@@ -34,6 +34,15 @@ try {
     error_log("=== APPROVE_TEMP_PRODUCT START ===");
     error_log("temp_product_id: " . $temp_product_id);
     
+    // Ensure temp_products has expiry_date column (if not already exists)
+    if (!columnExists($pdo, 'temp_products', 'expiry_date')) {
+        try {
+            $pdo->exec("ALTER TABLE temp_products ADD COLUMN expiry_date DATE NULL COMMENT 'วันหมดอายุ' AFTER po_id");
+        } catch (Exception $e) {
+            error_log("Note: Could not add expiry_date column (may already exist): " . $e->getMessage());
+        }
+    }
+    
     // Ensure pending location table exists before starting a transaction
     $pdo->exec("CREATE TABLE IF NOT EXISTS temp_product_locations (
         temp_product_id INT PRIMARY KEY,
@@ -176,16 +185,67 @@ try {
         ':temp_product_id' => $temp_product_id
     ]);
     
-    // อัพเดท purchase_order_items ให้ชี้ไปที่ product_id ใหม่
+    // อัพเดท purchase_order_items ให้ชี้ไปที่ product_id ใหม่ และบันทึกราคาขาย
     $sql_update_poi = "UPDATE purchase_order_items 
-                       SET product_id = :product_id 
+                       SET product_id = :product_id,
+                           sale_price = COALESCE(:sale_price, sale_price)
                        WHERE temp_product_id = :temp_product_id";
     
     $stmt_update_poi = $pdo->prepare($sql_update_poi);
     $stmt_update_poi->execute([
         ':product_id' => $new_product_id,
+        ':sale_price' => $temp_product['sale_price'] ?? null,
         ':temp_product_id' => $temp_product_id
     ]);
+
+    // บันทึกความเคลื่อนไหวรับเข้า สำหรับสินค้าชำรุดที่อนุมัติแล้ว
+    $stmtDamaged = $pdo->prepare("
+        SELECT ri.item_id, ri.return_qty, poi.po_id
+        FROM returned_items ri
+        LEFT JOIN purchase_order_items poi ON poi.item_id = ri.item_id
+        WHERE ri.temp_product_id = :temp_product_id
+        ORDER BY ri.return_id DESC, ri.created_at DESC
+        LIMIT 1
+    ");
+    $stmtDamaged->execute([':temp_product_id' => $temp_product_id]);
+    $damagedRow = $stmtDamaged->fetch(PDO::FETCH_ASSOC);
+
+    if ($damagedRow && !empty($damagedRow['item_id'])) {
+        $itemId = (int)$damagedRow['item_id'];
+        $poId = !empty($damagedRow['po_id']) ? (int)$damagedRow['po_id'] : null;
+        $receiveQty = isset($damagedRow['return_qty']) ? (float)$damagedRow['return_qty'] : 0.0;
+
+        $stmtCheck = $pdo->prepare("SELECT receive_id FROM receive_items WHERE item_id = :item_id AND remark LIKE :remark LIMIT 1");
+        $stmtCheck->execute([
+            ':item_id' => $itemId,
+            ':remark' => '%อนุมัติสินค้าชำรุด%temp_product_id=' . $temp_product_id . '%'
+        ]);
+        $existingReceiveId = $stmtCheck->fetchColumn();
+
+        if (!$existingReceiveId) {
+            $remarkParts = [
+                'รับเข้า (อนุมัติสินค้าชำรุด)',
+                'temp_product_id=' . $temp_product_id
+            ];
+            if (!empty($temp_product['remark'])) {
+                $remarkParts[] = $temp_product['remark'];
+            }
+            $remark = implode(' | ', $remarkParts);
+
+            $stmtInsertReceive = $pdo->prepare("
+                INSERT INTO receive_items (item_id, po_id, receive_qty, expiry_date, remark, created_by, created_at)
+                VALUES (:item_id, :po_id, :receive_qty, :expiry_date, :remark, :created_by, NOW())
+            ");
+            $stmtInsertReceive->execute([
+                ':item_id' => $itemId,
+                ':po_id' => $poId,
+                ':receive_qty' => $receiveQty,
+                ':expiry_date' => $temp_product['expiry_date'] ?? null,
+                ':remark' => $remark,
+                ':created_by' => $_SESSION['user_id'] ?? 1
+            ]);
+        }
+    }
     
     // อัพเดท receive_items.created_at เป็นเวลาปัจจุบัน เพื่อให้แสดงในตารางความเคลื่อนไหวเป็นข้อมูลล่าสุด
     $sql_update_receive = "UPDATE receive_items 

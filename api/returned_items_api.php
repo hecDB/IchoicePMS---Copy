@@ -4,14 +4,60 @@
  * ดำเนินการ: สร้าง, ดูรายการ, ค้นหา, อนุมัติ, ปฏิเสธ
  */
 
+// Suppress all error display to prevent HTML errors in JSON response
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+
+// Clean any existing output buffers
+while (ob_get_level()) {
+    ob_end_clean();
+}
+
+// Start new output buffer
+ob_start();
+
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 session_start();
+
+// Log all requests for debugging
+error_log("=== API REQUEST START ===");
+error_log("Method: " . $_SERVER['REQUEST_METHOD']);
+error_log("URI: " . $_SERVER['REQUEST_URI']);
+error_log("Content-Type: " . ($_SERVER['CONTENT_TYPE'] ?? 'N/A'));
 
 require '../config/db_connect.php';
 
 ensureDamagedReturnQueue($pdo);
 ensureIssueItemsExpiryColumn($pdo);
 ensureReturnedItemsReceiveIdColumn($pdo);
+ensureReturnedItemsTempProductIdColumn($pdo);
+ensureReturnedItemsNewBarcodeColumn($pdo);
+ensureTempProductsExpiryColumn($pdo);
+
+/**
+ * Send clean JSON response
+ * Clears any output buffer before sending to prevent HTML errors
+ */
+function sendJsonResponse(array $data, int $statusCode = 200): void
+{
+    // Clear any accumulated output
+    if (ob_get_level() > 0) {
+        ob_clean();
+    }
+    
+    http_response_code($statusCode);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    
+    if (ob_get_level() > 0) {
+        ob_end_flush();
+    }
+    exit;
+}
 
 function ensureDamagedReturnQueue(PDO $pdo): void
 {
@@ -129,6 +175,52 @@ function ensureReturnedItemsReceiveIdColumn(PDO $pdo): void
     }
 }
 
+function ensureReturnedItemsTempProductIdColumn(PDO $pdo): void
+{
+    try {
+        $columnsStmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'returned_items' AND COLUMN_NAME = 'temp_product_id'");
+        $columnsStmt->execute();
+
+        if ($columnsStmt->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE returned_items ADD COLUMN temp_product_id INT NULL COMMENT 'temp_product_id for new products' AFTER barcode");
+            $pdo->exec("ALTER TABLE returned_items ADD KEY idx_temp_product_id (temp_product_id)");
+        }
+    } catch (Exception $e) {
+        error_log('Failed to ensure returned_items temp_product_id column: ' . $e->getMessage());
+    }
+}
+
+function ensureReturnedItemsNewBarcodeColumn(PDO $pdo): void
+{
+    try {
+        $columnsStmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'returned_items' AND COLUMN_NAME = 'new_barcode'");
+        $columnsStmt->execute();
+
+        if ($columnsStmt->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE returned_items ADD COLUMN new_barcode VARCHAR(100) NULL COMMENT 'new barcode for defective items' AFTER temp_product_id");
+            $pdo->exec("ALTER TABLE returned_items ADD KEY idx_new_barcode (new_barcode)");
+        }
+    } catch (Exception $e) {
+        error_log('Failed to ensure returned_items new_barcode column: ' . $e->getMessage());
+    }
+}
+
+function ensureTempProductsExpiryColumn(PDO $pdo): void
+{
+    try {
+        // Check if expiry_date column exists in temp_products
+        $columnsStmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'temp_products' AND COLUMN_NAME = 'expiry_date'");
+        $columnsStmt->execute();
+        
+        if ($columnsStmt->rowCount() === 0) {
+            // Add expiry_date column if it doesn't exist
+            $pdo->exec("ALTER TABLE temp_products ADD COLUMN expiry_date DATE NULL COMMENT 'วันหมดอายุ' AFTER po_id");
+        }
+    } catch (Exception $e) {
+        error_log('Failed to ensure temp_products expiry_date column: ' . $e->getMessage());
+    }
+}
+
 function findProductBySku(PDO $pdo, string $sku): ?array
 {
     if ($sku === '') {
@@ -142,7 +234,7 @@ function findProductBySku(PDO $pdo, string $sku): ?array
     return $product ?: null;
 }
 
-function createDefectProduct(PDO $pdo, array $sourceProduct, string $newSku, int $userId): int
+function createDefectProduct(PDO $pdo, array $sourceProduct, string $newSku, int $userId, string $newBarcode = ''): int
 {
     $baseName = $sourceProduct['name'] ?? 'สินค้าใหม่';
     $nameSuffix = ' (สินค้ามีตำหนิ)';
@@ -154,10 +246,15 @@ function createDefectProduct(PDO $pdo, array $sourceProduct, string $newSku, int
         :name, :sku, :barcode, :unit, :image, :remark_color, :remark_split, 1, :created_by, NOW(), :product_category_id, :category_name
     )");
 
+    // Use new barcode if provided, otherwise use source product barcode
+    $finalBarcode = !empty($newBarcode) ? $newBarcode : ($sourceProduct['barcode'] ?? null);
+    
+    error_log("📦 createDefectProduct - newBarcode: $newBarcode, finalBarcode: $finalBarcode");
+
     $stmt->execute([
         ':name' => $finalName,
         ':sku' => $newSku,
-        ':barcode' => $sourceProduct['barcode'] ?? null,
+        ':barcode' => $finalBarcode,
         ':unit' => $sourceProduct['unit'] ?? null,
         ':image' => $sourceProduct['image'] ?? null,
         ':remark_color' => $sourceProduct['remark_color'] ?? '',
@@ -174,10 +271,24 @@ function buildDefectSku(string $originalSku): string
 {
     $trimmed = trim($originalSku);
     if ($trimmed === '') {
-        throw new InvalidArgumentException('Original SKU is required for damaged inspections');
+        error_log('WarningFordefectSku: Original SKU is empty');
+        return 'ตำหนิ-UNKNOWN';
     }
     $prefix = 'ตำหนิ-';
-    return mb_strpos($trimmed, $prefix) === 0 ? $trimmed : $prefix . $trimmed;
+    // Safe check without mb_strpos
+    if (strpos($trimmed, $prefix) === 0) {
+        return $trimmed;
+    }
+    return $prefix . $trimmed;
+}
+
+function generateNewBarcode(int $inspectionId, string $sku = ''): string
+{
+    // Format: BAR-[inspectionId]-[timestamp][random]
+    $timestamp = base_convert(time(), 10, 36);
+    $random = substr(bin2hex(random_bytes(3)), 0, 6);
+    $barcodeId = substr(strtoupper($timestamp . $random), 0, 12);
+    return 'BAR-' . $inspectionId . '-' . $barcodeId;
 }
 
 function updatePOStatusInline(PDO $pdo, int $po_id): void
@@ -300,11 +411,76 @@ function updatePOStatusInline(PDO $pdo, int $po_id): void
     }
 }
 
+/**
+ * Add new item to purchase_order_items for defective product
+ * Note: purchase_order_items table doesn't have 'remark' or 'origin_remark' columns
+ */
+function addPurchaseOrderItemForDefect(PDO $pdo, int $poId, int $newProductId, float $quantity, string $newSku, string $reference, ?string $notes = null): int
+{
+    try {
+        // Schema has: item_id, po_id, product_id, qty, price_per_unit, sale_price, total, created_at, etc.
+        // We'll insert minimal data - price and total can be updated later
+        $stmt = $pdo->prepare("INSERT INTO purchase_order_items (
+            po_id, product_id, qty, price_per_unit, sale_price, total, created_at
+        ) VALUES (
+            :po_id, :product_id, :qty, 0.00, 0.00, 0.00, NOW()
+        )");
+        
+        $stmt->execute([
+            ':po_id' => $poId,
+            ':product_id' => $newProductId,
+            ':qty' => $quantity
+        ]);
+
+        $itemId = (int)$pdo->lastInsertId();
+        error_log("✅ Added PO item: itemId=$itemId, poId=$poId, productId=$newProductId, qty=$quantity, sku=$newSku");
+        return $itemId;
+    } catch (Exception $e) {
+        error_log("❌ Failed to add PO item: " . $e->getMessage());
+        throw $e;
+    }
+}
+
+/**
+ * Record receipt of newly created defect product
+ * Schema: receive_items has (receive_id, item_id, po_id, receive_qty, expiry_date, remark_color, remark_split, remark, created_by, created_at)
+ * Note: No 'product_id', 'receive_date', 'received_by', 'notes' columns - use item_id, created_at, created_by, remark instead
+ */
+function recordReceiveDefectItem(PDO $pdo, int $poItemId, int $poId, int $productId, float $receiveQty, int $userId, string $reference, string $newSku, ?string $notes = null): int
+{
+    try {
+        $receiveRemark = "[Defect Item] SKU: " . $newSku . " from " . $reference . (isset($notes) ? ' - ' . substr($notes, 0, 150) : '');
+        
+        $stmt = $pdo->prepare("INSERT INTO receive_items (
+            item_id, po_id, receive_qty, remark, created_by, created_at
+        ) VALUES (
+            :item_id, :po_id, :receive_qty, :remark, :created_by, NOW()
+        )");
+        
+        $stmt->execute([
+            ':item_id' => $poItemId,
+            ':po_id' => $poId,
+            ':receive_qty' => $receiveQty,
+            ':remark' => $receiveRemark,
+            ':created_by' => $userId
+        ]);
+
+        $receiveId = (int)$pdo->lastInsertId();
+        error_log("✅ Recorded defect receive: receiveId=$receiveId, itemId=$poItemId, poId=$poId, productId=$productId, qty=$receiveQty");
+        
+        // Note: products table doesn't have 'stock' column - stock is calculated from receive_items
+        // No need to update stock here
+        
+        return $receiveId;
+    } catch (Exception $e) {
+        error_log("❌ Failed to record receive item: " . $e->getMessage());
+        throw $e;
+    }
+}
+
 function logProductActivity(PDO $pdo, int $productId, int $userId, float $quantity, string $reference, string $sku, ?string $notes = null): void
 {
     try {
-        static $productActivityColumns = null;
-
         if ($productActivityColumns === false) {
             return;
         }
@@ -521,6 +697,107 @@ function insertDamagedReceiveMovement(PDO $pdo, int $itemId, int $poId, float $r
     }
 }
 
+/**
+ * บันทึกสินค้าชำรุดบางส่วนที่ขายได้ลงตาราง temp_products
+ * แทนการสร้าง PO และการรับเข้าสต๊อก
+ */
+function insertTempProductFromDamagedInspection(
+    PDO $pdo,
+    array $inspection,
+    string $newSku,
+    float $restockQty,
+    ?float $costPrice,
+    ?float $salePrice,
+    ?string $defectNotes,
+    int $userId,
+    ?string $expiryDate = null
+): ?int {
+    if ($restockQty <= 0) {
+        error_log('insertTempProductFromDamagedInspection: Invalid restock quantity');
+        return null;
+    }
+
+    try {
+        $productName = $inspection['source_product_name'] ?? $inspection['product_name'] ?? 'Unknown Product';
+        $categoryName = $inspection['source_category_name'] ?? $inspection['category_name'] ?? null;
+        $unit = $inspection['source_unit'] ?? $inspection['unit'] ?? 'หน่วย';
+        $productImage = $inspection['source_image'] ?? null;
+        $status = 'pending_approval';
+        
+        // สร้าง remark สำหรับระบุว่าเป็นสินค้าชำรุด
+        $remarkParts = [
+            'สินค้าชำรุดบางส่วน (แปลง SKU เป็น ' . $newSku . ')',
+            'จำนวนที่รับกลับ: ' . $restockQty
+        ];
+        
+        if ($inspection['return_code'] ?? null) {
+            $remarkParts[] = 'เอกสารคืนสินค้า: ' . $inspection['return_code'];
+        }
+        
+        if ($defectNotes) {
+            $remarkParts[] = 'หมายเหตุ: ' . $defectNotes;
+        }
+        
+        $remark = implode(' | ', array_filter($remarkParts));
+        
+        // บันทึกลง temp_products
+        $stmt = $pdo->prepare("
+            INSERT INTO temp_products (
+                product_name,
+                product_category,
+                product_image,
+                unit,
+                provisional_sku,
+                provisional_barcode,
+                remark,
+                status,
+                po_id,
+                expiry_date,
+                created_by,
+                created_at
+            ) VALUES (
+                :product_name,
+                :product_category,
+                :product_image,
+                :unit,
+                :provisional_sku,
+                :provisional_barcode,
+                :remark,
+                :status,
+                :po_id,
+                :expiry_date,
+                :created_by,
+                NOW()
+            )
+        ");
+        
+        $stmt->execute([
+            ':product_name' => $productName,
+            ':product_category' => $categoryName,
+            ':product_image' => $productImage,
+            ':unit' => $unit,
+            ':provisional_sku' => $newSku,
+            ':provisional_barcode' => $inspection['barcode'] ?? $inspection['source_barcode'] ?? '',
+            ':remark' => $remark,
+            ':status' => $status,
+            ':po_id' => $inspection['po_id'] ?? null,
+            ':expiry_date' => $expiryDate,
+            ':created_by' => $userId
+        ]);
+        
+        $tempProductId = (int)$pdo->lastInsertId();
+        
+        if ($tempProductId > 0) {
+            error_log("✅ Inserted temp_product for damaged inspection: temp_product_id=$tempProductId, sku=$newSku");
+        }
+        
+        return $tempProductId > 0 ? $tempProductId : null;
+    } catch (Exception $e) {
+        error_log('❌ Failed to insert temp_product from damaged inspection: ' . $e->getMessage());
+        return null;
+    }
+}
+
 $user_id = $_SESSION['user_id'] ?? null;
 if (!$user_id) {
     http_response_code(401);
@@ -729,6 +1006,13 @@ if ($action === 'create_return') {
     try {
         $data = json_decode(file_get_contents('php://input'), true);
         
+        // Validate that JSON was properly decoded
+        if (!is_array($data)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid JSON payload']);
+            exit;
+        }
+        
         $so_id = $data['so_id'] ?? null;
         $po_id = $data['po_id'] ?? null;
         $item_id = $data['item_id'] ?? null;
@@ -737,19 +1021,44 @@ if ($action === 'create_return') {
         $reason_id = $data['reason_id'] ?? null;
         $notes = $data['notes'] ?? '';
         
-        if (!$item_id || !$product_id || !$return_qty || !$reason_id) {
+        // ข้อมูล temporary สำหรับสินค้าใหม่ที่ยังไม่มี product_id
+        $temporary_sku = $data['temporary_sku'] ?? null;
+        $temporary_barcode = $data['temporary_barcode'] ?? null;
+        $temporary_product_name = $data['temporary_product_name'] ?? null;
+        $temporary_unit = $data['temporary_unit'] ?? null;
+        
+        if (!$item_id || !$return_qty || !$reason_id) {
             http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'Missing required fields']);
+            echo json_encode(['status' => 'error', 'message' => 'Missing required fields: item_id, return_qty, reason_id']);
             exit;
         }
         
-        // Get product details
-        $stmt = $pdo->prepare("SELECT * FROM products WHERE product_id = :product_id");
-        $stmt->execute([':product_id' => $product_id]);
-        $product = $stmt->fetch();
+        // หากไม่มี product_id ต้อง handle สินค้าใหม่ด้วย temporary data
+        $product = null;
+        $product_name = null;
+        $sku = null;
+        $barcode = null;
         
-        if (!$product) {
-            throw new Exception('Product not found');
+        if ($product_id) {
+            // Get product details สำหรับสินค้าปกติ
+            $stmt = $pdo->prepare("SELECT * FROM products WHERE product_id = :product_id");
+            $stmt->execute([':product_id' => $product_id]);
+            $product = $stmt->fetch();
+            
+            if (!$product) {
+                throw new Exception('Product not found');
+            }
+            $product_name = $product['name'];
+            $sku = $product['sku'];
+            $barcode = $product['barcode'] ?? null;
+        } else {
+            // สินค้าใหม่ - ใช้ temporary data ที่ส่งมา
+            if (!$temporary_product_name) {
+                throw new Exception('For new products: temporary_product_name is required');
+            }
+            $product_name = $temporary_product_name;
+            $sku = $temporary_sku ?: 'NEW-TEMP-' . date('YmdHis');
+            $barcode = $temporary_barcode ?: 'TMP-' . $item_id . '-' . bin2hex(random_bytes(4));
         }
         
         // Determine if return is from sales or purchase
@@ -760,6 +1069,7 @@ if ($action === 'create_return') {
         $cost_price = null;
         $sale_price = null;
         $receive_id = null;
+        $expiry_date = null;
         
         if ($return_from_sales) {
             // Get sales order item details
@@ -787,9 +1097,10 @@ if ($action === 'create_return') {
             $cost_price = isset($order_item['cost_price']) ? (float)$order_item['cost_price'] : null;
             $sale_price = isset($order_item['sale_price']) ? (float)$order_item['sale_price'] : null;
             $receive_id = isset($order_item['receive_id']) ? (int)$order_item['receive_id'] : null;
+            $expiry_date = $order_item['expiry_date'] ?? null;
             
             // ค้นหา po_id ที่มี product นี้ (สำหรับบันทึกวิบาก)
-            if (!$po_id) {
+            if (!$po_id && $product_id) {
                 $stmt = $pdo->prepare("
                     SELECT MAX(po.po_id) as po_id, po.po_number
                     FROM purchase_orders po
@@ -804,19 +1115,34 @@ if ($action === 'create_return') {
                 $po_number = $po_result['po_number'] ?? null;
             }
         } else {
-            // Get receive item details
+            // Get receive item details สำหรับสินค้าจาก PO
+            if (!$po_id && !$product_id) {
+                // Get po_id from item_id
+                $itemLookup = $pdo->prepare("
+                    SELECT poi.po_id
+                    FROM purchase_order_items poi
+                    WHERE poi.item_id = :item_id
+                    LIMIT 1
+                ");
+                $itemLookup->execute([':item_id' => $item_id]);
+                $itemResult = $itemLookup->fetch();
+                if ($itemResult) {
+                    $po_id = $itemResult['po_id'];
+                }
+            }
+            
             $stmt = $pdo->prepare("
                 SELECT ri.*, poi.price_per_unit, poi.sale_price, po.po_number
                 FROM receive_items ri
                 JOIN purchase_order_items poi ON ri.item_id = poi.item_id
                 JOIN purchase_orders po ON poi.po_id = po.po_id
-                WHERE ri.item_id = :item_id AND ri.po_id = :po_id
+                WHERE ri.item_id = :item_id AND po.po_id = :po_id
             ");
-            $stmt->execute([':item_id' => $item_id, ':po_id' => $po_id]);
+            $stmt->execute([':item_id' => $item_id, ':po_id' => $po_id ?: 0]);
             $order_item = $stmt->fetch();
 
             // Fallback: allow damaged flow before any receive record exists
-            if (!$order_item) {
+            if (!$order_item && $po_id) {
                 $fallbackStmt = $pdo->prepare("
                     SELECT poi.*, po.po_number
                     FROM purchase_order_items poi
@@ -834,15 +1160,14 @@ if ($action === 'create_return') {
                 }
             }
 
-            if (!$order_item) {
-                throw new Exception('Purchase order item not found');
+            if ($order_item) {
+                $original_qty = isset($order_item['receive_qty']) ? $order_item['receive_qty'] : ($order_item['qty'] ?? 0);
+                $po_number = $order_item['po_number'] ?? null;
+                $cost_price = isset($order_item['price_per_unit']) ? (float)$order_item['price_per_unit'] : null;
+                $sale_price = isset($order_item['sale_price']) ? (float)$order_item['sale_price'] : null;
+                $receive_id = isset($order_item['receive_id']) ? (int)$order_item['receive_id'] : null;
+                $expiry_date = $order_item['expiry_date'] ?? null;
             }
-
-            $original_qty = isset($order_item['receive_qty']) ? $order_item['receive_qty'] : ($order_item['qty'] ?? 0);
-            $po_number = $order_item['po_number'] ?? null;
-            $cost_price = isset($order_item['price_per_unit']) ? (float)$order_item['price_per_unit'] : null;
-            $sale_price = isset($order_item['sale_price']) ? (float)$order_item['sale_price'] : null;
-            $receive_id = isset($order_item['receive_id']) ? (int)$order_item['receive_id'] : null;
         }
         
         // Get reason details
@@ -859,97 +1184,61 @@ if ($action === 'create_return') {
         $random = mt_rand(100, 999);
         $return_code = 'RET-' . date('Ymd') . '-' . str_pad(intval($timestamp) % 9999, 4, '0', STR_PAD_LEFT);
         
-        // Insert return record
+        // Insert return record into consolidated returned_items table
         $stmt = $pdo->prepare("
             INSERT INTO returned_items (
-                return_code, po_id, po_number, receive_id, so_id, issue_tag, item_id, product_id, 
-                product_name, sku, barcode, original_qty, return_qty, reason_id, reason_name,
-                is_returnable, return_status, return_from_sales, image_path, notes, expiry_date,
-                location_id, created_by
+                return_code, po_id, item_id, product_id, temp_product_id, product_name, sku, barcode, 
+                original_qty, return_qty, reason_id, reason_name,
+                return_status, is_returnable, return_from_sales, notes, defect_notes, expiry_date, 
+                cost_price, sale_price, created_by, created_at
             ) VALUES (
-                :return_code, :po_id, :po_number, :receive_id, :so_id, :issue_tag, :item_id, :product_id,
-                :product_name, :sku, :barcode, :original_qty, :return_qty, :reason_id, :reason_name,
-                :is_returnable, 'pending', :return_from_sales, :image_path, :notes, :expiry_date,
-                :location_id, :created_by
+                :return_code, :po_id, :item_id, :product_id, :temp_product_id, :product_name, :sku, :barcode,
+                :original_qty, :return_qty, :reason_id, :reason_name,
+                'pending', :is_returnable, :return_from_sales, :notes, :defect_notes, :expiry_date,
+                :cost_price, :sale_price, :created_by, NOW()
             )
         ");
         
         $stmt->execute([
             ':return_code' => $return_code,
             ':po_id' => $po_id,
-            ':po_number' => $po_number,
-            ':receive_id' => $receive_id,
-            ':so_id' => $so_id,
-            ':issue_tag' => $issue_tag,
             ':item_id' => $item_id,
             ':product_id' => $product_id,
-            ':product_name' => $product['name'],
-            ':sku' => $product['sku'],
-            ':barcode' => $product['barcode'] ?? null,
+            ':temp_product_id' => null, // Will be set if new product is created from temp
+            ':product_name' => $product_name,
+            ':sku' => $sku,
+            ':barcode' => $barcode,
             ':original_qty' => $original_qty,
             ':return_qty' => $return_qty,
             ':reason_id' => $reason_id,
             ':reason_name' => $reason['reason_name'],
             ':is_returnable' => $reason['is_returnable'],
             ':return_from_sales' => $return_from_sales,
-            ':image_path' => $product['image'] ?? null,
             ':notes' => $notes,
-            ':expiry_date' => $order_item['expiry_date'] ?? null,
-            ':location_id' => null,
+            ':defect_notes' => ($reason_id == 8) ? $notes : null, // For damaged items, copy notes to defect_notes
+            ':expiry_date' => $expiry_date,
+            ':cost_price' => $cost_price,
+            ':sale_price' => $sale_price,
             ':created_by' => $user_id
         ]);
         
         $return_id = $pdo->lastInsertId();
         
         // Debug log
-        error_log("📝 Created return record: return_id=$return_id, po_id=$po_id, reason_name=" . $reason['reason_name'] . ", is_returnable=" . $reason['is_returnable']);
-        $reasonNameForQueue = trim((string)($reason['reason_name'] ?? ''));
-        if ($reasonNameForQueue === 'สินค้าชำรุดบางส่วน') {
-            try {
-                $queueStmt = $pdo->prepare("INSERT INTO damaged_return_inspections (
-                        return_id, return_code, product_id, product_name, sku, barcode, receive_id, expiry_date, po_id, po_number, return_qty,
-                        reason_id, reason_name, status, new_sku, defect_notes, created_by, cost_price, sale_price
-                    ) VALUES (
-                        :return_id, :return_code, :product_id, :product_name, :sku, :barcode, :receive_id, :expiry_date, :po_id, :po_number, :return_qty,
-                        :reason_id, :reason_name, 'pending', NULL, :defect_notes, :created_by, :cost_price, :sale_price
-                    )");
-                $queueStmt->execute([
-                    ':return_id' => $return_id,
-                    ':return_code' => $return_code,
-                    ':product_id' => $product_id,
-                    ':product_name' => $product['name'],
-                    ':sku' => $product['sku'],
-                    ':barcode' => $product['barcode'] ?? null,
-                    ':receive_id' => $receive_id,
-                    ':expiry_date' => $order_item['expiry_date'] ?? null,
-                    ':po_id' => $po_id,
-                    ':po_number' => $po_number,
-                    ':return_qty' => $return_qty,
-                    ':reason_id' => $reason_id,
-                    ':reason_name' => $reasonNameForQueue,
-                    ':defect_notes' => $notes,
-                    ':created_by' => $user_id,
-                    ':cost_price' => $cost_price,
-                    ':sale_price' => $sale_price
-                ]);
-            } catch (PDOException $inspectionException) {
-                if ($inspectionException->getCode() !== '23000') {
-                    throw $inspectionException;
-                }
-            }
-        }
+        error_log("📝 Created return record: return_id=$return_id, po_id=$po_id, reason_name=" . $reason['reason_name']);
         
-        echo json_encode([
+        sendJsonResponse([
             'status' => 'success',
             'message' => 'Return created successfully',
             'return_id' => $return_id,
             'return_code' => $return_code
-        ]);
+        ], 200);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        sendJsonResponse([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], 500);
     }
-    exit;
 }
 
 // ========== GET RETURNS LIST ==========
@@ -1014,34 +1303,32 @@ if ($action === 'get_returns') {
 if ($action === 'list_damaged_inspections') {
     try {
         $status = $_GET['status'] ?? 'pending';
-        $conditions = [];
+        $conditions = ['ri.reason_id = 8']; // Filter for damaged items
         $params = [];
 
         if ($status !== 'all') {
-            $conditions[] = 'di.status = :status';
+            $conditions[] = 'ri.return_status = :status';
             $params[':status'] = $status;
         }
 
         $sql = "
             SELECT 
-                di.*,
-                ri.return_qty AS original_return_qty,
-                ri.return_status,
+                ri.return_id AS inspection_id,
+                ri.*,
                 u.name AS created_by_name,
                 u2.name AS inspected_by_name,
                 u3.name AS restocked_by_name
-            FROM damaged_return_inspections di
-            LEFT JOIN returned_items ri ON di.return_id = ri.return_id
-            LEFT JOIN users u ON di.created_by = u.user_id
-            LEFT JOIN users u2 ON di.inspected_by = u2.user_id
-            LEFT JOIN users u3 ON di.restocked_by = u3.user_id
+            FROM returned_items ri
+            LEFT JOIN users u ON ri.created_by = u.user_id
+            LEFT JOIN users u2 ON ri.inspected_by = u2.user_id
+            LEFT JOIN users u3 ON ri.restocked_by = u3.user_id
         ";
 
         if (!empty($conditions)) {
             $sql .= ' WHERE ' . implode(' AND ', $conditions);
         }
 
-        $sql .= ' ORDER BY di.created_at DESC, di.inspection_id DESC';
+        $sql .= ' ORDER BY ri.created_at DESC, ri.return_id DESC';
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -1065,21 +1352,20 @@ if ($action === 'get_damaged_inspection') {
             exit;
         }
 
-        $stmt = $pdo->prepare("SELECT 
-                di.*,
-                ri.return_qty AS original_return_qty,
-                ri.return_status,
+        $stmt = $pdo->prepare("
+            SELECT 
+                ri.*,
+                ri.return_id AS inspection_id,
                 ri.notes AS return_notes,
-                ri.expiry_date AS return_expiry_date,
                 u.name AS created_by_name,
                 u2.name AS inspected_by_name,
                 u3.name AS restocked_by_name
-            FROM damaged_return_inspections di
-            JOIN returned_items ri ON di.return_id = ri.return_id
-            LEFT JOIN users u ON di.created_by = u.user_id
-            LEFT JOIN users u2 ON di.inspected_by = u2.user_id
-            LEFT JOIN users u3 ON di.restocked_by = u3.user_id
-            WHERE di.inspection_id = :inspection_id");
+            FROM returned_items ri
+            LEFT JOIN users u ON ri.created_by = u.user_id
+            LEFT JOIN users u2 ON ri.inspected_by = u2.user_id
+            LEFT JOIN users u3 ON ri.restocked_by = u3.user_id
+            WHERE ri.return_id = :inspection_id AND ri.reason_id = 8
+        ");
         $stmt->execute([':inspection_id' => $inspection_id]);
         $inspection = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -1089,9 +1375,44 @@ if ($action === 'get_damaged_inspection') {
             exit;
         }
 
+        // ดึงข้อมูลสินค้าต้นทาง
         $productStmt = $pdo->prepare('SELECT * FROM products WHERE product_id = :product_id LIMIT 1');
         $productStmt->execute([':product_id' => $inspection['product_id']]);
         $inspection['source_product'] = $productStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        // ดึงราคาขายล่าสุดจาก purchase_order_items (ถ้ามี)
+        if ($inspection['product_id']) {
+            $priceStmt = $pdo->prepare("
+                SELECT 
+                    poi.sale_price as latest_sale_price,
+                    poi.price_per_unit as latest_cost_price,
+                    poi.created_at as price_updated_at,
+                    po.po_number
+                FROM purchase_order_items poi
+                JOIN purchase_orders po ON poi.po_id = po.po_id
+                WHERE poi.product_id = :product_id
+                    AND poi.sale_price IS NOT NULL
+                    AND poi.sale_price > 0
+                ORDER BY poi.created_at DESC
+                LIMIT 1
+            ");
+            $priceStmt->execute([':product_id' => $inspection['product_id']]);
+            $latestPrice = $priceStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($latestPrice) {
+                // ใช้ราคาล่าสุดจาก PO
+                $inspection['sale_price'] = $latestPrice['latest_sale_price'];
+                $inspection['cost_price'] = $latestPrice['latest_cost_price'];
+                $inspection['price_source'] = 'latest_po';
+                $inspection['price_po_number'] = $latestPrice['po_number'];
+                $inspection['price_updated_at'] = $latestPrice['price_updated_at'];
+                error_log("✅ Found latest sale_price from PO: " . $latestPrice['latest_sale_price'] . " (PO: " . $latestPrice['po_number'] . ")");
+            } else {
+                // ไม่มีข้อมูลราคาใน PO
+                $inspection['price_source'] = 'no_po_history';
+                error_log("⚠️ No price history found in purchase_order_items for product_id: " . $inspection['product_id']);
+            }
+        }
 
         echo json_encode(['status' => 'success', 'data' => $inspection]);
     } catch (Exception $e) {
@@ -1105,24 +1426,43 @@ if ($action === 'get_damaged_inspection') {
 if ($action === 'process_damaged_inspection') {
     try {
         $payload = json_decode(file_get_contents('php://input'), true);
+        
+        // Validate that JSON was properly decoded
+        if (!is_array($payload)) {
+            sendJsonResponse([
+                'status' => 'error',
+                'message' => 'Invalid JSON payload'
+            ], 400);
+        }
+        
         $inspection_id = $payload['inspection_id'] ?? null;
         $disposition = $payload['disposition'] ?? null;
         $restockQty = isset($payload['restock_qty']) ? (float)$payload['restock_qty'] : 0.0;
         $inspectionNotes = trim((string)($payload['inspection_notes'] ?? ''));
         $costPriceInput = $payload['cost_price'] ?? null;
         $salePriceInput = $payload['sale_price'] ?? null;
+        $expiryDate = $payload['expiry_date'] ?? null;
+
+        error_log("🔍 process_damaged_inspection - inspection_id: " . var_export($inspection_id, true));
 
         if (!$inspection_id) {
-            http_response_code(400);
-            echo json_encode(['status' => 'error', 'message' => 'Inspection ID is required']);
-            exit;
+            sendJsonResponse([
+                'status' => 'error',
+                'message' => 'Inspection ID is required'
+            ], 400);
         }
 
         $pdo->beginTransaction();
 
+        // Check the inspection record from consolidated returned_items table
+        $checkStmt = $pdo->prepare("SELECT ri.return_id, ri.product_id FROM returned_items ri WHERE ri.return_id = :inspection_id AND ri.reason_id = 8 LIMIT 1");
+        $checkStmt->execute([':inspection_id' => (int)$inspection_id]);
+        $checkResult = $checkStmt->fetch(PDO::FETCH_ASSOC);
+        error_log("✅ Check inspection exists: " . print_r($checkResult, true));
+
         $stmt = $pdo->prepare("SELECT 
-                di.*,
-                ri.return_id,
+                ri.*,
+                ri.return_id AS inspection_id,
                 ri.return_qty AS original_return_qty,
                 ri.return_status,
                 ri.notes AS return_notes,
@@ -1136,23 +1476,33 @@ if ($action === 'process_damaged_inspection') {
                 p.remark_split AS source_remark_split,
                 p.product_category_id AS source_product_category_id,
                 p.category_name AS source_category_name
-            FROM damaged_return_inspections di
-            JOIN returned_items ri ON di.return_id = ri.return_id
-            JOIN products p ON di.product_id = p.product_id
-            WHERE di.inspection_id = :inspection_id
-            FOR UPDATE");
-        $stmt->execute([':inspection_id' => $inspection_id]);
+            FROM returned_items ri
+            LEFT JOIN products p ON ri.product_id = p.product_id
+            WHERE ri.return_id = :inspection_id AND ri.reason_id = 8");
+        $stmt->execute([':inspection_id' => (int)$inspection_id]);
         $inspection = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        error_log("✅ Fetched inspection data - Found: " . ($inspection ? 'Yes' : 'No') . ", inspection_id: " . $inspection_id);
+
         if (!$inspection) {
-            throw new Exception('Inspection not found');
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw new Exception('Inspection not found with id: ' . $inspection_id);
         }
 
-        if ($inspection['status'] !== 'pending') {
+        if ($inspection['return_status'] !== 'pending') {
             throw new Exception('Inspection already processed');
         }
 
         $newSku = buildDefectSku((string)($inspection['sku'] ?? ''));
+        $newBarcode = generateNewBarcode((int)$inspection_id, $newSku);
+        $inspectionProductId = isset($inspection['product_id']) ? (int)$inspection['product_id'] : 0;
+        $inspectionSku = (string)($inspection['sku'] ?? '');
+        $isNewTempProduct = ($inspectionProductId <= 0) || (strpos($inspectionSku, 'NEW-TEMP-') === 0);
+        
+        error_log("📦 Generated: newSku=$newSku, newBarcode=$newBarcode");
+        error_log("🔍 Product detection: inspectionProductId=$inspectionProductId, inspectionSku=$inspectionSku, isNewTempProduct=" . ($isNewTempProduct ? 'true' : 'false'));
 
         $costPrice = null;
         if (array_key_exists('cost_price', $payload)) {
@@ -1187,27 +1537,48 @@ if ($action === 'process_damaged_inspection') {
 
         $restockQty = round($restockQty, 2);
 
-        $existingProduct = findProductBySku($pdo, $newSku);
-        if ($existingProduct && (int)$existingProduct['product_id'] === (int)$inspection['product_id']) {
-            $newProductId = (int)$existingProduct['product_id'];
-        } elseif ($existingProduct) {
-            $newProductId = (int)$existingProduct['product_id'];
-            if ((int)$existingProduct['is_active'] !== 1) {
-                $pdo->prepare('UPDATE products SET is_active = 1 WHERE product_id = :product_id')
-                    ->execute([':product_id' => $newProductId]);
+        $newProductId = null;
+        if (!$isNewTempProduct) {
+            error_log("🔄 Creating defect product (Original Product Flow)...");
+            
+            $existingProduct = findProductBySku($pdo, $newSku);
+            if ($existingProduct && (int)$existingProduct['product_id'] === $inspectionProductId) {
+                $newProductId = (int)$existingProduct['product_id'];
+                error_log("♻️ Using existing product with same ID: $newProductId");
+            } elseif ($existingProduct) {
+                $newProductId = (int)$existingProduct['product_id'];
+                error_log("♻️ Using existing product with different ID: $newProductId");
+                if ((int)$existingProduct['is_active'] !== 1) {
+                    $pdo->prepare('UPDATE products SET is_active = 1 WHERE product_id = :product_id')
+                        ->execute([':product_id' => $newProductId]);
+                    error_log("✓ Activated existing product");
+                }
+            } else {
+                error_log("🆕 Creating new defect product...");
+                
+                $sourceProduct = [
+                    'name' => $inspection['source_product_name'] ?? $inspection['product_name'],
+                    'barcode' => $inspection['source_barcode'] ?? $inspection['barcode'],
+                    'unit' => $inspection['source_unit'] ?? $inspection['unit'],
+                    'image' => $inspection['source_image'] ?? $inspection['image'],
+                    'remark_color' => $inspection['source_remark_color'] ?? '',
+                    'remark_split' => $inspection['source_remark_split'] ?? 0,
+                    'product_category_id' => $inspection['source_product_category_id'] ?? null,
+                    'category_name' => $inspection['source_category_name'] ?? $inspection['category_name']
+                ];
+                
+                error_log("📋 Source product data: " . json_encode($sourceProduct, JSON_UNESCAPED_UNICODE));
+                
+                if (!$sourceProduct['name']) {
+                    error_log("⚠️ No product name available, using default");
+                    $sourceProduct['name'] = 'สินค้าชำรุด (ไม่ระบุชื่อ)';
+                }
+                
+                $newProductId = createDefectProduct($pdo, $sourceProduct, $newSku, (int)$user_id, $newBarcode);
+                error_log("✅ Created defect product: newProductId=$newProductId, newSku=$newSku, newBarcode=$newBarcode");
             }
         } else {
-            $sourceProduct = [
-                'name' => $inspection['source_product_name'],
-                'barcode' => $inspection['source_barcode'],
-                'unit' => $inspection['source_unit'],
-                'image' => $inspection['source_image'],
-                'remark_color' => $inspection['source_remark_color'],
-                'remark_split' => $inspection['source_remark_split'],
-                'product_category_id' => $inspection['source_product_category_id'],
-                'category_name' => $inspection['source_category_name']
-            ];
-            $newProductId = createDefectProduct($pdo, $sourceProduct, $newSku, (int)$user_id);
+            error_log("⏭️ Skipping product creation (New Product Flow - will use temp_products)");
         }
 
         // Normalize disposition label and downstream behavior flag
@@ -1235,7 +1606,7 @@ if ($action === 'process_damaged_inspection') {
 
         $expiryDate = $inspection['expiry_date'] ?? $inspection['return_expiry_date'] ?? null;
         if (($inspection['expiry_date'] ?? null) === null && $expiryDate !== null) {
-            $setExpiry = $pdo->prepare('UPDATE damaged_return_inspections SET expiry_date = :expiry_date WHERE inspection_id = :inspection_id');
+            $setExpiry = $pdo->prepare('UPDATE returned_items SET expiry_date = :expiry_date WHERE return_id = :inspection_id AND reason_id = 8');
             $setExpiry->execute([
                 ':expiry_date' => $expiryDate,
                 ':inspection_id' => $inspection_id
@@ -1243,70 +1614,98 @@ if ($action === 'process_damaged_inspection') {
             $inspection['expiry_date'] = $expiryDate;
         }
 
+        // Initialize undefined variables to prevent PHP warnings
         $poIdForMovement = 0;
-        $poNumberForMovement = $inspection['po_number'] ?? null;
+        $poNumberForMovement = null;
         $receiveItemId = null;
 
-        // Only create PO/items/movements when the item is sellable
+        // Resolve PO from inspection data
         if ($isSellable) {
-            $poContext = ensureDamagedReturnPo($pdo, $inspection, (int)$user_id, $costPrice, $salePrice, $restockQty);
-            $poIdForMovement = (int)($poContext['po_id'] ?? 0);
-            $poNumberForMovement = $poContext['po_number'] ?? ($inspection['po_number'] ?? null);
-
-            if ($poIdForMovement > 0) {
-                $receiveItemId = ensureDamagedPurchaseOrderItem(
-                    $pdo,
-                    $poIdForMovement,
-                    $newProductId,
-                    $restockQty,
-                    $costPrice,
-                    $salePrice
-                );
-            }
+            $poIdForMovement = isset($inspection['po_id']) ? (int)$inspection['po_id'] : 0;
+            $poNumberForMovement = $inspection['po_number'] ?? null;
         }
 
-        $updateInspection = $pdo->prepare("UPDATE damaged_return_inspections SET
-                status = 'completed',
+        // ═══════════════════════════════════════════════════════════════════════
+        // บันทึกสินค้าใหม่เข้า temp_products (เฉพาะสินค้าที่ไม่มีในระบบ เท่านั้น)
+        // สินค้าเดิมจะบันทึกลง products table โดยตรง และไม่ต้องรอการอนุมัติ
+        // ═══════════════════════════════════════════════════════════════════════
+        $tempProductId = null;
+        if ($isSellable && $isNewTempProduct) {
+            // สินค้าใหม่ที่ยังไม่มีในระบบ → บันทึกลง temp_products รอการอนุมัติ
+            error_log("📝 New Product: Inserting to temp_products: newSku=$newSku, restockQty=$restockQty");
+            $tempProductId = insertTempProductFromDamagedInspection(
+                $pdo,
+                $inspection,
+                $newSku,
+                $restockQty,
+                $costPrice,
+                $salePrice,
+                $inspectionNotes,
+                (int)$user_id,
+                $expiryDate
+            );
+            error_log("✅ Temp product inserted: tempProductId=" . ($tempProductId ?? 'NULL'));
+
+            if (!empty($tempProductId)) {
+                $updateTempLink = $pdo->prepare("UPDATE returned_items ri
+                    JOIN temp_products tp ON ri.barcode COLLATE utf8mb4_general_ci = tp.provisional_barcode COLLATE utf8mb4_general_ci
+                    SET ri.temp_product_id = tp.temp_product_id
+                    WHERE ri.return_id = :return_id AND tp.temp_product_id = :temp_product_id");
+                $updateTempLink->execute([
+                    ':return_id' => $inspection['return_id'],
+                    ':temp_product_id' => $tempProductId
+                ]);
+            }
+        } elseif ($isSellable && !$isNewTempProduct) {
+            // สินค้าเดิมที่มีในระบบอยู่แล้ว → สร้าง product ใหม่ได้แล้ว ไม่ต้องบันทึกลง temp_products
+            error_log("✅ Original Product: Already created in products table (product_id=$newProductId)");
+            error_log("   → Will add to PO and record receive directly (skip temp_products)");
+        } else {
+            error_log("⏭️ Skipping temp_product (disposition=discard)");
+        }
+
+        $updateInspection = $pdo->prepare("UPDATE returned_items SET
+                return_status = 'completed',
                 new_sku = :new_sku,
+                new_barcode = :new_barcode,
                 new_product_id = :new_product_id,
                 cost_price = :cost_price,
                 sale_price = :sale_price,
                 restock_qty = :restock_qty,
                 defect_notes = :defect_notes,
-                po_id = :po_id,
-                po_number = :po_number,
                 inspected_by = :inspected_by,
                 inspected_at = NOW(),
                 restocked_by = :restocked_by,
                 restocked_at = NOW(),
                 updated_at = NOW()
-            WHERE inspection_id = :inspection_id");
+            WHERE return_id = :inspection_id AND reason_id = 8");
 
         $updateInspection->execute([
             ':new_sku' => $newSku,
+            ':new_barcode' => $newBarcode,
             ':new_product_id' => $newProductId,
             ':cost_price' => $costPrice,
             ':sale_price' => $salePrice,
             ':restock_qty' => $restockQty,
             ':defect_notes' => $combinedNotes !== '' ? $combinedNotes : null,
-            ':po_id' => $poIdForMovement > 0 ? $poIdForMovement : null,
-            ':po_number' => $poNumberForMovement,
             ':inspected_by' => $user_id,
             ':restocked_by' => $user_id,
             ':inspection_id' => $inspection_id
         ]);
+        
+        error_log("✅ Updated returned_items: new_sku=$newSku, new_barcode=$newBarcode");
 
-        if ($isSellable && $poIdForMovement > 0 && ((int)($inspection['po_id'] ?? 0) !== $poIdForMovement || ($inspection['po_number'] ?? null) !== $poNumberForMovement)) {
-            $updateReturnPo = $pdo->prepare('UPDATE returned_items SET po_id = :po_id, po_number = :po_number WHERE return_id = :return_id');
-            $updateReturnPo->execute([
-                ':po_id' => $poIdForMovement,
-                ':po_number' => $poNumberForMovement,
-                ':return_id' => $inspection['return_id']
-            ]);
+        // Note: po_number column has been removed from returned_items schema
+        // PO information is referenced via po_id only
+
+        $noteLine = "\n[INSPECTED] เปลี่ยน SKU เป็น {$newSku} (Barcode: {$newBarcode}) จำนวน {$restockQty} โดยผู้ใช้ {$user_id} เวลา " . date('Y-m-d H:i:s');
+        if ($tempProductId > 0) {
+            $noteLine .= " | บันทึกลง temp_products (ID: $tempProductId)";
         }
-
-        $noteLine = "\n[INSPECTED] เปลี่ยน SKU เป็น {$newSku} ({$restockQty}) โดยผู้ใช้ {$user_id} เวลา " . date('Y-m-d H:i:s');
         $isReturnableValue = $isSellable ? 1 : 0;
+        
+        error_log("📝 Updating returned_items: return_id=" . $inspection['return_id'] . ", status=completed, is_returnable=" . $isReturnableValue);
+        
         $updateReturn = $pdo->prepare("UPDATE returned_items SET 
                 return_status = 'completed',
                 is_returnable = :is_returnable,
@@ -1319,61 +1718,140 @@ if ($action === 'process_damaged_inspection') {
             ':return_id' => $inspection['return_id']
         ]);
 
-        if ($isSellable && $receiveItemId !== null && $poIdForMovement > 0) {
-            insertDamagedReceiveMovement(
-                $pdo,
-                $receiveItemId,
-                $poIdForMovement,
-                $restockQty,
-                (int)$user_id,
-                $newSku,
-                $combinedNotes !== '' ? $combinedNotes : null,
-                (string)($inspection['return_code'] ?? ''),
-                $expiryDate
-            );
+        // ════════════════════════════════════════════════════════════════════════════════
+        // บันทึกสินค้าชำรุดที่ขายได้เข้า PO ต้นทาง (สำหรับสินค้าเดิมเท่านั้น)
+        // สินค้าใหม่จะบันทึกลง temp_products และรอการอนุมัติก่อน
+        // ════════════════════════════════════════════════════════════════════════════════
+        if ($isSellable && $newProductId && !$isNewTempProduct) {
+            // For original products that are defective and sellable:
+            // Add new item to PO and record receive
+            $poIdForMovement = isset($inspection['po_id']) ? (int)$inspection['po_id'] : 0;
+            
+            error_log("📋 Checking PO addition conditions:");
+            error_log("   - isSellable: " . ($isSellable ? 'YES' : 'NO'));
+            error_log("   - newProductId: " . ($newProductId ? $newProductId : 'NULL'));
+            error_log("   - isNewTempProduct: " . ($isNewTempProduct ? 'YES' : 'NO'));
+            error_log("   - poId: $poIdForMovement");
+            
+            if ($poIdForMovement > 0) {
+                try {
+                    error_log("🔄 Adding defect product to PO: poId=$poIdForMovement, productId=$newProductId, sku=$newSku, qty=$restockQty");
+                    
+                    // Add new item to purchase_order_items
+                    $newPoItemId = addPurchaseOrderItemForDefect(
+                        $pdo,
+                        $poIdForMovement,
+                        $newProductId,
+                        $restockQty,
+                        $newSku,
+                        (string)($inspection['return_code'] ?? ''),
+                        $combinedNotes !== '' ? $combinedNotes : null
+                    );
+
+                    if ($newPoItemId) {
+                        error_log("✅ Added PO item successfully: itemId=$newPoItemId");
+                        
+                        // Record receipt of the new defect product
+                        $receiveId = recordReceiveDefectItem(
+                            $pdo,
+                            $newPoItemId,
+                            $poIdForMovement,  // ← เพิ่ม po_id parameter
+                            $newProductId,
+                            $restockQty,
+                            (int)$user_id,
+                            (string)($inspection['return_code'] ?? ''),
+                            $newSku,
+                            $combinedNotes !== '' ? $combinedNotes : null
+                        );
+
+                        error_log("✅ Recorded defect product to PO successfully:");
+                        error_log("   - PO ID: $poIdForMovement");
+                        error_log("   - New Product ID: $newProductId");
+                        error_log("   - New SKU: $newSku");
+                        error_log("   - PO Item ID: $newPoItemId");
+                        error_log("   - Receive ID: $receiveId");
+                        error_log("   - Quantity: $restockQty");
+                        
+                        // บันทึก product activity
+                        logProductActivity(
+                            $pdo,
+                            $newProductId,
+                            (int)$user_id,
+                            $restockQty,
+                            (string)($inspection['return_code'] ?? ''),
+                            $newSku,
+                            $combinedNotes !== '' ? $combinedNotes : null
+                        );
+                        error_log("✅ Logged product activity for defect product");
+                    } else {
+                        error_log("⚠️ Failed to add PO item (returned null)");
+                    }
+                } catch (Exception $e) {
+                    error_log("❌ Failed to record defect product to PO: " . $e->getMessage());
+                    error_log("   Stack trace: " . $e->getTraceAsString());
+                    // Continue - this is not critical (but log the error clearly)
+                }
+            } else {
+                error_log("⚠️ No PO ID found for defect product recording: inspection_id=$inspection_id");
+            }
+        } else {
+            error_log("⏭️ Skipping PO addition - Conditions not met:");
+            error_log("   - isSellable: " . ($isSellable ? 'YES' : 'NO'));
+            error_log("   - newProductId: " . ($newProductId ? $newProductId : 'NULL'));
+            error_log("   - isNewTempProduct: " . ($isNewTempProduct ? 'YES (SKIP)' : 'NO'));
+            
+            if ($isSellable && $isNewTempProduct) {
+                error_log("ℹ️ Defect product is new (temp_products): will be added to PO after approval");
+                error_log("   - Temp Product ID: $tempProductId");
+                error_log("   - New SKU: $newSku");
+            } elseif ($isSellable && !$newProductId) {
+                error_log("⚠️ No product ID generated for defect product (cannot add to PO)");
+            } elseif (!$isSellable) {
+                error_log("ℹ️ Product marked as discard (not sellable) - not adding to PO");
+            }
         }
 
-        if ($isSellable) {
-            // Only log stock movement when item is sellable
-            logProductActivity(
-                $pdo,
-                $newProductId,
-                (int)$user_id,
-                $restockQty,
-                (string)($inspection['return_code'] ?? ''),
-                $newSku,
-                $combinedNotes !== '' ? $combinedNotes : null
-            );
-        }
-
-        // Update PO status to check if all items have been processed
-        // Get the original PO ID from the inspection record
+        // Update original PO status if it exists
         $originalPoId = $inspection['po_id'] ?? null;
-        if ($originalPoId) {
-            updatePOStatusInline($pdo, $originalPoId);
+        if ($originalPoId && is_numeric($originalPoId) && (int)$originalPoId > 0) {
+            updatePOStatusInline($pdo, (int)$originalPoId);
         }
 
         $pdo->commit();
+        
+        error_log("✅ PROCESS_DAMAGED_INSPECTION SUCCESS: inspection_id=$inspection_id, new_product_id=$newProductId, temp_product_id=$tempProductId");
 
-        echo json_encode([
+        sendJsonResponse([
             'status' => 'success',
             'message' => 'บันทึกการตรวจสอบสินค้าเรียบร้อย',
-            'new_product_id' => $newProductId
-        ]);
+            'new_product_id' => $newProductId,
+            'temp_product_id' => $tempProductId
+        ], 200);
     } catch (Exception $e) {
+        error_log("❌ PROCESS_DAMAGED_INSPECTION FAILED: " . $e->getMessage() . " in file " . $e->getFile() . " line " . $e->getLine());
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        
+        sendJsonResponse([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], 500);
     }
-    exit;
 }
 
 // ========== APPROVE RETURN ==========
 if ($action === 'approve_return') {
     try {
         $data = json_decode(file_get_contents('php://input'), true);
+        
+        // Validate that JSON was properly decoded
+        if (!is_array($data)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid JSON payload']);
+            exit;
+        }
+        
         $return_id = $data['return_id'] ?? null;
         
         if (!$return_id) {
@@ -1596,6 +2074,14 @@ if ($action === 'approve_return') {
 if ($action === 'reject_return') {
     try {
         $data = json_decode(file_get_contents('php://input'), true);
+        
+        // Validate that JSON was properly decoded
+        if (!is_array($data)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid JSON payload']);
+            exit;
+        }
+        
         $return_id = $data['return_id'] ?? null;
         $reason = $data['reason'] ?? '';
         
@@ -1669,6 +2155,21 @@ if ($action === 'get_return') {
     }
     exit;
 }
+
+// === FINAL: Handle any uncaught fatal errors ===
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error !== null && ($error['type'] === E_ERROR || $error['type'] === E_PARSE || $error['type'] === E_COMPILE_ERROR)) {
+        error_log("💥 FATAL ERROR: " . $error['message'] . " in " . $error['file'] . ":" . $error['line']);
+        http_response_code(500);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Fatal error: ' . $error['message'],
+            'file' => $error['file'],
+            'line' => $error['line']
+        ]);
+    }
+});
 
 http_response_code(400);
 echo json_encode(['status' => 'error', 'message' => 'Invalid action']);

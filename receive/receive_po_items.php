@@ -1349,13 +1349,17 @@ function resolveProductImage(item) {
 
 function showDamagedItemModal({ itemId, productId, productName, orderedQty, remainingQty, unit, sku }) {
     $('#damagedItemId').val(itemId);
-    $('#damagedProductId').val(productId);
+    $('#damagedProductId').val(productId || '');
     $('#damagedPoId').val(currentPoData.poId || '');
     $('#damagedProductName').text(productName || '-');
     $('#damagedSku').text(sku || '-');
     $('#damagedOrdered').text(orderedQty.toLocaleString() + ' ' + (unit || ''));
     $('#damagedRemaining').text(remainingQty.toLocaleString() + ' ' + (unit || ''));
     $('#damagedUnit').text(unit || '');
+    // เก็บข้อมูลเพิ่มเติมสำหรับการสร้าง temporary data
+    $('#damagedItemModal').data('productName', productName || '');
+    $('#damagedItemModal').data('sku', sku || '');
+    $('#damagedItemModal').data('unit', unit || '');
     $('#damagedQty').attr('max', remainingQty > 0 ? remainingQty : 0).val(remainingQty > 0 ? remainingQty : '');
     $('#damagedNotes').val('');
     $('#damagedSellable').prop('checked', true);
@@ -1375,23 +1379,39 @@ function submitDamagedItem() {
     const maxQty = parseFloat($('#damagedQty').attr('max'));
     const notes = $('#damagedNotes').val() || '';
     const disposition = $('input[name="damagedDisposition"]:checked').val();
+    
+    // ดึงข้อมูลเพิ่มเติมที่เก็บไว้สำหรับสินค้าใหม่
+    const modalData = $('#damagedItemModal').data();
+    const productName = modalData.productName || '';
+    const sku = modalData.sku || '';
+    const unit = modalData.unit || '';
+
+    console.log('📋 submitDamagedItem called with:', {
+        itemId, productId, poId, qty, maxQty, notes, disposition,
+        productName, sku, unit, damagedReasonId, modalData
+    });
 
     if (!damagedReasonId) {
+        console.warn('❌ No damagedReasonId found');
         Swal.fire({ icon: 'warning', title: 'ไม่พบเหตุผลชำรุดบางส่วน', text: 'กรุณาเพิ่มเหตุผลก่อน' });
         return;
     }
 
-    if (!itemId || !productId || !poId) {
-        Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบ', text: 'ไม่พบข้อมูลสินค้า/PO' });
+    // อนุญาต productId เป็น null สำหรับสินค้าใหม่  
+    if (!itemId || !poId) {
+        console.warn('❌ Missing required fields:', { itemId, poId });
+        Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบ', text: 'ไม่พบข้อมูล Item/PO' });
         return;
     }
 
     if (!qty || qty <= 0) {
+        console.warn('❌ Invalid quantity:', qty);
         Swal.fire({ icon: 'warning', title: 'จำนวนไม่ถูกต้อง', text: 'กรุณากรอกจำนวนที่มากกว่า 0' });
         return;
     }
 
     if (Number.isFinite(maxQty) && qty > maxQty + 0.00001) {
+        console.warn('❌ Quantity exceeds max:', { qty, maxQty });
         Swal.fire({ icon: 'warning', title: 'จำนวนเกินกำหนด', text: 'จำนวนชำรุดต้องไม่เกินคงเหลือรับได้' });
         return;
     }
@@ -1399,6 +1419,14 @@ function submitDamagedItem() {
     const finalNotes = disposition === 'discard'
         ? `[ทิ้ง/ใช้ไม่ได้] ${notes}`.trim()
         : `[ขายได้] ${notes}`.trim();
+
+    // สร้าง temporary data สำหรับสินค้าใหม่ที่ขาด SKU, Barcode
+    const temporaryData = {
+        sku: sku || `NEW-TEMP-${Date.now()}`,
+        barcode: `TMP-${itemId}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+        productName: productName || 'สินค้าใหม่ (ชำรุดบางส่วน)',
+        unit: unit || 'ชิ้น'
+    };
 
     Swal.fire({
         title: 'ยืนยันส่งตรวจสอบสินค้าชำรุด',
@@ -1412,31 +1440,62 @@ function submitDamagedItem() {
     }).then((result) => {
         if (!result.isConfirmed) return;
 
+        const requestData = {
+            action: 'create_return',
+            po_id: poId,
+            item_id: itemId,
+            product_id: productId || null,
+            return_qty: qty,
+            reason_id: damagedReasonId,
+            notes: finalNotes,
+            // ส่งข้อมูลชั่วคราวสำหรับสินค้าใหม่
+            temporary_sku: temporaryData.sku,
+            temporary_barcode: temporaryData.barcode,
+            temporary_product_name: temporaryData.productName,
+            temporary_unit: temporaryData.unit
+        };
+        
+        console.log('📤 Sending damaged item data:', requestData);
+
         $.ajax({
             url: '../api/returned_items_api.php?action=create_return',
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({
-                action: 'create_return',
-                po_id: poId,
-                item_id: itemId,
-                product_id: productId,
-                return_qty: qty,
-                reason_id: damagedReasonId,
-                notes: finalNotes
-            }),
+            data: JSON.stringify(requestData),
             dataType: 'json',
             success: function(response) {
+                console.log('✅ Damaged item API response:', response);
                 if (response && response.status === 'success') {
                     Swal.fire({ icon: 'success', title: 'ส่งเข้าตรวจสอบแล้ว', text: 'ไปที่เมนูสินค้าชำรุดเพื่อดำเนินการต่อ' });
                     $('#damagedItemModal').modal('hide');
                 } else {
-                    Swal.fire({ icon: 'error', title: 'ไม่สามารถส่งตรวจสอบได้', text: (response && response.message) || 'กรุณาลองใหม่' });
+                    const errorMsg = (response && response.message) || 'กรุณาลองใหม่';
+                    console.error('❌ API error:', errorMsg);
+                    Swal.fire({ icon: 'error', title: 'ไม่สามารถส่งตรวจสอบได้', text: errorMsg });
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Damaged submit error:', error);
-                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถส่งตรวจสอบได้ กรุณาลองใหม่' });
+                console.error('❌ AJAX Error - Status:', status, 'Error:', error);
+                console.error('❌ XHR Response:', xhr.responseText);
+                let errorMessage = 'ไม่สามารถส่งตรวจสอบได้ กรุณาลองใหม่';
+                
+                try {
+                    if (xhr.responseText) {
+                        const errorData = JSON.parse(xhr.responseText);
+                        if (errorData && errorData.message) {
+                            errorMessage = errorData.message;
+                            console.error('❌ Parsed error message:', errorMessage);
+                        }
+                    }
+                } catch(e) {
+                    console.error('❌ Failed to parse error response:', e);
+                }
+                
+                Swal.fire({ 
+                    icon: 'error', 
+                    title: 'เกิดข้อผิดพลาด', 
+                    text: errorMessage 
+                });
             }
         });
     });
@@ -1802,7 +1861,9 @@ function displayPoItems(items, mode) {
             const cancelledQty = parseFloat(item.cancel_qty || 0);
             const damagedQty = parseFloat(item.damaged_qty || 0);
             const canReceive = remainingQty > 0;
-            const allowDamaged = !!item.product_id;
+            // อนุญาตปุ่มชำรุดสำหรับ: (1) สินค้าปกติที่มี product_id หรือ (2) สินค้าใหม่ในชื่อสั่งซื้อ
+            const isNewProductPO = currentPoData.remark && currentPoData.remark.toLowerCase().includes('new product');
+            const allowDamaged = !!item.product_id || isNewProductPO;
             const isCancelled = item.is_cancelled === true || item.is_cancelled === 1;
             const productName = escapeHtml(item.product_name);
             const imageSrc = resolveProductImage(item);

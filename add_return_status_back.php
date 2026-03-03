@@ -1,0 +1,33 @@
+<?php
+require 'config/db_connect.php';
+
+echo "═════════════════════════════════════════════════════════════\n";
+echo "🔧 RESTORING return_status COLUMN FOR APPROVAL WORKFLOW\n";
+echo "═════════════════════════════════════════════════════════════\n\n";
+
+try {
+    // Add return_status back (needed for approval workflow)
+    echo "▶ Adding return_status column back for approval workflow...\n";
+    $pdo->exec("ALTER TABLE returned_items ADD COLUMN return_status VARCHAR(50) NOT NULL DEFAULT 'pending' AFTER status");
+    echo "  ✓ return_status column added\n\n";
+    
+    // Verify
+    $stmt = $pdo->query("DESCRIBE returned_items");
+    $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    echo "═════════════════════════════════════════════════════════════\n";
+    echo "✓ Updated returned_items structure:\n";
+    echo "═════════════════════════════════════════════════════════════\n\n";
+    
+    foreach ($columns as $col) {
+        echo "✓ " . $col['Field'] . " (" . $col['Type'] . ")\n";
+    }
+    
+    echo "\n═════════════════════════════════════════════════════════════\n";
+    echo "✓ Total columns: " . count($columns) . "\n";
+    echo "═════════════════════════════════════════════════════════════\n";
+    
+} catch (Exception $e) {
+    echo "❌ Error: " . $e->getMessage() . "\n";
+}
+?>

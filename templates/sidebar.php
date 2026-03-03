@@ -328,6 +328,17 @@
                     <span class="material-icons">inventory_2</span>
                     <span class="submenu-text">รายงานสินค้า</span>
                 </a>
+            </div>
+        </div>
+
+        <!-- หมวดหมู่: ใบกำกับภาษี -->
+        <div class="menu-category">
+            <div class="category-header" onclick="toggleCategory('tax-invoice')">
+                <span class="material-icons">description</span>
+                <span class="category-text">ใบกำกับภาษี</span>
+                <span class="material-icons category-arrow">keyboard_arrow_down</span>
+            </div>
+            <div class="submenu" id="tax-invoice-submenu">
                 <a href="<?= getPath('reports/tax_invoice.php') ?>" class="submenu-item<?=isActive('tax_invoice.php')?>">
                     <span class="material-icons">description</span>
                     <span class="submenu-text">ใบกำกับภาษี</span>

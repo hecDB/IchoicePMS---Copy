@@ -9079,3 +9079,185 @@
 [04-Feb-2026 15:28:16 Europe/Berlin] Issue completed: 1 successful, 0 errors
 [06-Feb-2026 17:35:58 Europe/Berlin] update_po_section.php called with: {"po_id":"40","item_id":"47","product_id":"42","product_name":"\u0e1c\u0e49\u0e32\u0e44\u0e21\u0e42\u0e04\u0e23\u0e44\u0e1f\u0e40\u0e1a\u0e2d\u0e23\u0e4c 3 \u0e1c\u0e37\u0e19","qty":"9","price_per_unit":"254","currency_id":"1","price_original":"254","exchange_rate":"1","update_type":"item"}
 [06-Feb-2026 17:35:58 Europe/Berlin] Processing update: po_id=40, type=item
+[27-Feb-2026 04:16:41 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:16:41 Europe/Berlin] Request query: ำ
+[27-Feb-2026 04:16:41 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:16:41 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%B3&limit=10
+[27-Feb-2026 04:16:41 Europe/Berlin] Searching for: 'ำ' with limit: 10
+[27-Feb-2026 04:16:41 Europe/Berlin] About to encode 4 results for type: default
+[27-Feb-2026 04:16:41 Europe/Berlin] Sent JSON response length: 2720
+[27-Feb-2026 04:16:41 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:20:55 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:20:55 Europe/Berlin] Request query: ดื่ม
+[27-Feb-2026 04:20:55 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:20:55 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%94%E0%B8%B7%E0%B9%88%E0%B8%A1&limit=10
+[27-Feb-2026 04:20:55 Europe/Berlin] Searching for: 'ดื่ม' with limit: 10
+[27-Feb-2026 04:20:55 Europe/Berlin] About to encode 1 results for type: default
+[27-Feb-2026 04:20:55 Europe/Berlin] Sent JSON response length: 476
+[27-Feb-2026 04:20:55 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:21:57 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:21:57 Europe/Berlin] Request query: น้ำดื่ม 600ml
+[27-Feb-2026 04:21:57 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:21:57 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%99%E0%B9%89%E0%B8%B3%E0%B8%94%E0%B8%B7%E0%B9%88%E0%B8%A1%20600ml&limit=10
+[27-Feb-2026 04:21:57 Europe/Berlin] Searching for: 'น้ำดื่ม 600ml' with limit: 10
+[27-Feb-2026 04:21:57 Europe/Berlin] About to encode 1 results for type: default
+[27-Feb-2026 04:21:57 Europe/Berlin] Sent JSON response length: 476
+[27-Feb-2026 04:21:57 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:23:06 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:23:06 Europe/Berlin] Request query: กา
+[27-Feb-2026 04:23:06 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:23:06 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%81%E0%B8%B2&limit=10
+[27-Feb-2026 04:23:06 Europe/Berlin] Searching for: 'กา' with limit: 10
+[27-Feb-2026 04:23:06 Europe/Berlin] About to encode 2 results for type: default
+[27-Feb-2026 04:23:06 Europe/Berlin] Sent JSON response length: 1230
+[27-Feb-2026 04:23:06 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:25:30 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:25:30 Europe/Berlin] Request query: น้ำ
+[27-Feb-2026 04:25:30 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:25:30 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%99%E0%B9%89%E0%B8%B3&limit=10
+[27-Feb-2026 04:25:30 Europe/Berlin] Searching for: 'น้ำ' with limit: 10
+[27-Feb-2026 04:25:30 Europe/Berlin] About to encode 2 results for type: default
+[27-Feb-2026 04:25:30 Europe/Berlin] Sent JSON response length: 1166
+[27-Feb-2026 04:25:30 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:25:30 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:25:30 Europe/Berlin] Request query: น้ำด
+[27-Feb-2026 04:25:30 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:25:30 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%99%E0%B9%89%E0%B8%B3%E0%B8%94&limit=10
+[27-Feb-2026 04:25:31 Europe/Berlin] Searching for: 'น้ำด' with limit: 10
+[27-Feb-2026 04:25:31 Europe/Berlin] About to encode 1 results for type: default
+[27-Feb-2026 04:25:31 Europe/Berlin] Sent JSON response length: 476
+[27-Feb-2026 04:25:31 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:25:39 Europe/Berlin] update_po_section.php called with: {"po_id":"6","product_id":"4","product_name":"\u0e19\u0e49\u0e33\u0e14\u0e37\u0e48\u0e21 600ml","qty":"1","price_per_unit":"0","unit":"\u0e02\u0e27\u0e14","currency_id":"2","price_original":"0","exchange_rate":"39","update_type":"add_item"}
+[27-Feb-2026 04:25:39 Europe/Berlin] Processing update: po_id=6, type=add_item
+[27-Feb-2026 04:25:47 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:25:48 Europe/Berlin] Request query: ก
+[27-Feb-2026 04:25:48 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:25:48 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%81&limit=10
+[27-Feb-2026 04:25:48 Europe/Berlin] Searching for: 'ก' with limit: 10
+[27-Feb-2026 04:25:48 Europe/Berlin] About to encode 6 results for type: default
+[27-Feb-2026 04:25:48 Europe/Berlin] Sent JSON response length: 3696
+[27-Feb-2026 04:25:48 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:25:56 Europe/Berlin] update_po_section.php called with: {"po_id":"6","item_id":"20","update_type":"delete_item"}
+[27-Feb-2026 04:25:56 Europe/Berlin] Processing update: po_id=6, type=delete_item
+[27-Feb-2026 04:26:15 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:26:15 Europe/Berlin] Request query: น้ำ
+[27-Feb-2026 04:26:15 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:26:15 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%99%E0%B9%89%E0%B8%B3&limit=10
+[27-Feb-2026 04:26:15 Europe/Berlin] Searching for: 'น้ำ' with limit: 10
+[27-Feb-2026 04:26:15 Europe/Berlin] About to encode 2 results for type: default
+[27-Feb-2026 04:26:15 Europe/Berlin] Sent JSON response length: 1166
+[27-Feb-2026 04:26:15 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:26:42 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:26:42 Europe/Berlin] Request query: น้ำดื่ม 600m
+[27-Feb-2026 04:26:42 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:26:42 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%99%E0%B9%89%E0%B8%B3%E0%B8%94%E0%B8%B7%E0%B9%88%E0%B8%A1%20600m&limit=10
+[27-Feb-2026 04:26:42 Europe/Berlin] Searching for: 'น้ำดื่ม 600m' with limit: 10
+[27-Feb-2026 04:26:42 Europe/Berlin] About to encode 1 results for type: default
+[27-Feb-2026 04:26:42 Europe/Berlin] Sent JSON response length: 476
+[27-Feb-2026 04:26:42 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:26:45 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:26:45 Europe/Berlin] Request query: แฟม
+[27-Feb-2026 04:26:45 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:26:45 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B9%81%E0%B8%9F%E0%B8%A1&limit=10
+[27-Feb-2026 04:26:45 Europe/Berlin] Searching for: 'แฟม' with limit: 10
+[27-Feb-2026 04:26:45 Europe/Berlin] About to encode 0 results for type: default
+[27-Feb-2026 04:26:45 Europe/Berlin] Sent JSON response length: 2
+[27-Feb-2026 04:26:45 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:26:46 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:26:46 Europe/Berlin] Request query: แฟ
+[27-Feb-2026 04:26:46 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:26:46 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B9%81%E0%B8%9F&limit=10
+[27-Feb-2026 04:26:46 Europe/Berlin] Searching for: 'แฟ' with limit: 10
+[27-Feb-2026 04:26:46 Europe/Berlin] About to encode 3 results for type: default
+[27-Feb-2026 04:26:46 Europe/Berlin] Sent JSON response length: 2005
+[27-Feb-2026 04:26:46 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:26:58 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:26:58 Europe/Berlin] Request query: แฟ้มเอกสารพลาสติ
+[27-Feb-2026 04:26:58 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:26:58 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B9%81%E0%B8%9F%E0%B9%89%E0%B8%A1%E0%B9%80%E0%B8%AD%E0%B8%81%E0%B8%AA%E0%B8%B2%E0%B8%A3%E0%B8%9E%E0%B8%A5%E0%B8%B2%E0%B8%AA%E0%B8%95%E0%B8%B4&limit=10
+[27-Feb-2026 04:26:58 Europe/Berlin] Searching for: 'แฟ้มเอกสารพลาสติ' with limit: 10
+[27-Feb-2026 04:26:58 Europe/Berlin] About to encode 2 results for type: default
+[27-Feb-2026 04:26:58 Europe/Berlin] Sent JSON response length: 1466
+[27-Feb-2026 04:26:58 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:27:00 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:27:00 Europe/Berlin] Request query: น้ำ
+[27-Feb-2026 04:27:00 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:27:00 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%99%E0%B9%89%E0%B8%B3&limit=10
+[27-Feb-2026 04:27:00 Europe/Berlin] Searching for: 'น้ำ' with limit: 10
+[27-Feb-2026 04:27:00 Europe/Berlin] About to encode 2 results for type: default
+[27-Feb-2026 04:27:00 Europe/Berlin] Sent JSON response length: 1166
+[27-Feb-2026 04:27:00 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:27:00 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:27:00 Europe/Berlin] Request query: น้ำดื
+[27-Feb-2026 04:27:00 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:27:00 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%99%E0%B9%89%E0%B8%B3%E0%B8%94%E0%B8%B7&limit=10
+[27-Feb-2026 04:27:00 Europe/Berlin] Searching for: 'น้ำดื' with limit: 10
+[27-Feb-2026 04:27:00 Europe/Berlin] About to encode 1 results for type: default
+[27-Feb-2026 04:27:00 Europe/Berlin] Sent JSON response length: 476
+[27-Feb-2026 04:27:00 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:27:13 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:27:13 Europe/Berlin] Request query: น้ำ
+[27-Feb-2026 04:27:13 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:27:13 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%99%E0%B9%89%E0%B8%B3&limit=10
+[27-Feb-2026 04:27:13 Europe/Berlin] Searching for: 'น้ำ' with limit: 10
+[27-Feb-2026 04:27:13 Europe/Berlin] About to encode 2 results for type: default
+[27-Feb-2026 04:27:13 Europe/Berlin] Sent JSON response length: 1166
+[27-Feb-2026 04:27:13 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:27:14 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:27:14 Europe/Berlin] Request query: น้ำดื
+[27-Feb-2026 04:27:14 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:27:14 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%99%E0%B9%89%E0%B8%B3%E0%B8%94%E0%B8%B7&limit=10
+[27-Feb-2026 04:27:14 Europe/Berlin] Searching for: 'น้ำดื' with limit: 10
+[27-Feb-2026 04:27:14 Europe/Berlin] About to encode 1 results for type: default
+[27-Feb-2026 04:27:14 Europe/Berlin] Sent JSON response length: 476
+[27-Feb-2026 04:27:14 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:28:22 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:28:22 Europe/Berlin] Request query: ีห
+[27-Feb-2026 04:28:22 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:28:22 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%B5%E0%B8%AB&limit=10
+[27-Feb-2026 04:28:22 Europe/Berlin] Searching for: 'ีห' with limit: 10
+[27-Feb-2026 04:28:22 Europe/Berlin] About to encode 0 results for type: default
+[27-Feb-2026 04:28:22 Europe/Berlin] Sent JSON response length: 2
+[27-Feb-2026 04:28:22 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:28:23 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:28:23 Europe/Berlin] Request query: i
+[27-Feb-2026 04:28:23 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:28:23 Europe/Berlin] Request URI: /api/product_search_api.php?q=i&limit=10
+[27-Feb-2026 04:28:23 Europe/Berlin] Searching for: 'i' with limit: 10
+[27-Feb-2026 04:28:23 Europe/Berlin] About to encode 0 results for type: default
+[27-Feb-2026 04:28:23 Europe/Berlin] Sent JSON response length: 2
+[27-Feb-2026 04:28:23 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:28:24 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:28:24 Europe/Berlin] Request query: us
+[27-Feb-2026 04:28:24 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:28:24 Europe/Berlin] Request URI: /api/product_search_api.php?q=us&limit=10
+[27-Feb-2026 04:28:24 Europe/Berlin] Searching for: 'us' with limit: 10
+[27-Feb-2026 04:28:24 Europe/Berlin] About to encode 1 results for type: default
+[27-Feb-2026 04:28:24 Europe/Berlin] Sent JSON response length: 469
+[27-Feb-2026 04:28:24 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:30:23 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:30:23 Europe/Berlin] Request query: ohef
+[27-Feb-2026 04:30:23 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:30:23 Europe/Berlin] Request URI: /api/product_search_api.php?q=ohef&limit=10
+[27-Feb-2026 04:30:23 Europe/Berlin] Searching for: 'ohef' with limit: 10
+[27-Feb-2026 04:30:23 Europe/Berlin] About to encode 0 results for type: default
+[27-Feb-2026 04:30:23 Europe/Berlin] Sent JSON response length: 2
+[27-Feb-2026 04:30:23 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:30:26 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:30:26 Europe/Berlin] Request query: ohef
+[27-Feb-2026 04:30:26 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:30:26 Europe/Berlin] Request URI: /api/product_search_api.php?q=ohef&limit=10
+[27-Feb-2026 04:30:26 Europe/Berlin] Searching for: 'ohef' with limit: 10
+[27-Feb-2026 04:30:26 Europe/Berlin] About to encode 0 results for type: default
+[27-Feb-2026 04:30:26 Europe/Berlin] Sent JSON response length: 2
+[27-Feb-2026 04:30:26 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:30:28 Europe/Berlin] === product_search_api.php START ===
+[27-Feb-2026 04:30:28 Europe/Berlin] Request query: น้ำด
+[27-Feb-2026 04:30:28 Europe/Berlin] Request method: GET
+[27-Feb-2026 04:30:28 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%99%E0%B9%89%E0%B8%B3%E0%B8%94&limit=10
+[27-Feb-2026 04:30:28 Europe/Berlin] Searching for: 'น้ำด' with limit: 10
+[27-Feb-2026 04:30:28 Europe/Berlin] About to encode 1 results for type: default
+[27-Feb-2026 04:30:28 Europe/Berlin] Sent JSON response length: 476
+[27-Feb-2026 04:30:28 Europe/Berlin] === product_search_api.php END ===
+[27-Feb-2026 04:30:42 Europe/Berlin] update_po_section.php called with: {"po_id":"6","product_id":"4","product_name":"\u0e19\u0e49\u0e33\u0e14\u0e37\u0e48\u0e21 600ml","qty":"10","price_per_unit":"1.5","unit":"\u0e02\u0e27\u0e14","currency_id":"2","price_original":"1.5","exchange_rate":"39","update_type":"add_item"}
+[27-Feb-2026 04:30:42 Europe/Berlin] Processing update: po_id=6, type=add_item

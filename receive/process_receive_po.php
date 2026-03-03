@@ -187,6 +187,8 @@ if ($input) {
             $pdo->beginTransaction();
             
             $received_count = 0;
+            $affected_pos = []; // Track affected PO IDs for status update
+            
             foreach ($items as $item_data) {
                 $item_id = $item_data['item_id'] ?? null;
                 $product_id = $item_data['product_id'] ?? null;
@@ -270,7 +272,17 @@ if ($input) {
                     }
                 }
 
+                // Track this PO for status update
+                if (!in_array($item['po_id'], $affected_pos)) {
+                    $affected_pos[] = $item['po_id'];
+                }
+
                 $received_count++;
+            }
+
+            // Update status for all affected POs
+            foreach ($affected_pos as $po_id) {
+                updatePOStatus($pdo, $po_id);
             }
 
             $pdo->commit();

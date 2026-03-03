@@ -1998,39 +1998,6 @@ $rows = $stmt->fetchAll();
                         this.style.borderColor = '#e0e0e0';
                         this.style.boxShadow = 'none';
                     });
-                });
-                
-                // Initialize autocomplete for the product input
-                const productInput = document.getElementById('new-product-name');
-                if (productInput) {
-                    initProductAutocomplete(productInput, {
-                        onSelect: (product, inputElement) => {
-                            // Update hidden fields
-                            document.getElementById('new-product-id').value = product.product_id || '';
-                            document.getElementById('new-price').value = product.price_per_unit || '0';
-                            document.getElementById('new-unit').value = product.unit || 'ชิ้น';
-                            updateNewItemBasePrice(); // Update base price when product is selected
-                            updateSummary();
-                        }
-                    });
-                }
-                
-                // Initialize displays
-                updateNewItemBasePrice();
-                updateSummary();
-            },
-            didOpen: () => {
-                // Add focus styling
-                const inputs = document.querySelectorAll('#new-product-name, #new-qty, #new-currency, #new-price, #new-unit');
-                inputs.forEach(input => {
-                    input.addEventListener('focus', function() {
-                        this.style.borderColor = '#3498db';
-                        this.style.boxShadow = '0 0 0 3px rgba(52, 152, 219, 0.1)';
-                    });
-                    input.addEventListener('blur', function() {
-                        this.style.borderColor = '#e0e0e0';
-                        this.style.boxShadow = 'none';
-                    });
                     // Update summary on input change
                     input.addEventListener('change', updateSummary);
                     input.addEventListener('input', updateSummary);
@@ -2043,8 +2010,11 @@ $rows = $stmt->fetchAll();
                         onSelect: (product, inputElement) => {
                             // Update hidden fields
                             document.getElementById('new-product-id').value = product.product_id || '';
-                            document.getElementById('new-price').value = product.price_per_unit || '0';
                             document.getElementById('new-unit').value = product.unit || 'ชิ้น';
+                            
+                            // ดึงราคาล่าสุดจากสินค้า
+                            fetchLastPriceForProduct(product.product_id, product.name);
+                            
                             updateNewItemBasePrice(); // Update base price when product is selected
                             updateSummary();
                         }
@@ -2288,6 +2258,11 @@ $rows = $stmt->fetchAll();
         
         if (symbolSpan && selectedOption) {
             symbolSpan.textContent = selectedOption.dataset.symbol;
+            console.log('Currency changed to:', {
+                value: currencySelect.value,
+                symbol: selectedOption.dataset.symbol,
+                rate: selectedOption.dataset.rate
+            });
         }
         
         updateNewItemBasePrice();
@@ -2299,7 +2274,10 @@ $rows = $stmt->fetchAll();
         const currencySelect = document.getElementById('new-currency');
         const basePriceDiv = document.getElementById('new-price-base');
         
-        if (!priceInput || !currencySelect || !basePriceDiv) return;
+        if (!priceInput || !currencySelect || !basePriceDiv) {
+            console.warn('Missing elements for price calculation');
+            return;
+        }
         
         const price = parseFloat(priceInput.value || 0);
         const selectedOption = currencySelect.options[currencySelect.selectedIndex];
@@ -2307,7 +2285,180 @@ $rows = $stmt->fetchAll();
         const basePrice = price * rate;
         
         basePriceDiv.textContent = `≈ ฿${basePrice.toFixed(2)}`;
+        console.log('Updated base price:', { price, rate, basePrice });
         updateSummary();
+    }
+    
+    // ฟังก์ชันดึงราคาล่าสุดของสินค้า
+    function fetchLastPriceForProduct(productId, productName) {
+        if (!productId) {
+            const priceInput = document.getElementById('new-price');
+            if (priceInput) priceInput.value = '0';
+            updateNewItemBasePrice();
+            return;
+        }
+        
+        console.log('Fetching price for product:', productId, productName);
+        
+        // ค้นหาราคาล่าสุดจาก purchase order items ในฐานข้อมูล
+        fetch(`../api/get_latest_product_price.php?product_id=${encodeURIComponent(productId)}`)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                console.log('Price fetch response:', data);
+                
+                if (data.success && data.price > 0) {
+                    // เลือก currency ที่ตรงกับ currency_id ของราคา
+                    const currencySelect = document.getElementById('new-currency');
+                    
+                    // ถ้ามี currency_id ในข้อมูล ให้เลือก currency นั้น
+                    if (data.currency_id && currencySelect) {
+                        const targetOption = Array.from(currencySelect.options).find(opt => 
+                            parseInt(opt.value) === parseInt(data.currency_id)
+                        );
+                        
+                        if (targetOption) {
+                            console.log('Selecting currency:', data.currency_id);
+                            currencySelect.value = data.currency_id;
+                            // Trigger change event
+                            currencySelect.dispatchEvent(new Event('change'));
+                            
+                            // รอให้ event change ทำงานเสร็จ
+                            setTimeout(() => {
+                                setProductPrice(data);
+                            }, 100);
+                        } else {
+                            setProductPrice(data);
+                        }
+                    } else {
+                        setProductPrice(data);
+                    }
+                } else {
+                    console.log('No price data found, showing warning');
+                    showProductNoHistoryWarning(productId, productName);
+                    const priceInput = document.getElementById('new-price');
+                    if (priceInput) priceInput.value = '0';
+                    updateNewItemBasePrice();
+                    updateSummary();
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching product price:', err);
+                showProductNoHistoryWarning(productId, productName);
+                const priceInput = document.getElementById('new-price');
+                if (priceInput) priceInput.value = '0';
+                updateNewItemBasePrice();
+                updateSummary();
+            });
+    }
+    
+    // ฟังก์ชันแสดงแจ้งเตือนเมื่อสินค้ายังไม่เคยสั่ง
+    function showProductNoHistoryWarning(productId, productName) {
+        // ลบ warning เก่า
+        const oldWarning = document.querySelector('.product-no-history-warning');
+        if (oldWarning) oldWarning.remove();
+        
+        // ลบ price suggestion note เก่า
+        const oldNote = document.querySelector('.price-suggestion-note');
+        if (oldNote) oldNote.remove();
+        
+        const priceInput = document.getElementById('new-price');
+        const priceContainer = priceInput?.parentNode?.parentNode;
+        
+        if (priceContainer) {
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'product-no-history-warning';
+            warningDiv.style.cssText = `
+                margin-top: 12px;
+                padding: 12px;
+                background: #fff3cd;
+                border: 1px solid #ffc107;
+                border-radius: 6px;
+                color: #856404;
+                font-size: 13px;
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+            `;
+            warningDiv.innerHTML = `
+                <span class="material-icons" style="font-size: 20px; flex-shrink: 0; margin-top: 2px; color: #ffc107;">warning</span>
+                <div style="flex: 1;">
+                    <strong>⚠️ สินค้ายังไม่เคยสั่งมา</strong>
+                    <div style="margin-top: 8px; font-size: 12px; line-height: 1.6;">
+                        <p style="margin: 0; color: #666;">
+                            <strong>รหัสสินค้า:</strong> ${productId}
+                        </p>
+                        <p style="margin: 6px 0 0 0; color: #666;">
+                            <strong>ชื่อสินค้า:</strong> ${productName}
+                        </p>
+                        <p style="margin: 8px 0 0 0; color: #ffc107;">
+                            ℹ️ กรุณากำหนดราคาด้วยตนเอง เนื่องจากสินค้านี้ไม่มีประวัติการสั่งซื้อในระบบ
+                        </p>
+                    </div>
+                </div>
+            `;
+            priceContainer.appendChild(warningDiv);
+        }
+    }
+    
+    // ฟังก์ชันช่วยสำหรับตั้งค่าราคาสินค้า
+    function setProductPrice(data) {
+        try {
+            const priceInput = document.getElementById('new-price');
+            const priceBaseDiv = document.getElementById('new-price-base');
+            
+            if (!priceInput) {
+                console.error('Price input element not found');
+                return;
+            }
+            
+            // ตั้งค่าราคา
+            const price = parseFloat(data.price) || 0;
+            priceInput.value = price.toFixed(2);
+            
+            console.log('Price set to:', price.toFixed(2));
+            
+            // ลบ warning เก่าเมื่อพบราคา
+            const oldWarning = document.querySelector('.product-no-history-warning');
+            if (oldWarning) oldWarning.remove();
+            
+            // อัพเดตราคาเป็นบาท
+            updateNewItemBasePrice();
+            updateSummary();
+            
+            // แสดง notification ว่ามีราคา suggestion
+            if (data.last_order_date) {
+                try {
+                    const dateObj = new Date(data.last_order_date);
+                    const dateText = dateObj.toLocaleDateString('th-TH', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                    });
+                    
+                    // ลบ notification เก่า
+                    const oldNote = document.querySelector('.price-suggestion-note');
+                    if (oldNote) oldNote.remove();
+                    
+                    // สร้าง notification ใหม่
+                    const priceNote = document.createElement('div');
+                    priceNote.className = 'price-suggestion-note';
+                    priceNote.style.cssText = 'font-size: 12px; color: #0066cc; margin-top: 8px; padding: 8px 12px; background: #e3f2fd; border-radius: 4px; border-left: 3px solid #0066cc;';
+                    priceNote.innerHTML = `💡 ราคาล่าสุด: ${data.currency_symbol}${parseFloat(data.price).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${dateText})`;
+                    
+                    // เพิ่มหลัง price-base-div
+                    if (priceBaseDiv && priceBaseDiv.parentNode) {
+                        priceBaseDiv.parentNode.appendChild(priceNote);
+                    }
+                } catch (dateErr) {
+                    console.error('Error formatting date:', dateErr);
+                }
+            }
+        } catch (err) {
+            console.error('Error in setProductPrice:', err);
+        }
     }
     
     </script>
