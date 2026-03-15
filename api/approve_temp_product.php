@@ -185,20 +185,80 @@ try {
         ':temp_product_id' => $temp_product_id
     ]);
     
-    // อัพเดท purchase_order_items ให้ชี้ไปที่ product_id ใหม่ และบันทึกราคาขาย
-    $sql_update_poi = "UPDATE purchase_order_items 
-                       SET product_id = :product_id,
-                           sale_price = COALESCE(:sale_price, sale_price)
-                       WHERE temp_product_id = :temp_product_id";
+    // ตรวจสอบ source_type เพื่อจัดการ purchase_order_items
+    $source_type = $temp_product['source_type'] ?? 'NewProduct';
+    error_log("source_type: " . $source_type);
     
-    $stmt_update_poi = $pdo->prepare($sql_update_poi);
-    $stmt_update_poi->execute([
-        ':product_id' => $new_product_id,
-        ':sale_price' => $temp_product['sale_price'] ?? null,
-        ':temp_product_id' => $temp_product_id
-    ]);
+    if ($source_type === 'NewProduct') {
+        // กรณี 1: สินค้าใหม่รับเข้าปกติ - UPDATE purchase_order_items ที่มีอยู่แล้ว
+        $sql_update_poi = "UPDATE purchase_order_items 
+                           SET product_id = :product_id,
+                               sale_price = COALESCE(:sale_price, sale_price)
+                           WHERE temp_product_id = :temp_product_id";
+        
+        $stmt_update_poi = $pdo->prepare($sql_update_poi);
+        $stmt_update_poi->execute([
+            ':product_id' => $new_product_id,
+            ':sale_price' => $temp_product['sale_price'] ?? null,
+            ':temp_product_id' => $temp_product_id
+        ]);
+        
+        error_log("Updated purchase_order_items for NewProduct, product_id: " . $new_product_id);
+        
+    } else if ($source_type === 'Damaged') {
+        // กรณี 2: สินค้าจากการตรวจสอบชำรุด - INSERT รายการใหม่ใน purchase_order_items
+        
+        // ดึงข้อมูล PO และ item จากการแจ้งชำรุด
+        $stmtGetDamagedPO = $pdo->prepare("
+            SELECT poi.po_id, poi.item_id, poi.unit_price, poi.sale_price, poi.price_per_unit
+            FROM returned_items ri
+            LEFT JOIN purchase_order_items poi ON poi.item_id = ri.item_id
+            WHERE ri.temp_product_id = :temp_product_id
+            ORDER BY ri.return_id DESC
+            LIMIT 1
+        ");
+        $stmtGetDamagedPO->execute([':temp_product_id' => $temp_product_id]);
+        $damagedPOData = $stmtGetDamagedPO->fetch(PDO::FETCH_ASSOC);
+        
+        if ($damagedPOData && !empty($damagedPOData['po_id'])) {
+            // INSERT รายการใหม่ลงใน purchase_order_items โดยใช้ PO เดียวกับสินค้าที่แจ้งชำรุด
+            $sql_insert_poi = "INSERT INTO purchase_order_items 
+                               (po_id, product_id, temp_product_id, unit_price, sale_price, price_per_unit, qty, created_at)
+                               VALUES 
+                               (:po_id, :product_id, :temp_product_id, :unit_price, :sale_price, :price_per_unit, 0, NOW())";
+            
+            $stmt_insert_poi = $pdo->prepare($sql_insert_poi);
+            $stmt_insert_poi->execute([
+                ':po_id' => $damagedPOData['po_id'],
+                ':product_id' => $new_product_id,
+                ':temp_product_id' => $temp_product_id,
+                ':unit_price' => $damagedPOData['unit_price'] ?? $temp_product['sale_price'] ?? 0,
+                ':sale_price' => $temp_product['sale_price'] ?? $damagedPOData['sale_price'] ?? 0,
+                ':price_per_unit' => $damagedPOData['price_per_unit'] ?? $temp_product['sale_price'] ?? 0
+            ]);
+            
+            $new_item_id = $pdo->lastInsertId();
+            error_log("Inserted new purchase_order_items for Damaged product, item_id: " . $new_item_id . ", product_id: " . $new_product_id);
+            
+            // อัปเดต returned_items ให้ชี้ไป item_id ใหม่
+            $sql_update_returned = "UPDATE returned_items 
+                                    SET item_id = :new_item_id
+                                    WHERE temp_product_id = :temp_product_id";
+            $stmt_update_returned = $pdo->prepare($sql_update_returned);
+            $stmt_update_returned->execute([
+                ':new_item_id' => $new_item_id,
+                ':temp_product_id' => $temp_product_id
+            ]);
+            
+            error_log("Updated returned_items to point to new item_id: " . $new_item_id);
+            
+        } else {
+            error_log("Warning: No PO found for Damaged product, temp_product_id: " . $temp_product_id);
+        }
+    }
 
     // บันทึกความเคลื่อนไหวรับเข้า สำหรับสินค้าชำรุดที่อนุมัติแล้ว
+    // (หลังจาก UPDATE/INSERT purchase_order_items แล้ว returned_items.item_id จะชี้ไปที่ item_id ที่ถูกต้อง)
     $stmtDamaged = $pdo->prepare("
         SELECT ri.item_id, ri.return_qty, poi.po_id
         FROM returned_items ri
@@ -215,6 +275,8 @@ try {
         $poId = !empty($damagedRow['po_id']) ? (int)$damagedRow['po_id'] : null;
         $receiveQty = isset($damagedRow['return_qty']) ? (float)$damagedRow['return_qty'] : 0.0;
 
+        error_log("Processing receive_items for Damaged product - item_id: " . $itemId . ", po_id: " . $poId . ", qty: " . $receiveQty);
+
         $stmtCheck = $pdo->prepare("SELECT receive_id FROM receive_items WHERE item_id = :item_id AND remark LIKE :remark LIMIT 1");
         $stmtCheck->execute([
             ':item_id' => $itemId,
@@ -225,7 +287,8 @@ try {
         if (!$existingReceiveId) {
             $remarkParts = [
                 'รับเข้า (อนุมัติสินค้าชำรุด)',
-                'temp_product_id=' . $temp_product_id
+                'temp_product_id=' . $temp_product_id,
+                'product_id=' . $new_product_id
             ];
             if (!empty($temp_product['remark'])) {
                 $remarkParts[] = $temp_product['remark'];
@@ -244,6 +307,10 @@ try {
                 ':remark' => $remark,
                 ':created_by' => $_SESSION['user_id'] ?? 1
             ]);
+            
+            error_log("Inserted receive_items for product_id: " . $new_product_id);
+        } else {
+            error_log("receive_items already exists for this damaged product, receive_id: " . $existingReceiveId);
         }
     }
     

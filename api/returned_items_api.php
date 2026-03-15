@@ -415,25 +415,32 @@ function updatePOStatusInline(PDO $pdo, int $po_id): void
  * Add new item to purchase_order_items for defective product
  * Note: purchase_order_items table doesn't have 'remark' or 'origin_remark' columns
  */
-function addPurchaseOrderItemForDefect(PDO $pdo, int $poId, int $newProductId, float $quantity, string $newSku, string $reference, ?string $notes = null): int
+function addPurchaseOrderItemForDefect(PDO $pdo, int $poId, int $newProductId, float $quantity, string $newSku, string $reference, ?string $notes = null, ?float $costPrice = null, ?float $salePrice = null): int
 {
     try {
         // Schema has: item_id, po_id, product_id, qty, price_per_unit, sale_price, total, created_at, etc.
-        // We'll insert minimal data - price and total can be updated later
+        // Use provided prices or default to 0.00 if not available
+        $pricePerUnit = $costPrice !== null ? round($costPrice, 2) : 0.00;
+        $salePriceValue = $salePrice !== null ? round($salePrice, 2) : 0.00;
+        $total = round($pricePerUnit * $quantity, 2);
+        
         $stmt = $pdo->prepare("INSERT INTO purchase_order_items (
             po_id, product_id, qty, price_per_unit, sale_price, total, created_at
         ) VALUES (
-            :po_id, :product_id, :qty, 0.00, 0.00, 0.00, NOW()
+            :po_id, :product_id, :qty, :price_per_unit, :sale_price, :total, NOW()
         )");
         
         $stmt->execute([
             ':po_id' => $poId,
             ':product_id' => $newProductId,
-            ':qty' => $quantity
+            ':qty' => $quantity,
+            ':price_per_unit' => $pricePerUnit,
+            ':sale_price' => $salePriceValue,
+            ':total' => $total
         ]);
 
         $itemId = (int)$pdo->lastInsertId();
-        error_log("✅ Added PO item: itemId=$itemId, poId=$poId, productId=$newProductId, qty=$quantity, sku=$newSku");
+        error_log("✅ Added PO item: itemId=$itemId, poId=$poId, productId=$newProductId, qty=$quantity, sku=$newSku, costPrice=$pricePerUnit, salePrice=$salePriceValue, total=$total");
         return $itemId;
     } catch (Exception $e) {
         error_log("❌ Failed to add PO item: " . $e->getMessage());
@@ -446,27 +453,28 @@ function addPurchaseOrderItemForDefect(PDO $pdo, int $poId, int $newProductId, f
  * Schema: receive_items has (receive_id, item_id, po_id, receive_qty, expiry_date, remark_color, remark_split, remark, created_by, created_at)
  * Note: No 'product_id', 'receive_date', 'received_by', 'notes' columns - use item_id, created_at, created_by, remark instead
  */
-function recordReceiveDefectItem(PDO $pdo, int $poItemId, int $poId, int $productId, float $receiveQty, int $userId, string $reference, string $newSku, ?string $notes = null): int
+function recordReceiveDefectItem(PDO $pdo, int $poItemId, int $poId, int $productId, float $receiveQty, int $userId, string $reference, string $newSku, ?string $notes = null, ?string $expiryDate = null): int
 {
     try {
         $receiveRemark = "[Defect Item] SKU: " . $newSku . " from " . $reference . (isset($notes) ? ' - ' . substr($notes, 0, 150) : '');
         
         $stmt = $pdo->prepare("INSERT INTO receive_items (
-            item_id, po_id, receive_qty, remark, created_by, created_at
+            item_id, po_id, receive_qty, expiry_date, remark, created_by, created_at
         ) VALUES (
-            :item_id, :po_id, :receive_qty, :remark, :created_by, NOW()
+            :item_id, :po_id, :receive_qty, :expiry_date, :remark, :created_by, NOW()
         )");
         
         $stmt->execute([
             ':item_id' => $poItemId,
             ':po_id' => $poId,
             ':receive_qty' => $receiveQty,
+            ':expiry_date' => $expiryDate,
             ':remark' => $receiveRemark,
             ':created_by' => $userId
         ]);
 
         $receiveId = (int)$pdo->lastInsertId();
-        error_log("✅ Recorded defect receive: receiveId=$receiveId, itemId=$poItemId, poId=$poId, productId=$productId, qty=$receiveQty");
+        error_log("✅ Recorded defect receive: receiveId=$receiveId, itemId=$poItemId, poId=$poId, productId=$productId, qty=$receiveQty, expiryDate=" . ($expiryDate ?? 'NULL'));
         
         // Note: products table doesn't have 'stock' column - stock is calculated from receive_items
         // No need to update stock here
@@ -751,6 +759,7 @@ function insertTempProductFromDamagedInspection(
                 provisional_barcode,
                 remark,
                 status,
+                source_type,
                 po_id,
                 expiry_date,
                 created_by,
@@ -764,6 +773,7 @@ function insertTempProductFromDamagedInspection(
                 :provisional_barcode,
                 :remark,
                 :status,
+                :source_type,
                 :po_id,
                 :expiry_date,
                 :created_by,
@@ -780,6 +790,7 @@ function insertTempProductFromDamagedInspection(
             ':provisional_barcode' => $inspection['barcode'] ?? $inspection['source_barcode'] ?? '',
             ':remark' => $remark,
             ':status' => $status,
+            ':source_type' => 'Damaged',
             ':po_id' => $inspection['po_id'] ?? null,
             ':expiry_date' => $expiryDate,
             ':created_by' => $userId
@@ -1604,7 +1615,12 @@ if ($action === 'process_damaged_inspection') {
 
         $combinedNotes = implode("\n", $notesSegments);
 
-        $expiryDate = $inspection['expiry_date'] ?? $inspection['return_expiry_date'] ?? null;
+        // Use expiry_date from payload first (user input from form), fallback to inspection data
+        if ($expiryDate === null) {
+            $expiryDate = $inspection['expiry_date'] ?? $inspection['return_expiry_date'] ?? null;
+        }
+        
+        // Update returned_items with new expiry_date if provided
         if (($inspection['expiry_date'] ?? null) === null && $expiryDate !== null) {
             $setExpiry = $pdo->prepare('UPDATE returned_items SET expiry_date = :expiry_date WHERE return_id = :inspection_id AND reason_id = 8');
             $setExpiry->execute([
@@ -1735,9 +1751,9 @@ if ($action === 'process_damaged_inspection') {
             
             if ($poIdForMovement > 0) {
                 try {
-                    error_log("🔄 Adding defect product to PO: poId=$poIdForMovement, productId=$newProductId, sku=$newSku, qty=$restockQty");
+                    error_log("🔄 Adding defect product to PO: poId=$poIdForMovement, productId=$newProductId, sku=$newSku, qty=$restockQty, costPrice=$costPrice, salePrice=$salePrice");
                     
-                    // Add new item to purchase_order_items
+                    // Add new item to purchase_order_items with actual prices
                     $newPoItemId = addPurchaseOrderItemForDefect(
                         $pdo,
                         $poIdForMovement,
@@ -1745,13 +1761,15 @@ if ($action === 'process_damaged_inspection') {
                         $restockQty,
                         $newSku,
                         (string)($inspection['return_code'] ?? ''),
-                        $combinedNotes !== '' ? $combinedNotes : null
+                        $combinedNotes !== '' ? $combinedNotes : null,
+                        $costPrice,
+                        $salePrice
                     );
 
                     if ($newPoItemId) {
                         error_log("✅ Added PO item successfully: itemId=$newPoItemId");
                         
-                        // Record receipt of the new defect product
+                        // Record receipt of the new defect product with expiry date
                         $receiveId = recordReceiveDefectItem(
                             $pdo,
                             $newPoItemId,
@@ -1761,7 +1779,8 @@ if ($action === 'process_damaged_inspection') {
                             (int)$user_id,
                             (string)($inspection['return_code'] ?? ''),
                             $newSku,
-                            $combinedNotes !== '' ? $combinedNotes : null
+                            $combinedNotes !== '' ? $combinedNotes : null,
+                            $expiryDate  // ← เพิ่ม expiry_date parameter
                         );
 
                         error_log("✅ Recorded defect product to PO successfully:");

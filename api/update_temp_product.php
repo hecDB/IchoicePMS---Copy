@@ -125,6 +125,7 @@ $temp_product_id = isset($_POST['temp_product_id']) ? (int)$_POST['temp_product_
 $provisional_sku = isset($_POST['provisional_sku']) ? trim($_POST['provisional_sku']) : '';
 $provisional_barcode = isset($_POST['provisional_barcode']) ? trim($_POST['provisional_barcode']) : '';
 $unit = isset($_POST['unit']) ? trim($_POST['unit']) : '';
+$product_category_id = isset($_POST['product_category_id']) ? trim($_POST['product_category_id']) : '';
 $expiry_date = isset($_POST['expiry_date']) ? $_POST['expiry_date'] : null;
 $sale_price_raw = isset($_POST['sale_price']) ? trim($_POST['sale_price']) : null;
 $sale_price = ($sale_price_raw !== null && $sale_price_raw !== '' && is_numeric($sale_price_raw)) ? (float)$sale_price_raw : null;
@@ -146,6 +147,7 @@ $shelf = $shelf_value === '' ? '' : (string)$shelf_value;
 // Debug logging
 error_log("=== UPDATE_TEMP_PRODUCT START ===");
 error_log("temp_product_id: " . $temp_product_id);
+error_log("product_category_id: " . var_export($product_category_id, true));
 error_log("Files received: " . count($_FILES));
 error_log("POST keys: " . implode(', ', array_keys($_POST)));
 error_log("sale_price_raw: " . var_export($sale_price_raw, true));
@@ -421,12 +423,29 @@ if ($stored_image_path === null) {
     }
 }
 
+// แปลง category_id เป็น category_name
+$product_category = null;
+if ($product_category_id !== '' && is_numeric($product_category_id)) {
+    try {
+        $stmt_cat = $pdo->prepare("SELECT category_name FROM product_category WHERE category_id = :category_id LIMIT 1");
+        $stmt_cat->execute([':category_id' => (int)$product_category_id]);
+        $category_result = $stmt_cat->fetch(PDO::FETCH_ASSOC);
+        if ($category_result) {
+            $product_category = $category_result['category_name'];
+            error_log("Category ID {$product_category_id} resolved to: {$product_category}");
+        }
+    } catch (Exception $e) {
+        error_log("Error resolving category: " . $e->getMessage());
+    }
+}
+
 try {
-    // อัปเดต temp_products - บันทึก provisional_sku, provisional_barcode และชื่อไฟล์รูปภาพ
+    // อัปเดต temp_products - บันทึก provisional_sku, provisional_barcode, category และชื่อไฟล์รูปภาพ
         $sql = "UPDATE temp_products SET 
             provisional_sku = :provisional_sku,
             provisional_barcode = :provisional_barcode,
             unit = :unit,
+            product_category = :product_category,
             remark = :remark,
             expiry_date = :expiry_date,
             sale_price = :sale_price";
@@ -443,6 +462,7 @@ try {
         ':provisional_sku' => $provisional_sku,
         ':provisional_barcode' => $provisional_barcode,
         ':unit' => $unit,
+        ':product_category' => $product_category,
         ':remark' => $remark,
         ':expiry_date' => $expiry_date,
         ':sale_price' => $sale_price,

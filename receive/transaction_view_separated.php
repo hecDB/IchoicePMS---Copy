@@ -47,6 +47,7 @@ SELECT
     tp.provisional_sku,
     tp.provisional_barcode,
     tp.status as temp_product_status,
+    tp.source_type,
     COALESCE(tp.sale_price, poi.sale_price) as sale_price,
     poi.price_per_unit as po_price_per_unit,
     poi.unit_price as purchase_price,
@@ -57,7 +58,7 @@ LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
 LEFT JOIN temp_products tp ON poi.temp_product_id = tp.temp_product_id
 LEFT JOIN users u ON r.created_by = u.user_id
 WHERE COALESCE(poi.temp_product_id, 0) > 0
-AND (tp.provisional_sku IS NULL OR tp.provisional_sku NOT LIKE '%ตำหนิ%')
+AND tp.source_type = 'NewProduct'
 ORDER BY r.created_at DESC LIMIT 500";
 
 // Query 2: สินค้าใหม่รับเข้าจากการตรวจสอบชำรุด (damaged inspection)
@@ -77,6 +78,7 @@ SELECT
     tp.provisional_sku,
     tp.provisional_barcode,
     tp.status as temp_product_status,
+    tp.source_type,
     COALESCE(tp.sale_price, poi.sale_price) as sale_price,
     poi.price_per_unit as po_price_per_unit,
     poi.unit_price as purchase_price,
@@ -86,10 +88,7 @@ FROM temp_products tp
 LEFT JOIN returned_items ri ON ri.temp_product_id = tp.temp_product_id
 LEFT JOIN purchase_order_items poi ON poi.item_id = ri.item_id
 LEFT JOIN users u ON tp.created_by = u.user_id
-WHERE ((tp.remark LIKE '%สินค้าชำรุดบางส่วน%' 
-    OR tp.remark LIKE '%damaged%' 
-    OR tp.remark LIKE '%Damaged%')
-    OR COALESCE(ri.return_qty, 0) > 0)
+WHERE tp.source_type = 'Damaged'
 AND COALESCE(tp.temp_product_id, 0) > 0
 AND ri.temp_product_id IS NOT NULL
 ORDER BY tp.created_at DESC LIMIT 500";
@@ -852,7 +851,7 @@ function resolveTransactionImageSrc($imageValue) {
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-outline-warning view-damaged-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-category="<?= htmlspecialchars($row['product_category'] ?? '') ?>" data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>" data-quantity="<?= htmlspecialchars($row['quantity'] ?? 0) ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-image="<?= htmlspecialchars(resolveTransactionImageSrc($row['image'] ?? null)) ?>" title="ดูรายละเอียดตรวจสอบชำรุด">
+                                    <button class="btn btn-outline-warning view-damaged-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-category="<?= htmlspecialchars($row['product_category'] ?? '') ?>" data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>" data-quantity="<?= htmlspecialchars($row['quantity'] ?? 0) ?>" data-purchase-price="<?= htmlspecialchars($row['purchase_price'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-po-sale-price="<?= htmlspecialchars($row['po_price_per_unit'] ?? '') ?>" data-weight="<?= htmlspecialchars($row['remark_weight'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-image="<?= htmlspecialchars(resolveTransactionImageSrc($row['image'] ?? null)) ?>" title="ดูรายละเอียดตรวจสอบชำรุด">
                                         <span class="material-icons" style="font-size: 1rem;">visibility</span>
                                     </button>
                                     <button class="btn btn-outline-info edit-damaged-btn" data-temp-id="<?= $row['temp_product_id'] ?>" data-product-name="<?= htmlspecialchars($row['product_name'] ?? '') ?>" data-provisional-sku="<?= htmlspecialchars($row['provisional_sku'] ?? '') ?>" data-provisional-barcode="<?= htmlspecialchars($row['provisional_barcode'] ?? '') ?>" data-unit="<?= htmlspecialchars($row['unit'] ?? '') ?>" data-category="<?= htmlspecialchars($row['product_category'] ?? '') ?>" data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>" data-quantity="<?= htmlspecialchars($row['quantity'] ?? 0) ?>" data-purchase-price="<?= htmlspecialchars($row['purchase_price'] ?? '') ?>" data-sale-price="<?= htmlspecialchars($row['sale_price'] ?? '') ?>" data-po-sale-price="<?= htmlspecialchars($row['po_price_per_unit'] ?? '') ?>" data-weight="<?= htmlspecialchars($row['remark_weight'] ?? '') ?>" data-remark="<?= htmlspecialchars($row['temp_product_remark'] ?? '') ?>" data-image="<?= htmlspecialchars(resolveTransactionImageSrc($row['image'] ?? null)) ?>" title="แก้ไข SKU/Barcode">
@@ -977,7 +976,60 @@ function updateNetProfitLabel() {
     }
 }
 
+// Global variables for categories
+let categoriesData = [];
+
+// Load product categories on page load
+function loadProductCategories() {
+    $.ajax({
+        url: '../api/get_product_categories.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.success && response.data) {
+                categoriesData = response.data;
+                console.log('✅ Loaded', categoriesData.length, 'categories');
+            } else {
+                console.error('Failed to load categories:', response.message);
+            }
+        },
+        error: function(xhr) {
+            console.error('Error loading categories:', xhr);
+        }
+    });
+}
+
+// Populate category dropdown (call this when opening modal)
+function populateCategoryDropdown() {
+    const categorySelect = $('#categorySelect');
+    if (categorySelect.length === 0) {
+        console.warn('⚠️ Category select not found in DOM');
+        return;
+    }
+    
+    categorySelect.empty();
+    categorySelect.append('<option value="">-- เลือกหมวดหมู่ --</option>');
+    
+    if (categoriesData.length === 0) {
+        console.warn('⚠️ No categories data loaded yet');
+        return;
+    }
+    
+    categoriesData.forEach(function(category) {
+        categorySelect.append(
+            $('<option></option>')
+                .attr('value', category.category_id)
+                .text(category.category_name)
+        );
+    });
+    
+    console.log('✅ Populated', categoriesData.length, 'categories into dropdown');
+}
+
 $(document).ready(function() {
+    // Load categories first (just data, not populating dropdown yet)
+    loadProductCategories();
+    
     // Debug Info
     console.log('Page loaded');
     console.log('Receive rows from PHP:', <?= count($receive_rows) ?>);
@@ -986,116 +1038,169 @@ $(document).ready(function() {
     console.log('Damaged data:', <?= json_encode($damaged_rows) ?>);
     
     // Initialize DataTable for Receive Items
-    let receiveTable = $('#receive-table').DataTable({
-        pageLength: 25,
-        language: {
-            "decimal": "",
-            "emptyTable": "ไม่มีข้อมูลในตาราง",
-            "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
-            "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
-            "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
-            "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
-            "loadingRecords": "กำลังโหลด...",
-            "processing": "กำลังประมวลผล...",
-            "search": "ค้นหา:",
-            "zeroRecords": "ไม่พบรายการที่ตรงกัน",
-            "paginate": {
-                "first": "หน้าแรก",
-                "last": "หน้าสุดท้าย",
-                "next": "ถัดไป",
-                "previous": "ก่อนหน้า"
-            }
-        },
-        columnDefs: [
-            { orderable: false, targets: 'no-sort' },
-            { 
-                render: function(data, type, row) {
-                    if(type === 'display') return data;
-                    return data;
+    let receiveTable = null;
+    try {
+        // ตรวจสอบว่าตารางมีข้อมูลหรือไม่
+        const receiveTableRows = $('#receive-table tbody tr');
+        const hasReceiveData = receiveTableRows.length > 0 && !receiveTableRows.first().find('td[colspan]').length;
+        
+        console.log('Receive table has data:', hasReceiveData, 'rows:', receiveTableRows.length);
+        
+        // เฉพาะตารางที่มีข้อมูลจริงๆ เท่านั้นถึงจะ initialize DataTable
+        if (hasReceiveData) {
+            receiveTable = $('#receive-table').DataTable({
+                pageLength: 25,
+                language: {
+                    "decimal": "",
+                    "emptyTable": "ไม่มีข้อมูลในตาราง",
+                    "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                    "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
+                    "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
+                    "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
+                    "loadingRecords": "กำลังโหลด...",
+                    "processing": "กำลังประมวลผล...",
+                    "search": "ค้นหา:",
+                    "zeroRecords": "ไม่พบรายการที่ตรงกัน",
+                    "paginate": {
+                        "first": "หน้าแรก",
+                        "last": "หน้าสุดท้าย",
+                        "next": "ถัดไป",
+                        "previous": "ก่อนหน้า"
+                    }
                 },
-                targets: [1, 2, 3, 4, 5, 6]  // Sortable columns
+                columnDefs: [
+                    { orderable: false, targets: 'no-sort' },
+                { 
+                    render: function(data, type, row) {
+                        if(type === 'display') return data;
+                        return data;
+                    },
+                    targets: [1, 2, 3, 4, 5, 6]  // Sortable columns
+                },
+                { className: "text-center", targets: [0, 7, 8, 9, 10] }  // Center: Image, Qty, Expiry, Actions
+            ],
+            order: [[6, 'desc']], // Sort by date (column 6)
+            scrollX: true,
+            scrollCollapse: true,
+            searching: true,
+            paging: true,
+            info: true,
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
+            responsive: true,
+            processing: true,
+            drawCallback: function(settings) {
+                updateStats();
+                $('[title]').tooltip();
             },
-            { className: "text-center", targets: [0, 7, 8, 9, 10] }  // Center: Image, Qty, Expiry, Actions
-        ],
-        order: [[6, 'desc']], // Sort by date (column 6)
-        scrollX: true,
-        scrollCollapse: true,
-        searching: true,
-        paging: true,
-        info: true,
-        lengthChange: true,
-        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
-        responsive: true,
-        processing: true,
-        drawCallback: function(settings) {
-            updateStats();
-            $('[title]').tooltip();
-        },
-        initComplete: function() {
-            updateStats();
+            initComplete: function() {
+                updateStats();
+            }
+            });
+            
+            console.log('✅ Receive DataTable initialized successfully');
+        } else {
+            console.log('⚠️ Receive table is empty, skipping DataTable initialization');
         }
-    });
+    } catch (error) {
+        console.error('❌ Error initializing Receive DataTable:', error);
+        // ถ้า initialize ล้มเหลว ให้แสดงตารางปกติ
+        $('#receive-table').show();
+    }
 
     // Initialize DataTable for Damaged Items
-    let damagedTable = $('#damaged-table').DataTable({
-        pageLength: 25,
-        language: {
-            "decimal": "",
-            "emptyTable": "ไม่มีข้อมูลในตาราง",
-            "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
-            "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
-            "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
-            "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
-            "loadingRecords": "กำลังโหลด...",
-            "processing": "กำลังประมวลผล...",
-            "search": "ค้นหา:",
-            "zeroRecords": "ไม่พบรายการที่ตรงกัน",
-            "paginate": {
-                "first": "หน้าแรก",
-                "last": "หน้าสุดท้าย",
-                "next": "ถัดไป",
-                "previous": "ก่อนหน้า"
-            }
-        },
-        columnDefs: [
-            { orderable: false, targets: 'no-sort' },
-            { 
-                render: function(data, type, row) {
-                    if(type === 'display') return data;
-                    return data;
-                },
-                targets: [1, 2, 3, 4, 5, 6]  // Sortable columns
+    let damagedTable = null;
+    try {
+        // ตรวจสอบว่าตารางมีข้อมูลหรือไม่
+        const damagedTableRows = $('#damaged-table tbody tr');
+        const hasDamagedData = damagedTableRows.length > 0 && !damagedTableRows.first().find('td[colspan]').length;
+        
+        console.log('Damaged table has data:', hasDamagedData, 'rows:', damagedTableRows.length);
+        
+        // เฉพาะตารางที่มีข้อมูลจริงๆ เท่านั้นถึงจะ initialize DataTable
+        if (hasDamagedData) {
+            damagedTable = $('#damaged-table').DataTable({
+                pageLength: 25,
+                language: {
+                    "decimal": "",
+                    "emptyTable": "ไม่มีข้อมูลในตาราง",
+                    "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                    "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
+                    "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
+                    "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
+                    "loadingRecords": "กำลังโหลด...",
+                    "processing": "กำลังประมวลผล...",
+                "search": "ค้นหา:",
+                "zeroRecords": "ไม่พบรายการที่ตรงกัน",
+                "paginate": {
+                    "first": "หน้าแรก",
+                    "last": "หน้าสุดท้าย",
+                    "next": "ถัดไป",
+                    "previous": "ก่อนหน้า"
+                }
             },
-            { className: "text-center", targets: [0, 7, 8, 9, 10] }  // Center: Image, Qty, Expiry, Actions
-        ],
-        order: [[6, 'desc']], // Sort by date (column 6)
-        scrollX: true,
-        scrollCollapse: true,
-        searching: true,
-        paging: true,
-        info: true,
-        lengthChange: true,
-        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
-        responsive: true,
-        processing: true,
-        drawCallback: function(settings) {
-            updateStats();
-            $('[title]').tooltip();
-        },
-        initComplete: function() {
-            updateStats();
+            columnDefs: [
+                { orderable: false, targets: 'no-sort' },
+                { 
+                    render: function(data, type, row) {
+                        if(type === 'display') return data;
+                        return data;
+                    },
+                    targets: [1, 2, 3, 4, 5, 6]  // Sortable columns
+                },
+                { className: "text-center", targets: [0, 7, 8, 9, 10] }  // Center: Image, Qty, Expiry, Actions
+            ],
+            order: [[6, 'desc']], // Sort by date (column 6)
+            scrollX: true,
+            scrollCollapse: true,
+            searching: true,
+            paging: true,
+            info: true,
+            lengthChange: true,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
+            responsive: true,
+            processing: true,
+            drawCallback: function(settings) {
+                updateStats();
+                $('[title]').tooltip();
+            },
+            initComplete: function() {
+                updateStats();
+            }
+            });
+            
+            console.log('✅ Damaged DataTable initialized successfully');
+        } else {
+            console.log('⚠️ Damaged table is empty, skipping DataTable initialization');
         }
-    });
+    } catch (error) {
+        console.error('❌ Error initializing Damaged DataTable:', error);
+        // ถ้า initialize ล้มเหลว ให้แสดงตารางปกติ
+        $('#damaged-table').show();
+    }
 
     // Custom search for Receive Table
     $('#custom-search-receive').on('keyup', function() {
-        receiveTable.search(this.value).draw();
+        if (receiveTable) {
+            receiveTable.search(this.value).draw();
+        }
     });
 
     // Custom search for Damaged Table
     $('#custom-search-damaged').on('keyup', function() {
-        damagedTable.search(this.value).draw();
+        if (damagedTable) {
+            damagedTable.search(this.value).draw();
+        }
     });
+
+    // Check buttons after initialization
+    setTimeout(function() {
+        const receiveButtons = $('#receive-table .view-btn, #receive-table .edit-btn').length;
+        const damagedButtons = $('#damaged-table .view-btn, #damaged-table .edit-btn').length;
+        
+        console.log('🔘 Buttons found - Receive:', receiveButtons, 'Damaged:', damagedButtons);
+        console.log('📊 DataTable status - Receive:', receiveTable !== null, 'Damaged:', damagedTable !== null);
+    }, 500);
 
     $('#weightInput').on('input change', updatePricingFromWeight);
     $('#salePriceInput').on('input change', updateNetProfitLabel);
@@ -1106,7 +1211,10 @@ $(document).ready(function() {
     }, 100);
     
     // Handle edit button click
-    $(document).on('click', '.edit-btn', function() {
+    $(document).on('click', '.edit-btn', function(e) {
+        e.preventDefault();
+        console.log('🔧 Edit button clicked (receive)');
+        
         const tempId = $(this).data('temp-id');
         const receiveId = $(this).data('receive-id');
         const expiry = $(this).data('expiry');
@@ -1126,6 +1234,9 @@ $(document).ready(function() {
         const resolvedSalePrice = (salePrice !== undefined && salePrice !== null && salePrice !== '') ? salePrice : '';
         const numericPurchaseBase = Number(resolvedPurchasePrice);
         
+        // Populate category dropdown first
+        populateCategoryDropdown();
+        
         $('#tempProductId').val(tempId);
         $('#receiveId').val(receiveId);
         $('#expiryInput').val(expiry);
@@ -1133,7 +1244,19 @@ $(document).ready(function() {
         $('#provisionalBarcodeInput').val(provisionalBarcode);
         $('#unitInput').val(unitValue || '');
         $('#productNameDisplay').text(productName || '');
-        $('#categoryDisplay').text(categoryValue || '-');
+        
+        // Set category - find matching category ID from categoryValue (category name)
+        if (categoryValue) {
+            const matchingCategory = categoriesData.find(c => c.category_name === categoryValue);
+            if (matchingCategory) {
+                $('#categorySelect').val(matchingCategory.category_id);
+            } else {
+                $('#categorySelect').val('');
+            }
+        } else {
+            $('#categorySelect').val('');
+        }
+        
         $('#quantityDisplay').text(quantityValue ? parseFloat(quantityValue) : '-');
         $('#weightInput').val(weightValue ?? '');
         $('#purchasePriceInput').val('');
@@ -1262,6 +1385,7 @@ $(document).ready(function() {
         const provisionalSku = $('#provisionalSkuInput').val();
         const provisionalBarcode = $('#provisionalBarcodeInput').val();
         const unitValue = $('#unitInput').val().trim();
+        const categoryId = $('#categorySelect').val();
         const rowCode = $('#editRowCodeInput').val().trim();
         const bin = $('#editBinInput').val().trim();
         const shelf = $('#editShelfInput').val().trim();
@@ -1311,14 +1435,14 @@ $(document).ready(function() {
         
         // Process image compression if exists
         if (imageFile) {
-            compressAndSendImage(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId);
+            compressAndSendImage(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, categoryId, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId);
         } else {
-            sendFormData(null, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId);
+            sendFormData(null, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, categoryId, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId);
         }
     });
     
     // Compress image and send
-    function compressAndSendImage(file, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId) {
+    function compressAndSendImage(file, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, categoryId, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = new Image();
@@ -1357,7 +1481,7 @@ $(document).ready(function() {
                     console.log(`Image Compressed: ${originalSize}KB → ${compressedSize}KB`);
                     console.log('Sending file:', compressedFile.name, compressedFile.type, compressedFile.size);
                     
-                    sendFormData(compressedFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId);
+                    sendFormData(compressedFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, categoryId, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId);
                 }, 'image/jpeg', 0.85);
             };
             img.src = e.target.result;
@@ -1366,13 +1490,14 @@ $(document).ready(function() {
     }
     
     // Send form data to server
-    function sendFormData(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId) {
+    function sendFormData(imageFile, tempId, expiryDate, provisionalSku, provisionalBarcode, unitValue, categoryId, rowCode, bin, shelf, weightVal, purchasePrice, salePrice, remark, locationId) {
         const formData = new FormData();
         formData.append('temp_product_id', tempId);
         formData.append('expiry_date', expiryDate);
         formData.append('provisional_sku', provisionalSku);
         formData.append('provisional_barcode', provisionalBarcode);
         formData.append('unit', unitValue);
+        formData.append('product_category_id', categoryId ?? '');
         formData.append('row_code', rowCode);
         formData.append('bin', bin);
         formData.append('shelf', shelf);
@@ -1459,7 +1584,10 @@ $(document).ready(function() {
     }
     
     // Handle view button click
-    $(document).on('click', '.view-btn', function() {
+    $(document).on('click', '.view-btn', function(e) {
+        e.preventDefault();
+        console.log('👁️ View button clicked');
+        
         const tempId = $(this).data('temp-id');
         const productName = $(this).data('product-name');
         const provisionalSku = $(this).data('provisional-sku');
@@ -1475,6 +1603,10 @@ $(document).ready(function() {
         const remarkValue = $(this).data('remark');
         const imageSrc = $(this).data('image');
         
+        // Resolve purchase price from multiple sources (same logic as edit button)
+        const resolvedPurchasePrice = [purchasePrice, poSalePrice, salePrice].find(v => v !== undefined && v !== null && v !== '');
+        const resolvedSalePrice = (salePrice !== undefined && salePrice !== null && salePrice !== '') ? salePrice : '';
+        
         // Set modal content
         $('#viewProductNameDisplay').text(productName || '-');
         $('#viewProductImagePreview').attr('src', imageSrc);
@@ -1484,46 +1616,56 @@ $(document).ready(function() {
         $('#viewCategoryDisplay').text(category || '-');
         $('#viewExpiryDisplay').text(expiryDate ? new Date(expiryDate).toLocaleDateString('th-TH') : '-');
         $('#viewQuantityDisplay').text(quantityValue ? parseFloat(quantityValue) : '-');
-        $('#viewPurchasePriceDisplay').text(purchasePrice ? parseFloat(purchasePrice).toFixed(2) : '-');
-        $('#viewSalePriceDisplay').text(salePrice ? parseFloat(salePrice).toFixed(2) : '-');
+        
+        // Display purchase price (resolved from multiple sources)
+        if (resolvedPurchasePrice !== undefined && resolvedPurchasePrice !== null && resolvedPurchasePrice !== '') {
+            const numericPurchasePrice = Number(resolvedPurchasePrice);
+            $('#viewPurchasePriceDisplay').text(!Number.isNaN(numericPurchasePrice) ? numericPurchasePrice.toFixed(2) : '-');
+        } else {
+            $('#viewPurchasePriceDisplay').text('-');
+        }
+        
+        $('#viewSalePriceDisplay').text(resolvedSalePrice ? parseFloat(resolvedSalePrice).toFixed(2) : '-');
+        $('#viewWeightDisplay').text(weightValue ? parseFloat(weightValue).toFixed(2) : '-');
+        
+        // Calculate true cost (purchase price + weight cost)
+        let trueCost = 0;
+        let hasCost = false;
+        
+        if (resolvedPurchasePrice !== undefined && resolvedPurchasePrice !== null && resolvedPurchasePrice !== '') {
+            const baseCost = parseFloat(resolvedPurchasePrice);
+            if (!Number.isNaN(baseCost)) {
+                trueCost = baseCost;
+                hasCost = true;
+                
+                // Add weight cost if exists
+                if (weightValue) {
+                    const weightCost = parseFloat(weightValue) * 850;
+                    if (!Number.isNaN(weightCost)) {
+                        trueCost += weightCost;
+                    }
+                }
+            }
+        }
+        
+        $('#viewTrueCostDisplay').text(hasCost ? trueCost.toFixed(2) : '-');
         
         // Calculate net profit with detailed formula
-        if (salePrice) {
-            const salePriceNum = parseFloat(salePrice);
-            let cost = 0;
-            
-            // Calculate cost based on purchase price and weight
-            if (purchasePrice && weightValue) {
-                const baseCost = parseFloat(purchasePrice);
-                const weightCost = parseFloat(weightValue) * 850;
-                cost = baseCost + weightCost;
-            } else if (purchasePrice) {
-                cost = parseFloat(purchasePrice);
-            }
-            
-            const profitData = calculateDetailedProfit(salePriceNum, cost);
-            if (profitData) {
-                const profitDisplay = profitData.netProfit.toFixed(2) + ' บาท (' + profitData.netProfitPercent.toFixed(2) + '%)';
-                $('#viewNetProfitDisplay').text(profitDisplay);
+        if (resolvedSalePrice && resolvedSalePrice !== '') {
+            const salePriceNum = parseFloat(resolvedSalePrice);
+            if (!Number.isNaN(salePriceNum) && salePriceNum > 0) {
+                const profitData = calculateDetailedProfit(salePriceNum, trueCost);
+                if (profitData) {
+                    const profitDisplay = profitData.netProfit.toFixed(2) + ' บาท (' + profitData.netProfitPercent.toFixed(2) + '%)';
+                    $('#viewNetProfitDisplay').text(profitDisplay);
+                } else {
+                    $('#viewNetProfitDisplay').text('-');
+                }
             } else {
                 $('#viewNetProfitDisplay').text('-');
             }
         } else {
             $('#viewNetProfitDisplay').text('-');
-        }
-        
-        $('#viewWeightDisplay').text(weightValue ? parseFloat(weightValue).toFixed(2) : '-');
-        
-        // Calculate cost if weight exists
-        if (purchasePrice && weightValue) {
-            const baseCost = parseFloat(purchasePrice);
-            const weightCost = parseFloat(weightValue) * 850;
-            const trueCost = (baseCost + weightCost).toFixed(2);
-            $('#viewTrueCostDisplay').text(trueCost);
-        } else if (purchasePrice) {
-            $('#viewTrueCostDisplay').text(parseFloat(purchasePrice).toFixed(2));
-        } else {
-            $('#viewTrueCostDisplay').text('-');
         }
         
         $('#viewRemarkDisplay').text(remarkValue || '-');
@@ -1656,8 +1798,16 @@ $(document).ready(function() {
         const category = $(this).data('category');
         const expiryDate = $(this).data('expiry');
         const quantityValue = $(this).data('quantity');
+        const purchasePrice = $(this).data('purchase-price');
+        const salePrice = $(this).data('sale-price');
+        const poSalePrice = $(this).data('po-sale-price');
+        const weightValue = $(this).data('weight');
         const remarkValue = $(this).data('remark');
         const imageSrc = $(this).data('image');
+        
+        // Resolve purchase price from multiple sources (same logic as edit button)
+        const resolvedPurchasePrice = [purchasePrice, poSalePrice, salePrice].find(v => v !== undefined && v !== null && v !== '');
+        const resolvedSalePrice = (salePrice !== undefined && salePrice !== null && salePrice !== '') ? salePrice : '';
         
         // Set modal content for damaged items
         $('#viewProductNameDisplay').text(productName || '-');
@@ -1668,11 +1818,58 @@ $(document).ready(function() {
         $('#viewCategoryDisplay').text(category || '-');
         $('#viewExpiryDisplay').text(expiryDate ? new Date(expiryDate).toLocaleDateString('th-TH') : '-');
         $('#viewQuantityDisplay').text(quantityValue ? parseFloat(quantityValue) : '-');
-        $('#viewPurchasePriceDisplay').text('-');
-        $('#viewSalePriceDisplay').text('-');
-        $('#viewNetProfitDisplay').text('-');
-        $('#viewWeightDisplay').text('-');
-        $('#viewTrueCostDisplay').text('-');
+        
+        // Display purchase price (resolved from multiple sources)
+        if (resolvedPurchasePrice !== undefined && resolvedPurchasePrice !== null && resolvedPurchasePrice !== '') {
+            const numericPurchasePrice = Number(resolvedPurchasePrice);
+            $('#viewPurchasePriceDisplay').text(!Number.isNaN(numericPurchasePrice) ? numericPurchasePrice.toFixed(2) : '-');
+        } else {
+            $('#viewPurchasePriceDisplay').text('-');
+        }
+        
+        $('#viewSalePriceDisplay').text(resolvedSalePrice ? parseFloat(resolvedSalePrice).toFixed(2) : '-');
+        $('#viewWeightDisplay').text(weightValue ? parseFloat(weightValue).toFixed(2) : '-');
+        
+        // Calculate true cost (purchase price + weight cost)
+        let trueCost = 0;
+        let hasCost = false;
+        
+        if (resolvedPurchasePrice !== undefined && resolvedPurchasePrice !== null && resolvedPurchasePrice !== '') {
+            const baseCost = parseFloat(resolvedPurchasePrice);
+            if (!Number.isNaN(baseCost)) {
+                trueCost = baseCost;
+                hasCost = true;
+                
+                // Add weight cost if exists
+                if (weightValue) {
+                    const weightCost = parseFloat(weightValue) * 850;
+                    if (!Number.isNaN(weightCost)) {
+                        trueCost += weightCost;
+                    }
+                }
+            }
+        }
+        
+        $('#viewTrueCostDisplay').text(hasCost ? trueCost.toFixed(2) : '-');
+        
+        // Calculate net profit with detailed formula
+        if (resolvedSalePrice && resolvedSalePrice !== '') {
+            const salePriceNum = parseFloat(resolvedSalePrice);
+            if (!Number.isNaN(salePriceNum) && salePriceNum > 0) {
+                const profitData = calculateDetailedProfit(salePriceNum, trueCost);
+                if (profitData) {
+                    const profitDisplay = profitData.netProfit.toFixed(2) + ' บาท (' + profitData.netProfitPercent.toFixed(2) + '%)';
+                    $('#viewNetProfitDisplay').text(profitDisplay);
+                } else {
+                    $('#viewNetProfitDisplay').text('-');
+                }
+            } else {
+                $('#viewNetProfitDisplay').text('-');
+            }
+        } else {
+            $('#viewNetProfitDisplay').text('-');
+        }
+        
         $('#viewRemarkDisplay').text(remarkValue || '-');
         
         const viewModal = new bootstrap.Modal(document.getElementById('viewModal'));
@@ -1700,6 +1897,9 @@ $(document).ready(function() {
         const resolvedSalePrice = (salePrice !== undefined && salePrice !== null && salePrice !== '') ? salePrice : '';
         const numericPurchaseBase = Number(resolvedPurchasePrice);
         
+        // Populate category dropdown first
+        populateCategoryDropdown();
+        
         // Show modal to edit damaged item SKU/Barcode
         $('#tempProductId').val(tempId);
         $('#receiveId').val(''); // No receive ID for damaged items
@@ -1708,7 +1908,19 @@ $(document).ready(function() {
         $('#provisionalBarcodeInput').val(provisionalBarcode);
         $('#unitInput').val(unitValue || '');
         $('#productNameDisplay').text(productName || '');
-        $('#categoryDisplay').text(category || '-');
+        
+        // Set category - find matching category ID from category (category name)
+        if (category) {
+            const matchingCategory = categoriesData.find(c => c.category_name === category);
+            if (matchingCategory) {
+                $('#categorySelect').val(matchingCategory.category_id);
+            } else {
+                $('#categorySelect').val('');
+            }
+        } else {
+            $('#categorySelect').val('');
+        }
+        
         $('#quantityDisplay').text(quantityValue ? parseFloat(quantityValue) : '-');
         $('#weightInput').val(weightValue ?? '');
         $('#remarkInput').val(remarkRaw ? decodeHtml(remarkRaw) : '');
@@ -1918,23 +2130,33 @@ function filterByType(type) {
 }
 
 function updateStats() {
-    // Count rows from receive table
+    // Count rows from receive table (ไม่นับแถว "ไม่มีข้อมูล")
     let receiveCount = 0;
     let damagedCount = 0;
     
-    // Count receive items
+    // Count receive items (ไม่นับแถวที่มี colspan)
     const receiveTableRows = $('#receive-table tbody tr');
-    receiveCount = receiveTableRows.length;
+    receiveTableRows.each(function() {
+        if (!$(this).find('td[colspan]').length) {
+            receiveCount++;
+        }
+    });
     
-    // Count damaged items
+    // Count damaged items (ไม่นับแถวที่มี colspan)
     const damagedTableRows = $('#damaged-table tbody tr');
-    damagedCount = damagedTableRows.length;
+    damagedTableRows.each(function() {
+        if (!$(this).find('td[colspan]').length) {
+            damagedCount++;
+        }
+    });
     
     const totalCount = receiveCount + damagedCount;
     
     // Update stat displays
     $('#receive-count').text(receiveCount);
     $('#damaged-count').text(damagedCount);
+    
+    console.log('📊 Stats updated - Receive:', receiveCount, 'Damaged:', damagedCount);
 }
 
 // Location search data from AJAX (load on page load)
@@ -2074,8 +2296,11 @@ function selectLocationEdit(locationId, rowCode, bin, shelf) {
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label">หมวดหมู่</label>
-                            <div class="form-control-plaintext" id="categoryDisplay">-</div>
+                            <label for="categorySelect" class="form-label">หมวดหมู่สินค้า</label>
+                            <select class="form-select" id="categorySelect" name="product_category">
+                                <option value="">-- เลือกหมวดหมู่ --</option>
+                            </select>
+                            <small class="text-muted">เลือกหมวดหมู่สินค้าที่ต้องการ</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">จำนวน</label>

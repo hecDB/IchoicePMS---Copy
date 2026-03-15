@@ -15,27 +15,21 @@ try {
     if (!$po_id) {
         echo json_encode([
             'status' => 'success',
-            'data' => []
+            'data' => [],
+            'debug' => 'No PO ID provided'
         ]);
         exit;
     }
     
+    // Debug: Log PO ID
+    error_log("[get_damaged_unsellable_by_po] PO ID: " . $po_id);
+    
+    // Select all columns from returned_items to avoid column not found errors
     $sql = "
-        SELECT 
-            ri.return_id,
-            ri.return_code,
-            ri.product_id,
-            ri.product_name,
-            ri.sku,
-            ri.return_qty,
-            ri.return_status,
-            ri.is_returnable,
-            ri.image_path,
-            ri.notes as return_notes,
-            ri.expiry_date,
-            ri.created_at
+        SELECT ri.*
         FROM returned_items ri
-        WHERE ri.is_returnable = 0 AND ri.po_id = :po_id
+        WHERE (ri.is_returnable = 0 OR ri.is_returnable = '0') 
+        AND ri.po_id = :po_id
         ORDER BY ri.created_at DESC
     ";
     
@@ -43,10 +37,17 @@ try {
     $stmt->execute([':po_id' => (int)$po_id]);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // Debug: Log result count
+    error_log("[get_damaged_unsellable_by_po] Found items: " . count($items));
+    
     echo json_encode([
         'status' => 'success',
         'data' => $items,
-        'count' => count($items)
+        'count' => count($items),
+        'debug' => [
+            'po_id' => (int)$po_id,
+            'query' => 'returned_items where is_returnable=0 and po_id=' . (int)$po_id
+        ]
     ]);
     
 } catch (Exception $e) {

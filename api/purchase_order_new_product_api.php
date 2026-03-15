@@ -154,10 +154,10 @@ try {
         $temp_status = 'pending_approval';
         $stmt = $pdo->prepare("
             INSERT INTO temp_products 
-            (product_name, product_category, product_image, unit, status, po_id, created_by) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (product_name, product_category, product_image, unit, status, source_type, po_id, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$product_name, $category, $product_image_data, $unit, $temp_status, $po_id, $created_by]);
+        $stmt->execute([$product_name, $category, $product_image_data, $unit, $temp_status, 'NewProduct', $po_id, $created_by]);
 
         $temp_product_id = $pdo->lastInsertId();
 

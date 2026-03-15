@@ -786,8 +786,13 @@ $fully_received = $status_counts['completed'] ?? 0; // รับครบแล�
                 <div id="damagedUnsellableSection" style="display: none;">
                     <div class="mt-4 pt-4 border-top">
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <span class="material-icons align-middle me-2" style="font-size: 1.2rem;">error</span>
-                            <strong>สินค้าชำรุดขายไม่ได้</strong> - ของรายการสั่งซื้อนี้
+                            <div class="d-flex align-items-center">
+                                <span class="material-icons me-2" style="font-size: 1.5rem;">error</span>
+                                <div>
+                                    <strong>สินค้าชำรุดขายไม่ได้</strong>
+                                    <div class="small mt-1">รายการสินค้าที่ส่งตรวจสอบแล้วพบว่าชำรุด ไม่สามารถขายได้ จึงไม่นับรวมในจำนวนรับเข้า</div>
+                                </div>
+                            </div>
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                         <div class="table-responsive">
@@ -797,7 +802,7 @@ $fully_received = $status_counts['completed'] ?? 0; // รับครบแล�
                                         <th style="width: 10%;">รูปภาพ</th>
                                         <th>ชื่อสินค้า</th>
                                         <th style="width: 12%; text-align: center;">SKU</th>
-                                        <th style="width: 10%; text-align: right;">จำนวน</th>
+                                        <th style="width: 10%; text-align: right;">จำนวนชำรุด</th>
                                         <th style="width: 15%; text-align: center;">วันหมดอายุ</th>
                                         <th style="width: 15%; text-align: center;">บันทึกเมื่อ</th>
                                     </tr>
@@ -1090,8 +1095,13 @@ $fully_received = $status_counts['completed'] ?? 0; // รับครบแล�
                 <div id="completedDamagedUnsellableSection" style="display: none;">
                     <div class="mt-4 pt-4 border-top">
                         <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                            <span class="material-icons align-middle me-2" style="font-size: 1.2rem;">warning</span>
-                            <strong>สินค้าชำรุดขายไม่ได้</strong> - ของรายการสั่งซื้อนี้
+                            <div class="d-flex align-items-center">
+                                <span class="material-icons me-2" style="font-size: 1.5rem;">warning</span>
+                                <div>
+                                    <strong>สินค้าชำรุดขายไม่ได้</strong>
+                                    <div class="small mt-1">รายการสินค้าที่ตรวจสอบแล้วพบว่าชำรุด ไม่สามารถขายได้ - อธิบายความแตกต่างระหว่างจำนวนสั่งซื้อกับจำนวนรับเข้าจริง</div>
+                                </div>
+                            </div>
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                         <div class="table-responsive">
@@ -1101,7 +1111,7 @@ $fully_received = $status_counts['completed'] ?? 0; // รับครบแล�
                                         <th style="width: 10%;">รูปภาพ</th>
                                         <th>ชื่อสินค้า</th>
                                         <th style="width: 12%; text-align: center;">SKU</th>
-                                        <th style="width: 10%; text-align: right;">จำนวน</th>
+                                        <th style="width: 10%; text-align: right;">จำนวนชำรุด</th>
                                         <th style="width: 15%; text-align: center;">วันหมดอายุ</th>
                                         <th style="width: 15%; text-align: center;">บันทึกเมื่อ</th>
                                     </tr>
@@ -1194,21 +1204,38 @@ function formatThaiDate(dateString) {
 function loadDamagedUnsellableByPo(poId) {
     console.log('🔍 loadDamagedUnsellableByPo called with poId:', poId);
     
+    if (!poId) {
+        console.warn('⚠️ No PO ID provided to loadDamagedUnsellableByPo');
+        $('#damagedUnsellableSection').hide();
+        return;
+    }
+    
+    const apiUrl = '../api/get_damaged_unsellable_by_po.php?po_id=' + encodeURIComponent(poId);
+    console.log('📡 Calling API:', apiUrl);
+    
     $.ajax({
-        url: '../api/get_damaged_unsellable_by_po.php?po_id=' + encodeURIComponent(poId),
+        url: apiUrl,
         method: 'GET',
         dataType: 'json',
         success: function(response) {
             console.log('📥 API Response from get_damaged_unsellable_by_po:', response);
             if (response.status === 'success') {
-                console.log('✅ Data received:', response.data);
+                console.log('✅ Data received count:', response.count || 0);
+                console.log('✅ Data items:', response.data);
+                if (response.debug) {
+                    console.log('🐛 Debug info:', response.debug);
+                }
                 displayDamagedUnsellableByPo(response.data || []);
             } else {
                 console.warn('⚠️ API returned unsuccessful status:', response);
+                $('#damagedUnsellableSection').hide();
             }
         },
         error: function(xhr, status, error) {
-            console.error('❌ Error loading damaged items by PO:', error, xhr.responseText);
+            console.error('❌ Error loading damaged items by PO:', error);
+            console.error('❌ XHR Status:', xhr.status);
+            console.error('❌ XHR Response:', xhr.responseText);
+            $('#damagedUnsellableSection').hide();
         }
     });
 }
@@ -1225,6 +1252,8 @@ function displayDamagedUnsellableByPo(items) {
     console.log('✅ Found ' + items.length + ' damaged unsellable item(s)');
     
     let html = '';
+    let totalDamaged = 0;
+    
     items.forEach((item) => {
         console.log('Processing item:', item);
         const imageSrc = resolveProductImage(item);
@@ -1233,26 +1262,26 @@ function displayDamagedUnsellableByPo(items) {
         const returnCode = escapeHtml(item.return_code || '-');
         const expiryDisplay = item.expiry_date ? formatThaiDate(item.expiry_date) : '-';
         const createdDate = item.created_at ? formatThaiDateTime(item.created_at) : '-';
+        const damageQty = parseFloat(item.return_qty || 0);
+        totalDamaged += damageQty;
         
         html += `
             <tr>
                 <td class="text-center">
-                    <img src="${imageSrc}" alt="${productName}" class="po-item-image" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
+                    <img src="${imageSrc}" alt="${productName}" class="po-item-image" onerror="this.onerror=null;this.src='../images/noimg.png';" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
                 </td>
                 <td>
-                    <div>
-                        <strong>${productName}</strong>
-                        <div class="text-muted small">${returnCode}</div>
-                    </div>
+                    <div class="fw-bold">${productName}</div>
+                    <small class="text-muted d-block">รหัสคืน: ${returnCode}</small>
                 </td>
                 <td class="text-center">
-                    <small class="badge bg-secondary">${sku}</small>
+                    <span class="badge bg-secondary">${sku}</span>
+                </td>
+                <td class="text-end">
+                    <div class="fw-bold text-danger">${damageQty.toLocaleString()}</div>
                 </td>
                 <td class="text-center">
-                    <strong>${Number(item.return_qty || 0).toLocaleString()}</strong>
-                </td>
-                <td class="text-center">
-                    <small class="badge bg-danger">${expiryDisplay}</small>
+                    ${expiryDisplay !== '-' ? `<span class="badge bg-danger">${expiryDisplay}</span>` : '<span class="text-muted">-</span>'}
                 </td>
                 <td class="text-center">
                     <small class="text-muted">${createdDate}</small>
@@ -1260,6 +1289,15 @@ function displayDamagedUnsellableByPo(items) {
             </tr>
         `;
     });
+    
+    // เพิ่มแถวสรุปยอดรวม
+    html += `
+        <tr class="table-danger fw-bold">
+            <td colspan="3" class="text-end">รวมสินค้าชำรุดทั้งหมด:</td>
+            <td class="text-end">${totalDamaged.toLocaleString()}</td>
+            <td colspan="2"></td>
+        </tr>
+    `;
     
     $('#damagedunsellablePoTableBody').html(html);
     $('#damagedUnsellableSection').show();
@@ -1772,21 +1810,38 @@ function displayCompletedPoItems(items) {
 function loadDamagedUnsellableByPoCompleted(poId) {
     console.log('🔍 loadDamagedUnsellableByPoCompleted called with poId:', poId);
     
+    if (!poId) {
+        console.warn('⚠️ No PO ID provided to loadDamagedUnsellableByPoCompleted');
+        $('#completedDamagedUnsellableSection').hide();
+        return;
+    }
+    
+    const apiUrl = '../api/get_damaged_unsellable_by_po.php?po_id=' + encodeURIComponent(poId);
+    console.log('📡 Calling API:', apiUrl);
+    
     $.ajax({
-        url: '../api/get_damaged_unsellable_by_po.php?po_id=' + encodeURIComponent(poId),
+        url: apiUrl,
         method: 'GET',
         dataType: 'json',
         success: function(response) {
-            console.log('📥 API Response from get_damaged_unsellable_by_po:', response);
+            console.log('📥 API Response from get_damaged_unsellable_by_po (completed):', response);
             if (response.status === 'success') {
-                console.log('✅ Data received:', response.data);
+                console.log('✅ Data received count:', response.count || 0);
+                console.log('✅ Data items:', response.data);
+                if (response.debug) {
+                    console.log('🐛 Debug info:', response.debug);
+                }
                 displayCompletedDamagedUnsellableByPo(response.data || []);
             } else {
                 console.warn('⚠️ API returned unsuccessful status:', response);
+                $('#completedDamagedUnsellableSection').hide();
             }
         },
         error: function(xhr, status, error) {
-            console.error('❌ Error loading damaged items by PO:', error, xhr.responseText);
+            console.error('❌ Error loading damaged items by PO (completed):', error);
+            console.error('❌ XHR Status:', xhr.status);
+            console.error('❌ XHR Response:', xhr.responseText);
+            $('#completedDamagedUnsellableSection').hide();
         }
     });
 }
@@ -1804,6 +1859,8 @@ function displayCompletedDamagedUnsellableByPo(items) {
     console.log('✅ Found ' + items.length + ' damaged unsellable item(s)');
     
     let html = '';
+    let totalDamaged = 0;
+    
     items.forEach((item) => {
         console.log('Processing item:', item);
         const imageSrc = resolveProductImage(item);
@@ -1813,11 +1870,12 @@ function displayCompletedDamagedUnsellableByPo(items) {
         const expiryDisplay = item.expiry_date ? formatThaiDate(item.expiry_date) : '-';
         const createdDate = item.created_at ? formatThaiDateTime(item.created_at) : '-';
         const damageQty = parseFloat(item.return_qty || item.quantity || 0);
+        totalDamaged += damageQty;
         
         html += `
             <tr>
                 <td class="text-center">
-                    <img src="${imageSrc}" alt="${productName}" class="po-item-image" onerror="this.onerror=null;this.src='../images/noimg.png';">
+                    <img src="${imageSrc}" alt="${productName}" class="po-item-image" onerror="this.onerror=null;this.src='../images/noimg.png';" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
                 </td>
                 <td>
                     <div class="fw-bold">${productName}</div>
@@ -1827,13 +1885,24 @@ function displayCompletedDamagedUnsellableByPo(items) {
                     <span class="badge bg-secondary">${sku}</span>
                 </td>
                 <td class="text-end">
-                    <div class="fw-bold text-warning">${damageQty.toLocaleString()}</div>
+                    <div class="fw-bold text-danger">${damageQty.toLocaleString()}</div>
                 </td>
-                <td class="text-center">${expiryDisplay}</td>
-                <td class="text-center"><small>${createdDate}</small></td>
+                <td class="text-center">
+                    ${expiryDisplay !== '-' ? `<span class="badge bg-warning">${expiryDisplay}</span>` : '<span class="text-muted">-</span>'}
+                </td>
+                <td class="text-center"><small class="text-muted">${createdDate}</small></td>
             </tr>
         `;
     });
+    
+    // เพิ่มแถวสรุปยอดรวม
+    html += `
+        <tr class="table-warning fw-bold">
+            <td colspan="3" class="text-end">รวมสินค้าชำรุดทั้งหมด:</td>
+            <td class="text-end">${totalDamaged.toLocaleString()}</td>
+            <td colspan="2"></td>
+        </tr>
+    `;
     
     $('#completedDamagedUnsellablePoTableBody').html(html);
     $('#completedDamagedUnsellableSection').show();
