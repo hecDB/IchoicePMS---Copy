@@ -42,6 +42,9 @@ $today = date('Y-m-d');
         .preview-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 12px; }
         .invoice-sheet { background: #fff; color: #000; padding: 24px; border: 1px solid #d1d5db; min-height: 1000px; }
         .invoice-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111; padding-bottom: 10px; }
+        @media print {
+            .invoice-sheet.page-break { page-break-after: always; }
+        }
         .invoice-brand { display: flex; align-items: center; gap: 10px; }
         .invoice-brand h2 { margin: 0; font-size: 18px; }
         .invoice-meta { text-align: right; font-size: 12px; }
@@ -57,7 +60,8 @@ $today = date('Y-m-d');
         .mt-8 { margin-top: 8px; }
         .summary-box { margin-top: 10px; display: grid; grid-template-columns: 1fr 220px; gap: 12px; }
         .totals { border: 1px solid #000; }
-        .totals td { padding: 6px; font-size: 12.5px; }
+        .totals td { padding: 4px 6px; font-size: 12.5px; line-height: 1.3; }
+        .totals tr[style*="background"] td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .footer-note { margin-top: 18px; font-size: 12px; }
         .pay-table { width: 100%; border-collapse: collapse; font-size: 12px; }
         .pay-table td { padding: 4px 6px; border-bottom: 1px solid #d1d5db; }
@@ -68,17 +72,42 @@ $today = date('Y-m-d');
         .toast.success { background: linear-gradient(135deg, #16a34a, #0f9f57); }
         .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
         @media print {
+            @page { size: A5; margin: 8mm; }
             body { background: #fff; }
             .mainwrap, .card, .controls { padding: 0; box-shadow: none; }
             .page-title { display: none; }
             .layout { display: block; }
             .card-form { display: none; }
             .sidebar, .sidebar-backdrop, .mobile-nav-toggle { display: none !important; }
-            .invoice-sheet { border: none; padding: 0; }
-            .inv-table { border-collapse: collapse !important; border-spacing: 0 !important; }
-            .inv-table, .inv-table th, .inv-table td, .inv-table thead th { border: 1px solid #000 !important; box-sizing: border-box; }
+            .invoice-sheet { border: none; padding: 8px !important; font-size: 8px !important; min-height: auto !important; }
+            .invoice-header { padding-bottom: 6px !important; }
+            .invoice-brand h2 { font-size: 11px !important; }
+            .invoice-brand > div > div { font-size: 7px !important; line-height: 1.3 !important; }
+            .invoice-brand > div:first-child { width: 40px !important; height: 40px !important; }
+            .invoice-meta { font-size: 8px !important; }
+            .invoice-meta > div:first-child { font-size: 10px !important; }
+            .invoice-meta > div:nth-child(2) { font-size: 9px !important; }
+            .invoice-meta > div:last-child { font-size: 8px !important; }
+            .invoice-block { margin-top: 6px !important; font-size: 7px !important; }
+            .invoice-block h4 { font-size: 8px !important; margin-bottom: 4px !important; padding-bottom: 3px !important; }
+            .invoice-block > div { gap: 8px !important; }
+            .invoice-block > div > div { padding: 6px !important; }
+            .invoice-block > div > div > div { font-size: 7px !important; line-height: 1.5 !important; }
+            .inv-table { margin-top: 6px !important; font-size: 7px !important; border-collapse: collapse !important; border-spacing: 0 !important; }
+            .inv-table, .inv-table th, .inv-table td, .inv-table thead th { border: 1px solid #000 !important; box-sizing: border-box; padding: 3px 4px !important; }
             .inv-table thead { border-bottom: 1px solid #000 !important; }
             .inv-table thead th { background: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .summary-box { margin-top: 6px !important; gap: 6px !important; grid-template-columns: 1fr 140px !important; }
+            .summary-box > div { min-height: 100px !important; }
+            .summary-box > div > div:nth-child(2) { font-size: 7px !important; padding: 4px 6px !important; }
+            .totals td { padding: 2px 4px !important; font-size: 7px !important; line-height: 1.2 !important; }
+            .totals tr:last-child td { font-size: 8px !important; }
+            .footer-note { margin-top: 8px !important; font-size: 7px !important; }
+            .footer-note table { font-size: 7px !important; }
+            .footer-note table td { padding: 4px !important; font-size: 7px !important; }
+            .footer-note table td div { font-size: 7px !important; line-height: 1.4 !important; }
+            .footer-note table td div:not(:first-child) { margin-top: 8px !important; }
+            .footer-note > div:last-child { margin-top: 4px !important; }
         }
     </style>
 </head>
@@ -97,36 +126,39 @@ $today = date('Y-m-d');
             <h3>กรอกข้อมูล</h3>
             <div class="field-grid">
                 <div class="field">
-                    <label for="inv_no">เลขที่ใบกำกับภาษี</label>
+                    <label for="doc_type">ปรุะเภทเอกสาร</label>
+                    <select id="doc_type">
+                        <option value="tax_invoice">ใบกำกับภาษี</option>
+                        <option value="payment_voucher">ใบสำคัญจ่าย</option>
+                        <option value="quotation">ใบเสนอราคา</option>
+                        <option value="invoice">ใบแจ้งหนี้</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="inv_no"><span id="doc_no_label">เลขที่ใบกำกับภาษี</span></label>
                     <input id="inv_no" type="text" value="202601-001" autocomplete="off">
                 </div>
                 <div class="field">
-                    <label for="inv_date">วันที่ออกเอกสาร</label>
+                    <label for="sales_tag">เลขแท็กรายการขายสินค้า</label>
+                    <input id="sales_tag" type="text" placeholder="เช่น TAG-001" autocomplete="off">
+                </div>
+                <div class="field">
+                    <label for="inv_date">วันที่ออกบิล</label>
                     <input id="inv_date" type="date" value="<?= htmlspecialchars($today) ?>">
                 </div>
                 <div class="field">
-                    <label for="ref_no">เลขที่อ้างอิง/คำสั่งซื้อ</label>
-                    <input id="ref_no" type="text" placeholder="เช่น SO-2026-00123">
-                </div>
-                <div class="field">
-                    <label for="platform">ช่องทางขาย</label>
+                    <label for="platform">ช่องทางการสั่งซื้อ</label>
                     <select id="platform">
                         <option value="">เลือกช่องทาง</option>
                         <option value="Shopee">Shopee</option>
                         <option value="Lazada">Lazada</option>
-                        <option value="หน้าร้าน">หน้าร้าน</option>
-                        <option value="อื่นๆ">อื่นๆ</option>
+                        <option value="Tiktok">Tiktok</option>
+                        <option value="อื่นๆ">อื่นๆ (โปรดระบุ)</option>
                     </select>
                 </div>
-                <div class="field">
-                    <label for="payment_method">ช่องทางการชำระเงิน</label>
-                    <select id="payment_method">
-                        <option value="">เลือกวิธีชำระ</option>
-                        <option value="cash">เงินสด</option>
-                        <option value="transfer">เงินโอน</option>
-                        <option value="shopee">รับเงิน ผ่าน : Shopee</option>
-                        <option value="lazada">รับเงิน ผ่าน : Lazada</option>
-                    </select>
+                <div class="field" id="platform_other_field" style="display:none;">
+                    <label for="platform_other">ระบุช่องทาง</label>
+                    <input id="platform_other" type="text" placeholder="ระบุช่องทาง...">
                 </div>
             </div>
 
@@ -138,10 +170,6 @@ $today = date('Y-m-d');
                 <div class="field">
                     <label for="tax_id">เลขประจำตัวผู้เสียภาษี</label>
                     <input id="tax_id" type="text" placeholder="13 หลัก">
-                </div>
-                <div class="field">
-                    <label for="branch">สาขา</label>
-                    <input id="branch" type="text" placeholder="สำนักงานใหญ่/สาขา">
                 </div>
                 <div class="field" style="grid-column: span 2;">
                     <label for="address">ที่อยู่</label>
@@ -202,21 +230,33 @@ $today = date('Y-m-d');
                         </div>
                     </div>
                     <div class="invoice-meta">
-                        <div style="font-weight:700;font-size:15px;">ใบกำกับภาษี/ใบเสร็จรับเงิน</div>
-                        <div style="margin-top:4px;">เลขที่: <span id="pv_inv_no">-</span></div>
-                        <div>วันที่: <span id="pv_inv_date">-</span></div>
-                        <div>เลขที่อ้างอิง: <span id="pv_ref">-</span></div>
+                        <div style="font-weight:700;font-size:16px;" id="pv_doc_title_th">ใบกำกับภาษี/ใบเสร็จรับเงิน</div>
+                        <div style="font-weight:700;font-size:15px;margin-top:2px;" id="pv_doc_title_en">TAX INVOICE</div>
+                        <div style="margin-top:6px;font-size:13px;font-weight:600;" id="pv_doc_status">(ต้นฉบับ / Original)</div>
                     </div>
                 </div>
 
                 <div class="invoice-block">
-                    <h4>ข้อมูลผู้ซื้อ</h4>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;">
-                        <div>ชื่อ/บริษัท: <strong id="pv_customer">-</strong></div>
-                       
-                        <div>ที่อยู่: <span id="pv_address">-</span></div>
-                        <div>เลขประจำตัวผู้เสียภาษี: <span id="pv_tax_id">-</span></div>
-                        <div>ช่องทางขาย: <span id="pv_platform">-</span></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+                        <!-- บล็อกซ้าย -->
+                        <div style="border:1px solid #d1d5db;padding:12px;border-radius:8px;background:#fafafa;">
+                            <h4 style="margin:0 0 10px;border-bottom:1px solid #d1d5db;padding-bottom:6px;font-size:13px;">ข้อมูลลูกค้า</h4>
+                            <div style="font-size:12px;line-height:1.8;">
+                                <div><strong>ลูกค้า:</strong> <span id="pv_customer">-</span></div>
+                                <div><strong>ที่อยู่:</strong> <span id="pv_address">-</span></div>
+                                <div><strong>เลขผู้เสียภาษี:</strong> <span id="pv_tax_id">-</span></div>
+                            </div>
+                        </div>
+                        <!-- บล็อกขวา -->
+                        <div style="border:1px solid #d1d5db;padding:12px;border-radius:8px;background:#fafafa;">
+                            <h4 style="margin:0 0 10px;border-bottom:1px solid #d1d5db;padding-bottom:6px;font-size:13px;">ข้อมูลเอกสาร</h4>
+                            <div style="font-size:12px;line-height:1.8;">
+                                <div><strong><span id="pv_doc_no_label">เลขที่:</span></strong> <span id="pv_inv_no">-</span></div>
+                                <div><strong>เลขแท็กขาย:</strong> <span id="pv_sales_tag">-</span></div>
+                                <div><strong>วันที่ออกบิล:</strong> <span id="pv_inv_date">-</span></div>
+                                <div><strong>ช่องทางสั่งซื้อ:</strong> <span id="pv_platform">-</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -237,57 +277,47 @@ $today = date('Y-m-d');
                 </table>
 
                 <div class="summary-box">
-                    <div style="border:1px solid #000; padding:10px; min-height:120px;">
-                        
-                        <div style="font-size:12px; margin-bottom:4px;">ชำระโดย</div>
-                        <table class="pay-table" id="pv_payment_table"></table>
+                    <div style="border:1px solid #000; padding:0; min-height:180px; display:flex; flex-direction:column;">
+                        <div style="flex:2;"></div>
+                        <div style="font-weight:700; padding:8px 10px; background:#e0e0e0; font-size:12px; line-height:1.4;">
+                            ตัวอักษร : <span id="pv_amount_text">-</span>
+                        </div>
+                        <div style="flex:1;"></div>
                     </div>
                     <table class="totals" style="width:100%;">
                         <tr>
-                            <td>ยอดรวม<br>TOTAL AMOUNT</td>
+                            <td>รวมเงิน<br>SUB TOTAL</td>
                             <td class="text-right" id="pv_subtotal">0.00</td>
                         </tr>
                         <tr>
-                            <td>ส่วนลดจากร้านค้า<br>DISCOUNT</td>
+                            <td>หักส่วนลด<br>DISCOUNT</td>
                             <td class="text-right" id="pv_discount">0.00</td>
                         </tr>
                         <tr>
-                            <td>ค่าจัดส่ง</td>
-                            <td class="text-right" id="pv_shipping">0.00</td>
-                        </tr>
-                        <tr>
-                            <td>ยอดสุทธิหลังหักส่วนลด<br>TOTAL AMOUNT AFTER DISCOUNT</td>
-                            <td class="text-right" id="pv_after_discount">0.00</td>
-                        </tr>
-                        <tr>
-                            <td>มูลค่าที่คำนวณภาษี</td>
+                            <td>มูลค่าก่อนภาษี<br>BEFORE VAT</td>
                             <td class="text-right" id="pv_before_vat">0.00</td>
                         </tr>
                         <tr>
-                            <td>ภาษีมูลค่าเพิ่ม<br>VAT 7%</td>
+                            <td>ภาษีมูลค่าเพิ่ม<br>VAT</td>
                             <td class="text-right" id="pv_vat">0.00</td>
                         </tr>
-                        <tr>
-                            <td>รวมจำนวนเงินทั้งสิ้น</td>
-                            <td class="text-right" id="pv_grand">0.00</td>
+                        <tr style="background:#e0e0e0;">
+                            <td style="font-weight:700; padding:8px 10px;">รวมทั้งสิ้น<br>GRAND TOTAL</td>
+                            <td class="text-right" style="font-weight:700;" id="pv_grand">0.00</td>
                         </tr>
                         <tr>
-                            <td>ส่วนลดพิเศษ</td>
+                            <td>ส่วนลดอื่น<br>OTHERS DISCOUNTS</td>
                             <td class="text-right" id="pv_special_discount">0.00</td>
                         </tr>
                         <tr>
-                            <td style="font-weight:700;">ยอดชำระ</td>
-                            <td class="text-right" style="font-weight:700;" id="pv_payable">0.00</td>
+                            <td style="font-weight:700; font-size:14px;">จำนวนเงินที่ชำระ<br>ACTUAL PAYMENT</td>
+                            <td class="text-right" style="font-weight:700; font-size:14px;" id="pv_payable">0.00</td>
                         </tr>
                     </table>
                 </div>
 
-                <div style="margin-top:10px; font-size:13px; border:1px solid #000; padding:6px 10px;">
-                    ตัวอักษร (สกุลบาทถ้วน): <span id="pv_amount_text">-</span>
-                </div>
-
                 <div class="footer-note">
-                    <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <table style="width:100%; border-collapse:collapse;">
                         <tr>
                             <td style="border:1px solid #000; padding:10px; width:55%; vertical-align:top;">
                                 <div style="font-weight:700;">ผู้รับสินค้า/บริการ</div>
@@ -298,8 +328,6 @@ $today = date('Y-m-d');
                                 <div style="font-weight:700;">ผู้รับเงิน</div>
                                 <div style="margin-top:22px;">ลงชื่อ: <span id="pv_sign_payer">________________</span></div>
                                 <div>วันที่: <span id="pv_sign_payer_date">____/____/______</span></div>
-                                <div style="margin-top:16px; font-weight:700;">ผู้มีอำนาจลงนาม</div>
-                                <div style="margin-top:22px;">ลงชื่อ: <span id="pv_sign_authorized">________________</span></div>
                             </td>
                         </tr>
                     </table>
@@ -317,12 +345,15 @@ $today = date('Y-m-d');
     const previewBtn = document.getElementById('previewBtn');
     const printBtn = document.getElementById('printBtn');
     const saveBtn = document.getElementById('saveBtn');
-    const paymentOptions = [
-        { value: 'cash', label: 'เงินสด' },
-        { value: 'transfer', label: 'เงินโอน' },
-        { value: 'shopee', label: 'รับเงิน ผ่าน : Shopee' },
-        { value: 'lazada', label: 'รับเงิน ผ่าน : Lazada' }
-    ];
+    const docTypeSelect = document.getElementById('doc_type');
+    const docNoLabel = document.getElementById('doc_no_label');
+    
+    const docTypeLabels = {
+        tax_invoice: { titleTh: 'ใบกำกับภาษี/ใบเสร็จรับเงิน', titleEn: 'TAX INVOICE', label: 'เลขที่ใบกำกับภาษี', docNoLabel: 'เลขที่ใบกำกับภาษี:' },
+        payment_voucher: { titleTh: 'ใบสำคัญจ่าย', titleEn: 'PAYMENT VOUCHER', label: 'เลขที่ใบสำคัญจ่าย', docNoLabel: 'เลขที่ใบสำคัญจ่าย:' },
+        quotation: { titleTh: 'ใบเสนอราคา', titleEn: 'QUOTATION', label: 'เลขที่ใบเสนอราคา', docNoLabel: 'เลขที่ใบเสนอราคา:' },
+        invoice: { titleTh: 'ใบแจ้งหนี้', titleEn: 'INVOICE', label: 'เลขที่ใบแจ้งหนี้', docNoLabel: 'เลขที่ใบแจ้งหนี้:' }
+    };
 
     function addRow(data = {}) {
         const tr = document.createElement('tr');
@@ -343,21 +374,6 @@ $today = date('Y-m-d');
         const price = parseFloat(tr.querySelector('.item-price').value) || 0;
         const total = qty * price;
         tr.querySelector('.item-total').value = total.toFixed(2);
-    }
-
-    function renderPaymentTable(selectedMethod) {
-        const paymentTable = document.getElementById('pv_payment_table');
-        paymentTable.innerHTML = paymentOptions.map(opt => {
-            const isSelected = opt.value === selectedMethod;
-            const statusClass = isSelected ? 'pay-status is-true' : 'pay-status';
-            const statusText = isSelected ? 'TRUE' : 'FALSE';
-            return `
-                <tr>
-                    <td class="${statusClass}">${statusText}</td>
-                    <td>${opt.label}</td>
-                </tr>
-            `;
-        }).join('');
     }
 
     function bindRowEvents() {
@@ -445,26 +461,45 @@ $today = date('Y-m-d');
             const el = document.getElementById(id);
             return el ? (el.value || fallback) : fallback;
         };
+        const docType = byIdValue('doc_type', 'tax_invoice');
+        const docTitleTh = docTypeLabels[docType].titleTh;
+        const docTitleEn = docTypeLabels[docType].titleEn;
+        const docNoLabel = docTypeLabels[docType].docNoLabel;
         const invNo = byIdValue('inv_no');
+        const salesTag = byIdValue('sales_tag');
         const invDate = byIdValue('inv_date');
-        const refNo = byIdValue('ref_no');
-        const platform = byIdValue('platform');
+        const platformSelect = document.getElementById('platform');
+        const platformOther = document.getElementById('platform_other');
+        const platform = platformSelect.value === 'อื่นๆ' && platformOther.value 
+            ? platformOther.value 
+            : platformSelect.value || '-';
         const paymentMethod = byIdValue('payment_method', '');
         const customer = byIdValue('customer');
         const taxId = byIdValue('tax_id');
         const address = byIdValue('address');
         const signReceiver = '________________';
-        const signReceiverDate = '____/____/______';
         const signPayer = '________________';
-        const signPayerDate = '____/____/______';
-        const signAuthorized = '________________';
+        
+        // แปลงวันที่เป็นรูปแบบ DD/MM/YYYY (พ.ศ.)
+        let formattedDate = '____/____/______';
+        if (invDate && invDate !== '-') {
+            const dateObj = new Date(invDate);
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const year = dateObj.getFullYear() + 543; // แปลงเป็น พ.ศ.
+            formattedDate = `${day}/${month}/${year}`;
+        }
+        
         const discount = parseFloat(byIdValue('discount', 0)) || 0;
         const shipping = parseFloat(byIdValue('shipping', 0)) || 0;
         const specialDiscount = parseFloat(byIdValue('special_discount', 0)) || 0;
 
+        document.getElementById('pv_doc_title_th').textContent = docTitleTh;
+        document.getElementById('pv_doc_title_en').textContent = docTitleEn;
+        document.getElementById('pv_doc_no_label').textContent = docNoLabel;
         document.getElementById('pv_inv_no').textContent = invNo;
+        document.getElementById('pv_sales_tag').textContent = salesTag;
         document.getElementById('pv_inv_date').textContent = invDate;
-        document.getElementById('pv_ref').textContent = refNo;
         document.getElementById('pv_platform').textContent = platform;
         document.getElementById('pv_customer').textContent = customer;
         document.getElementById('pv_tax_id').textContent = taxId;
@@ -472,11 +507,9 @@ $today = date('Y-m-d');
         if (pvBranch) { pvBranch.textContent = '-'; }
         document.getElementById('pv_address').textContent = address;
         document.getElementById('pv_sign_receiver').textContent = signReceiver;
-        document.getElementById('pv_sign_receiver_date').textContent = signReceiverDate;
+        document.getElementById('pv_sign_receiver_date').textContent = '____/____/______';
         document.getElementById('pv_sign_payer').textContent = signPayer;
-        document.getElementById('pv_sign_payer_date').textContent = signPayerDate;
-        document.getElementById('pv_sign_authorized').textContent = signAuthorized;
-        renderPaymentTable(paymentMethod);
+        document.getElementById('pv_sign_payer_date').textContent = formattedDate;
 
         const pvBody = document.getElementById('pv_items_body');
         pvBody.innerHTML = '';
@@ -506,15 +539,13 @@ $today = date('Y-m-d');
             });
         }
 
-        const totalAfterDiscount = Math.max(subtotal - discount + shipping, 0);
+        const totalAfterDiscount = Math.max(subtotal - discount, 0);
         const beforeVat = totalAfterDiscount / 1.07;
         const vat = totalAfterDiscount - beforeVat;
         const payable = Math.max(totalAfterDiscount - specialDiscount, 0);
 
         document.getElementById('pv_subtotal').textContent = numberFmt(subtotal);
         document.getElementById('pv_discount').textContent = numberFmt(discount);
-        document.getElementById('pv_shipping').textContent = numberFmt(shipping);
-        document.getElementById('pv_after_discount').textContent = numberFmt(totalAfterDiscount);
         document.getElementById('pv_before_vat').textContent = numberFmt(beforeVat);
         document.getElementById('pv_vat').textContent = numberFmt(vat);
         document.getElementById('pv_grand').textContent = numberFmt(totalAfterDiscount);
@@ -545,14 +576,15 @@ $today = date('Y-m-d');
         }
 
         const payload = {
+            doc_type: document.getElementById('doc_type').value,
             inv_no: document.getElementById('inv_no').value,
+            sales_tag: document.getElementById('sales_tag').value,
             inv_date: document.getElementById('inv_date').value,
-            ref_no: document.getElementById('ref_no').value,
-            platform: document.getElementById('platform').value,
-            payment_method: document.getElementById('payment_method').value,
+            platform: document.getElementById('platform').value === 'อื่นๆ' 
+                ? document.getElementById('platform_other').value 
+                : document.getElementById('platform').value,
             customer: document.getElementById('customer').value,
             tax_id: document.getElementById('tax_id').value,
-            branch: document.getElementById('branch').value,
             address: document.getElementById('address').value,
             discount: parseFloat(document.getElementById('discount').value) || 0,
             shipping: parseFloat(document.getElementById('shipping').value) || 0,
@@ -584,18 +616,77 @@ $today = date('Y-m-d');
         }
     }
 
+    function updateDocTypeLabel() {
+        const docType = docTypeSelect.value;
+        docNoLabel.textContent = docTypeLabels[docType].label;
+        updatePreview();
+    }
+    
+    // จัดการแสดง/ซ่อนช่องระบุช่องทางอื่นๆ
+    const platformSelect = document.getElementById('platform');
+    const platformOtherField = document.getElementById('platform_other_field');
+    const platformOtherInput = document.getElementById('platform_other');
+    
+    platformSelect.addEventListener('change', function() {
+        if (this.value === 'อื่นๆ') {
+            platformOtherField.style.display = 'block';
+            platformOtherInput.focus();
+        } else {
+            platformOtherField.style.display = 'none';
+            platformOtherInput.value = '';
+        }
+        updatePreview();
+    });
+    
     addRow({ name: 'ตัวอย่างสินค้า', qty: 1, unit: 'ชิ้น', price: 0, total: 0 });
     bindRowEvents();
     updatePreview();
 
+    docTypeSelect.addEventListener('change', updateDocTypeLabel);
     addRowBtn.addEventListener('click', () => { addRow(); bindRowEvents(); });
-    document.getElementById('payment_method').addEventListener('change', updatePreview);
+    document.getElementById('sales_tag').addEventListener('input', updatePreview);
+    platformOtherInput.addEventListener('input', updatePreview);
+    document.getElementById('inv_no').addEventListener('input', updatePreview);
+    document.getElementById('inv_date').addEventListener('change', updatePreview);
+    document.getElementById('customer').addEventListener('input', updatePreview);
+    document.getElementById('tax_id').addEventListener('input', updatePreview);
+    document.getElementById('address').addEventListener('input', updatePreview);
     document.getElementById('discount').addEventListener('input', updatePreview);
     document.getElementById('shipping').addEventListener('input', updatePreview);
     document.getElementById('special_discount').addEventListener('input', updatePreview);
     previewBtn.addEventListener('click', () => { itemBody.querySelectorAll('tr').forEach(recalcRow); updatePreview(); });
     saveBtn.addEventListener('click', saveInvoice);
-    printBtn.addEventListener('click', () => { updatePreview(); window.print(); });
+    printBtn.addEventListener('click', () => {
+        updatePreview();
+        
+        // สร้างโคลนสำหรับเอกสารสำเนา
+        const invoiceSheet = document.getElementById('invoiceSheet');
+        const clonedSheet = invoiceSheet.cloneNode(true);
+        
+        // เปลี่ยนสถานะเอกสารต้นฉบับให้มี page-break
+        invoiceSheet.classList.add('page-break');
+        
+        // เปลี่ยนสถานะในโคลนเป็นสำเนา
+        clonedSheet.id = 'invoiceSheetCopy';
+        const copyStatus = clonedSheet.querySelector('#pv_doc_status');
+        if (copyStatus) {
+            copyStatus.textContent = '(สำเนา / Copy)';
+        }
+        
+        // เพิ่มโคลนไปหลังต้นฉบับ
+        invoiceSheet.parentNode.appendChild(clonedSheet);
+        
+        // พิมพ์ทั้งสองฉบับพร้อมกัน
+        window.print();
+        
+        // ลบโคลนและ class page-break หลังพิมพ์เสร็จ
+        setTimeout(() => {
+            invoiceSheet.classList.remove('page-break');
+            if (clonedSheet.parentNode) {
+                clonedSheet.parentNode.removeChild(clonedSheet);
+            }
+        }, 100);
+    });
 })();
 </script>
 </body>

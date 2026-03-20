@@ -9261,3 +9261,37 @@
 [27-Feb-2026 04:30:28 Europe/Berlin] === product_search_api.php END ===
 [27-Feb-2026 04:30:42 Europe/Berlin] update_po_section.php called with: {"po_id":"6","product_id":"4","product_name":"\u0e19\u0e49\u0e33\u0e14\u0e37\u0e48\u0e21 600ml","qty":"10","price_per_unit":"1.5","unit":"\u0e02\u0e27\u0e14","currency_id":"2","price_original":"1.5","exchange_rate":"39","update_type":"add_item"}
 [27-Feb-2026 04:30:42 Europe/Berlin] Processing update: po_id=6, type=add_item
+[20-Mar-2026 09:27:10 Europe/Berlin] === product_search_api.php START ===
+[20-Mar-2026 09:27:10 Europe/Berlin] Request query: pro
+[20-Mar-2026 09:27:10 Europe/Berlin] Request method: GET
+[20-Mar-2026 09:27:10 Europe/Berlin] Request URI: /api/product_search_api.php?q=pro&type=issue&available_only=true
+[20-Mar-2026 09:27:10 Europe/Berlin] Searching for: 'pro' with limit: 10
+[20-Mar-2026 09:27:10 Europe/Berlin] About to encode 0 results for type: issue
+[20-Mar-2026 09:27:10 Europe/Berlin] Sent JSON response length: 15
+[20-Mar-2026 09:27:10 Europe/Berlin] === product_search_api.php END ===
+[20-Mar-2026 09:27:15 Europe/Berlin] === product_search_api.php START ===
+[20-Mar-2026 09:27:15 Europe/Berlin] Request query: 9e
+[20-Mar-2026 09:27:15 Europe/Berlin] Request method: GET
+[20-Mar-2026 09:27:15 Europe/Berlin] Request URI: /api/product_search_api.php?q=9e&type=issue&available_only=true
+[20-Mar-2026 09:27:15 Europe/Berlin] Searching for: '9e' with limit: 10
+[20-Mar-2026 09:27:15 Europe/Berlin] About to encode 0 results for type: issue
+[20-Mar-2026 09:27:15 Europe/Berlin] Sent JSON response length: 15
+[20-Mar-2026 09:27:15 Europe/Berlin] === product_search_api.php END ===
+[20-Mar-2026 09:27:16 Europe/Berlin] === product_search_api.php START ===
+[20-Mar-2026 09:27:16 Europe/Berlin] Request query: ตำ
+[20-Mar-2026 09:27:16 Europe/Berlin] Request method: GET
+[20-Mar-2026 09:27:16 Europe/Berlin] Request URI: /api/product_search_api.php?q=%E0%B8%95%E0%B8%B3&type=issue&available_only=true
+[20-Mar-2026 09:27:16 Europe/Berlin] Searching for: 'ตำ' with limit: 10
+[20-Mar-2026 09:27:16 Europe/Berlin] About to encode 2 results for type: issue
+[20-Mar-2026 09:27:16 Europe/Berlin] Sent JSON response length: 2055
+[20-Mar-2026 09:27:16 Europe/Berlin] === product_search_api.php END ===
+[20-Mar-2026 09:27:22 Europe/Berlin] Issue request: Tag=125478965485, Products=1, User=1, Selected Platform=TikTok
+[20-Mar-2026 09:27:22 Europe/Berlin] Selected platform from request: TikTok
+[20-Mar-2026 09:27:22 Europe/Berlin] Selected pattern_name from request: TikTok-TH-J&T Express
+[20-Mar-2026 09:27:22 Europe/Berlin] Validation result: {"valid":true,"platform":"TikTok","pattern_name":"TikTok-TH-J&T Express","pattern_id":7,"description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 12 \u0e2b\u0e25\u0e31\u0e01","matched_count":1,"matched_patterns":[{"pattern_id":7,"platform":"TikTok","pattern_name":"TikTok-TH-J&T Express","regex_pattern":"^[0-9]{12}$","description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 12 \u0e2b\u0e25\u0e31\u0e01"}]}
+[20-Mar-2026 09:27:22 Europe/Berlin] Final platform for issue: TikTok, Pattern: TikTok-TH-J&T Express
+[20-Mar-2026 09:27:22 Europe/Berlin] Created sale_order_id: 1 with platform: TikTok, remark: แท็คส่งออก: 125478965485 | แพลตฟอร์ม: TikTok | รูปแบบ: TikTok-TH-J&T Express
+[20-Mar-2026 09:27:22 Europe/Berlin] Raw product data: {"product_id":16,"receive_id":12,"receive_item_id":17,"po_id":6,"name":"\u0e01\u0e23\u0e30\u0e1b\u0e34","sku":"\u0e15\u0e33\u0e2b\u0e19\u0e34--\u0e01\u0e23\u0e30\u0e1b\u0e34","barcode":"TMP-16-7H13Z6I12","available_qty":2,"expiry_date":"2026-03-31","lot_info":"\u0e25\u0e47\u0e2d\u0e15\u0e23\u0e31\u0e1a: 20\/03\/2026 | \u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38: 31\/03\/2026","sale_price":300,"image":"images\/temp_product_13_1773993540.jpg","image_url":"..\/images\/temp_product_13_1773993540.jpg","batch_count":1,"receive_batches":[{"receive_id":12,"available_qty":2,"expiry_date":"2026-03-31","created_at":"2026-03-20 14:59:04","remark_color":null,"remark_split":null}],"issue_qty":1}
+[20-Mar-2026 09:27:22 Europe/Berlin] Processing product: ID=16, Name=กระปิ, Qty=1, Price=300, Receive_ID=12
+[20-Mar-2026 09:27:22 Europe/Berlin] Successfully issued: Product ID 16, Qty 1, Receive ID 12, Sale Order ID 1
+[20-Mar-2026 09:27:22 Europe/Berlin] Issue completed: 1 successful, 0 errors

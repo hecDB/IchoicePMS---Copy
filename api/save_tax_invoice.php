@@ -125,6 +125,8 @@ $invNo = trim($input['inv_no'] ?? '');
 $invDate = trim($input['inv_date'] ?? '');
 $customer = trim($input['customer'] ?? '');
 $address = trim($input['address'] ?? '');
+$docType = trim($input['doc_type'] ?? 'tax_invoice');
+$salesTag = trim($input['sales_tag'] ?? '');
 if ($invNo === '' || $invDate === '' || $customer === '' || $address === '') {
     respond(400, ['success' => false, 'error' => 'กรุณากรอกข้อมูลใบกำกับภาษีให้ครบ']);
 }
@@ -144,31 +146,33 @@ try {
     $pdo->beginTransaction();
 
     $stmt = $pdo->prepare("INSERT INTO tax_invoices (
-        inv_no, inv_date, ref_no, platform, payment_method, customer, tax_id, branch, address,
-        discount, shipping, special_discount, subtotal, total_after_discount, before_vat, vat, grand_total, payable, amount_text
+        doc_type, inv_no, sales_tag, inv_date, platform,
+        customer_name, customer_tax_id, customer_address,
+        subtotal, discount, shipping, before_vat, vat,
+        grand_total, special_discount, payable, amount_text, status
     ) VALUES (
-        :inv_no, :inv_date, :ref_no, :platform, :payment_method, :customer, :tax_id, :branch, :address,
-        :discount, :shipping, :special_discount, :subtotal, :total_after_discount, :before_vat, :vat, :grand_total, :payable, :amount_text
+        :doc_type, :inv_no, :sales_tag, :inv_date, :platform,
+        :customer_name, :customer_tax_id, :customer_address,
+        :subtotal, :discount, :shipping, :before_vat, :vat,
+        :grand_total, :special_discount, :payable, :amount_text, 'active'
     )");
 
     $stmt->execute([
+        ':doc_type' => $docType,
         ':inv_no' => $invNo,
+        ':sales_tag' => $salesTag ?: null,
         ':inv_date' => $invDate,
-        ':ref_no' => $input['ref_no'] ?? null,
         ':platform' => $input['platform'] ?? null,
-        ':payment_method' => $input['payment_method'] ?? null,
-        ':customer' => $customer,
-        ':tax_id' => $input['tax_id'] ?? null,
-        ':branch' => $input['branch'] ?? null,
-        ':address' => $address,
+        ':customer_name' => $customer,
+        ':customer_tax_id' => $input['tax_id'] ?? null,
+        ':customer_address' => $address,
+        ':subtotal' => $subtotal,
         ':discount' => $discount,
         ':shipping' => $shipping,
-        ':special_discount' => $specialDiscount,
-        ':subtotal' => $subtotal,
-        ':total_after_discount' => $totalAfterDiscount,
         ':before_vat' => $beforeVat,
         ':vat' => $vat,
         ':grand_total' => $grandTotal,
+        ':special_discount' => $specialDiscount,
         ':payable' => $payable,
         ':amount_text' => $amountText
     ]);
@@ -176,20 +180,20 @@ try {
     $invoiceId = (int)$pdo->lastInsertId();
 
     $itemStmt = $pdo->prepare("INSERT INTO tax_invoice_items (
-        invoice_id, item_no, name, qty, unit, price, line_total
+        invoice_id, seq, item_name, qty, unit, unit_price, total_price
     ) VALUES (
-        :invoice_id, :item_no, :name, :qty, :unit, :price, :line_total
+        :invoice_id, :seq, :item_name, :qty, :unit, :unit_price, :total_price
     )");
 
     foreach ($cleanItems as $item) {
         $itemStmt->execute([
             ':invoice_id' => $invoiceId,
-            ':item_no' => $item['item_no'],
-            ':name' => $item['name'],
+            ':seq' => $item['item_no'],
+            ':item_name' => $item['name'],
             ':qty' => $item['qty'],
             ':unit' => $item['unit'] ?: null,
-            ':price' => $item['price'],
-            ':line_total' => $item['line_total']
+            ':unit_price' => $item['price'],
+            ':total_price' => $item['line_total']
         ]);
     }
 

@@ -28,7 +28,7 @@ try {
         exit;
     }
 
-    $itemStmt = $pdo->prepare("SELECT item_no, name, qty, unit, price, line_total FROM tax_invoice_items WHERE invoice_id = :id ORDER BY item_no ASC");
+    $itemStmt = $pdo->prepare("SELECT seq as item_no, item_name, qty, unit, unit_price, total_price FROM tax_invoice_items WHERE invoice_id = :id ORDER BY seq ASC");
     $itemStmt->execute([':id' => $id]);
     $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
 

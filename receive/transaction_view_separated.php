@@ -1049,7 +1049,7 @@ $(document).ready(function() {
         // เฉพาะตารางที่มีข้อมูลจริงๆ เท่านั้นถึงจะ initialize DataTable
         if (hasReceiveData) {
             receiveTable = $('#receive-table').DataTable({
-                pageLength: 25,
+                pageLength: 25,'tp.source_type'
                 language: {
                     "decimal": "",
                     "emptyTable": "ไม่มีข้อมูลในตาราง",

@@ -21,10 +21,9 @@ try {
     $dateFrom = trim($_GET['date_from'] ?? '');
     $dateTo = trim($_GET['date_to'] ?? '');
     $platform = trim($_GET['platform'] ?? '');
-    $payment = trim($_GET['payment_method'] ?? '');
 
     if ($q !== '') {
-        $where[] = '(inv_no LIKE :q OR customer LIKE :q OR ref_no LIKE :q)';
+        $where[] = '(inv_no LIKE :q OR customer_name LIKE :q OR sales_tag LIKE :q)';
         $params[':q'] = "%$q%";
     }
     if ($invNo !== '') {
@@ -32,7 +31,7 @@ try {
         $params[':inv_no'] = "%$invNo%";
     }
     if ($customer !== '') {
-        $where[] = 'customer LIKE :customer';
+        $where[] = 'customer_name LIKE :customer';
         $params[':customer'] = "%$customer%";
     }
     if ($dateFrom !== '') {
@@ -47,12 +46,8 @@ try {
         $where[] = 'platform = :platform';
         $params[':platform'] = $platform;
     }
-    if ($payment !== '') {
-        $where[] = 'payment_method = :payment_method';
-        $params[':payment_method'] = $payment;
-    }
 
-    $sql = "SELECT id, inv_no, inv_date, customer, platform, payment_method, grand_total, payable, ref_no, created_at
+    $sql = "SELECT id, inv_no, inv_date, customer_name, platform, grand_total, payable, sales_tag, doc_type, created_at
             FROM tax_invoices";
     if ($where) {
         $sql .= ' WHERE ' . implode(' AND ', $where);
