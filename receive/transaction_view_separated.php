@@ -496,6 +496,23 @@ function resolveTransactionImageSrc($imageValue) {
         }
     }
     
+    /* Force tables to be visible */
+    #receive-table, #damaged-table {
+        display: table !important;
+        width: 100% !important;
+    }
+    
+    /* Ensure buttons are clickable */
+    .btn-group .btn {
+        pointer-events: auto !important;
+        cursor: pointer !important;
+    }
+    
+    .btn-group .btn:disabled {
+        pointer-events: none !important;
+        cursor: not-allowed !important;
+        opacity: 0.5;
+    }
     
 </style>
 
@@ -1049,7 +1066,7 @@ $(document).ready(function() {
         // เฉพาะตารางที่มีข้อมูลจริงๆ เท่านั้นถึงจะ initialize DataTable
         if (hasReceiveData) {
             receiveTable = $('#receive-table').DataTable({
-                pageLength: 25,'tp.source_type'
+                pageLength: 25,
                 language: {
                     "decimal": "",
                     "emptyTable": "ไม่มีข้อมูลในตาราง",
@@ -1101,6 +1118,8 @@ $(document).ready(function() {
             console.log('✅ Receive DataTable initialized successfully');
         } else {
             console.log('⚠️ Receive table is empty, skipping DataTable initialization');
+            // แสดงตารางแม้ว่าจะไม่มีข้อมูล
+            $('#receive-table').show();
         }
     } catch (error) {
         console.error('❌ Error initializing Receive DataTable:', error);
@@ -1172,6 +1191,8 @@ $(document).ready(function() {
             console.log('✅ Damaged DataTable initialized successfully');
         } else {
             console.log('⚠️ Damaged table is empty, skipping DataTable initialization');
+            // แสดงตารางแม้ว่าจะไม่มีข้อมูล
+            $('#damaged-table').show();
         }
     } catch (error) {
         console.error('❌ Error initializing Damaged DataTable:', error);
@@ -1183,6 +1204,13 @@ $(document).ready(function() {
     $('#custom-search-receive').on('keyup', function() {
         if (receiveTable) {
             receiveTable.search(this.value).draw();
+        } else {
+            // Fallback: manual search if DataTable not initialized
+            const searchValue = this.value.toLowerCase();
+            $('#receive-table tbody tr').each(function() {
+                const rowText = $(this).text().toLowerCase();
+                $(this).toggle(rowText.indexOf(searchValue) > -1);
+            });
         }
     });
 
@@ -1190,6 +1218,13 @@ $(document).ready(function() {
     $('#custom-search-damaged').on('keyup', function() {
         if (damagedTable) {
             damagedTable.search(this.value).draw();
+        } else {
+            // Fallback: manual search if DataTable not initialized
+            const searchValue = this.value.toLowerCase();
+            $('#damaged-table tbody tr').each(function() {
+                const rowText = $(this).text().toLowerCase();
+                $(this).toggle(rowText.indexOf(searchValue) > -1);
+            });
         }
     });
 
@@ -1200,6 +1235,22 @@ $(document).ready(function() {
         
         console.log('🔘 Buttons found - Receive:', receiveButtons, 'Damaged:', damagedButtons);
         console.log('📊 DataTable status - Receive:', receiveTable !== null, 'Damaged:', damagedTable !== null);
+        
+        // Debug: ตรวจสอบว่าปุ่มมี event listeners หรือไม่
+        if (damagedButtons > 0) {
+            console.log('✅ Damaged table buttons are present');
+            // Force show damaged table
+            $('#damaged-table').show();
+        }
+        
+        if (receiveButtons > 0) {
+            console.log('✅ Receive table buttons are present');
+            // Force show receive table
+            $('#receive-table').show();
+        }
+        
+        // Update stats with correct counts
+        updateStats();
     }, 500);
 
     $('#weightInput').on('input change', updatePricingFromWeight);
@@ -1789,7 +1840,10 @@ $(document).ready(function() {
     });
     
     // Handle view damaged button click
-    $(document).on('click', '.view-damaged-btn', function() {
+    $(document).on('click', '.view-damaged-btn', function(e) {
+        e.preventDefault();
+        console.log('👁️ View button clicked (damaged)');
+        
         const tempId = $(this).data('temp-id');
         const productName = $(this).data('product-name');
         const provisionalSku = $(this).data('provisional-sku');
@@ -1877,7 +1931,10 @@ $(document).ready(function() {
     });
     
     // Handle edit damaged button click
-    $(document).on('click', '.edit-damaged-btn', function() {
+    $(document).on('click', '.edit-damaged-btn', function(e) {
+        e.preventDefault();
+        console.log('🔧 Edit button clicked (damaged)');
+        
         const tempId = $(this).data('temp-id');
         const productName = $(this).data('product-name');
         const provisionalSku = $(this).data('provisional-sku');
@@ -2011,7 +2068,10 @@ $(document).ready(function() {
     });
     
     // Handle approve damaged button click
-    $(document).on('click', '.approve-damaged-btn', function() {
+    $(document).on('click', '.approve-damaged-btn', function(e) {
+        e.preventDefault();
+        console.log('✅ Approve button clicked (damaged)');
+        
         const tempId = $(this).data('temp-id');
         const productName = $(this).data('name');
         

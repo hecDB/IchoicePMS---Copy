@@ -377,6 +377,98 @@ $stats = [
             font-weight: 600;
             border: 1px solid rgba(59, 130, 246, 0.2);
         }
+
+        .btn-print-barcode {
+            background: #8b5cf6;
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .btn-print-barcode:hover {
+            background: #7c3aed;
+            transform: translateY(-2px);
+        }
+
+        /* Barcode Print Styles */
+        @media print {
+            /* ซ่อนทุกอย่าง */
+            body > * {
+                display: none !important;
+            }
+            
+            /* แสดงเฉพาะ barcode container */
+            #barcodePrintContainer {
+                display: block !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+            }
+            
+            #barcodePrintContainer * {
+                visibility: visible !important;
+            }
+            
+            #barcodePrintContainer .barcode-item {
+                display: inline-block !important;
+                width: 3cm !important;
+                height: 1cm !important;
+                margin: 0.15cm !important;
+                page-break-inside: avoid !important;
+            }
+            
+            #barcodePrintContainer .barcode-item svg {
+                display: block !important;
+                width: 100% !important;
+                height: 100% !important;
+            }
+            
+            @page {
+                size: A5 landscape;
+                margin: 5mm;
+            }
+        }
+
+        .barcode-item {
+            display: inline-block;
+            width: 3cm;
+            height: 1cm;
+            margin: 0.15cm;
+            text-align: center;
+            vertical-align: top;
+            page-break-inside: avoid;
+        }
+
+        .barcode-item svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        /* Hide barcode container on screen but keep in DOM for rendering */
+        #barcodePrintContainer {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 0;
+            overflow: hidden;
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -600,6 +692,40 @@ $stats = [
     </div>
 </div>
 
+<!-- Barcode Print Modal -->
+<div class="modal-backdrop" id="barcodeModalBackdrop" style="z-index: 1999;"></div>
+<div class="modal-content-box" id="barcodeModal" style="max-width: 400px; z-index: 2000;">
+    <div class="modal-header-custom">
+        <h2 class="modal-title-custom">พิมพ์บาร์โค้ด</h2>
+        <button class="close-btn" onclick="closeBarcodeModal()">×</button>
+    </div>
+    
+    <form id="barcodePrintForm" onsubmit="printBarcodes(event)">
+        <div class="form-group-custom">
+            <label>บาร์โค้ด</label>
+            <input type="text" id="barcodeValue" readonly style="background: #f3f4f6;">
+        </div>
+        
+        <div class="form-group-custom">
+            <label>ชื่อสินค้า</label>
+            <input type="text" id="barcodeProductName" readonly style="background: #f3f4f6;">
+        </div>
+        
+        <div class="form-group-custom">
+            <label>จำนวนที่ต้องการพิมพ์ *</label>
+            <input type="number" id="barcodeQuantity" min="1" max="100" value="1" required>
+        </div>
+        
+        <div class="modal-buttons">
+            <button type="button" class="btn-cancel" onclick="closeBarcodeModal()">ยกเลิก</button>
+            <button type="submit" class="btn-submit">พิมพ์</button>
+        </div>
+    </form>
+</div>
+
+<!-- Hidden Barcode Print Container -->
+<div id="barcodePrintContainer"></div>
+
 <!-- Modal -->
 <div class="modal-backdrop" id="modalBackdrop"></div>
 <div class="modal-content-box" id="productModal">
@@ -620,7 +746,13 @@ $stats = [
         </div>
 
         <div class="form-group-custom">
-            <label>Barcode *</label>
+            <label style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Barcode *</span>
+                <button type="button" class="btn-print-barcode" onclick="openBarcodeModal()" style="display: none;">
+                    <span class="material-icons" style="font-size: 1rem;">print</span>
+                    พิมพ์บาร์โค้ด
+                </button>
+            </label>
             <input type="text" id="productBarcode" name="barcode" required>
         </div>
 
@@ -717,6 +849,7 @@ $stats = [
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
 <script>
 let currentProductId = null;
@@ -847,11 +980,17 @@ function previewImage(event) {
 }
 
 // เปิด Modal
-function openModal(title = 'เพิ่มสินค้าใหม่') {
+function openModal(title = 'เพิ่มสินค้าใหม่', showPrintButton = false) {
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('productModal').style.display = 'block';
     document.getElementById('modalBackdrop').style.display = 'block';
     document.body.style.overflow = 'hidden';
+    
+    // แสดงหรือซ่อนปุ่มพิมพ์บาร์โค้ด
+    const printBtn = document.querySelector('.btn-print-barcode');
+    if (printBtn) {
+        printBtn.style.display = showPrintButton ? 'inline-flex' : 'none';
+    }
 }
 
 // ปิด Modal
@@ -867,10 +1006,130 @@ function closeModal() {
     document.getElementById('productShelf').value = '';
     document.getElementById('productLocation').value = '';
     currentProductId = null;
+    
+    // ซ่อนปุ่มพิมพ์บาร์โค้ด
+    const printBtn = document.querySelector('.btn-print-barcode');
+    if (printBtn) {
+        printBtn.style.display = 'none';
+    }
 }
 
 // ปิด Modal เมื่อคลิก Backdrop
 document.getElementById('modalBackdrop').addEventListener('click', closeModal);
+
+// ==================== Barcode Functions ====================
+// เปิด Barcode Modal
+function openBarcodeModal() {
+    const barcode = document.getElementById('productBarcode').value;
+    const productName = document.getElementById('productName').value;
+    
+    if (!barcode) {
+        Swal.fire({
+            icon: 'warning',
+            title: '\u0e01\u0e23\u0e38\u0e13\u0e32\u0e01\u0e23\u0e2d\u0e01\u0e1a\u0e32\u0e23\u0e4c\u0e42\u0e04\u0e49\u0e14',
+            text: '\u0e01\u0e23\u0e38\u0e13\u0e32\u0e01\u0e23\u0e2d\u0e01\u0e1a\u0e32\u0e23\u0e4c\u0e42\u0e04\u0e49\u0e14\u0e01\u0e48\u0e2d\u0e19\u0e1e\u0e34\u0e21\u0e1e\u0e4c',
+            confirmButtonText: '\u0e15\u0e01\u0e25\u0e07'
+        });
+        return;
+    }
+    
+    document.getElementById('barcodeValue').value = barcode;
+    document.getElementById('barcodeProductName').value = productName || '-';
+    document.getElementById('barcodeQuantity').value = 1;
+    
+    const barcodeModal = document.getElementById('barcodeModal');
+    const barcodeBackdrop = document.getElementById('barcodeModalBackdrop');
+    
+    barcodeModal.style.display = 'block';
+    barcodeBackdrop.style.display = 'block';
+    
+    // ป้องกันการ scroll ของ body
+    document.body.style.overflow = 'hidden';
+}
+
+// ปิด Barcode Modal
+function closeBarcodeModal() {
+    document.getElementById('barcodeModal').style.display = 'none';
+    document.getElementById('barcodeModalBackdrop').style.display = 'none';
+    document.getElementById('barcodePrintForm').reset();
+    
+    // คืนค่า scroll ของ body
+    const productModalVisible = document.getElementById('productModal').style.display === 'block';
+    if (!productModalVisible) {
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// ปิด Barcode Modal เมื่อคลิก Backdrop
+document.getElementById('barcodeModalBackdrop').addEventListener('click', closeBarcodeModal);
+
+// พิมพ์บาร์โค้ด
+function printBarcodes(event) {
+    event.preventDefault();
+    
+    const barcode = document.getElementById('barcodeValue').value;
+    const quantity = parseInt(document.getElementById('barcodeQuantity').value);
+    
+    if (!barcode || quantity < 1) {
+        return;
+    }
+    
+    console.log('Creating barcodes:', barcode, 'Quantity:', quantity);
+    
+    // สร้างบาร์โค้ด
+    const container = document.getElementById('barcodePrintContainer');
+    container.innerHTML = '';
+    
+    for (let i = 0; i < quantity; i++) {
+        const barcodeDiv = document.createElement('div');
+        barcodeDiv.className = 'barcode-item';
+        barcodeDiv.style.display = 'inline-block';
+        barcodeDiv.style.width = '3cm';
+        barcodeDiv.style.height = '1cm';
+        barcodeDiv.style.margin = '0.15cm';
+        barcodeDiv.style.textAlign = 'center';
+        barcodeDiv.style.pageBreakInside = 'avoid';
+        
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'barcode-svg');
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.display = 'block';
+        barcodeDiv.appendChild(svg);
+        
+        container.appendChild(barcodeDiv);
+        
+        // สร้างบาร์โค้ดด้วย JsBarcode
+        try {
+            JsBarcode(svg, barcode, {
+                format: 'CODE128',
+                width: 1.5,
+                height: 25,
+                displayValue: true,
+                fontSize: 10,
+                margin: 2
+            });
+            console.log('Barcode', i+1, 'created successfully');
+        } catch (e) {
+            console.error('Barcode generation error:', e);
+        }
+    }
+    
+    console.log('Container HTML:', container.innerHTML.substring(0, 200));
+    
+    // พิมพ์ (ไม่ปิด Modal ก่อนพิมพ์เพื่อไม่ให้มีการเปลี่ยนแปลง DOM)
+    setTimeout(() => {
+        console.log('Opening print dialog...');
+        window.print();
+        
+        // ปิด Modal หลังจากพิมพ์เสร็จ (หรือยกเลิก)
+        setTimeout(() => {
+            closeBarcodeModal();
+        }, 500);
+    }, 500);
+}
+
+// ==================== End Barcode Functions ====================
 
 // เพิ่มสินค้า
 document.getElementById('addProductBtn').addEventListener('click', function() {
@@ -892,7 +1151,7 @@ document.getElementById('addProductBtn').addEventListener('click', function() {
     imagePreview.style.display = 'none';
     productImage.value = '';
     
-    openModal('เพิ่มสินค้าใหม่');
+    openModal('เพิ่มสินค้าใหมแ', false);
 });
 
 // แก้ไขสินค้า
@@ -941,7 +1200,15 @@ function editProduct(productId) {
                 }
                 productImage.value = '';
                 
-                openModal('แก้ไขสินค้า');
+                // แสดงข้อมูล Location ในช่องค้นหา
+                const locationSearchInput = document.getElementById('locationSearch');
+                if (p.row_code || p.bin || p.shelf) {
+                    locationSearchInput.value = `${p.row_code || ''} ${p.bin || ''} ${p.shelf || ''}`;
+                } else {
+                    locationSearchInput.value = '';
+                }
+                
+                openModal('แก้ไขสินค้า', true); // แสดงปุ่มพิมพ์บาร์โค้ดเมื่อแก้ไข
             }
         })
         .catch(err => console.error(err));
