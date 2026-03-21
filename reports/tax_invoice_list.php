@@ -47,58 +47,85 @@ include '../templates/sidebar.php';
         
         /* Print Modal Styles */
         #printModal { max-width: 1200px; }
-        .invoice-sheet { background:#fff; color:#000; padding:24px; border:1px solid #d1d5db; min-height:1000px; }
-        .invoice-header { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #111; padding-bottom:10px; }
-        .invoice-brand { display:flex; align-items:center; gap:10px; }
-        .invoice-brand h2 { margin:0; font-size:18px; }
-        .invoice-meta { text-align:right; font-size:12px; }
-        .invoice-block { margin-top:12px; font-size:13px; }
-        .invoice-block h4 { margin:0 0 6px; font-size:13px; }
-        .inv-table { width:100%; border-collapse:collapse; margin-top:8px; font-size:12.5px; border:1px solid #000; }
-        .inv-table th, .inv-table td { border:1px solid #000; padding:6px; box-sizing:border-box; }
-        .inv-table th { background:#f3f4f6; }
-        .summary-box { margin-top:10px; display:grid; grid-template-columns:1fr 220px; gap:12px; }
+        .invoice-sheet { background:#fff; color:#000; padding:16px; border:1px solid #d1d5db; min-height:auto; page-break-after: always; }
+        .invoice-sheet:last-child { page-break-after: auto; }
+        .invoice-header { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #111; padding-bottom:8px; }
+        .invoice-brand { display:flex; align-items:center; gap:8px; }
+        .invoice-brand h2 { margin:0; font-size:14px; }
+        .invoice-meta { text-align:right; font-size:10px; }
+        .invoice-block { margin-top:10px; font-size:10px; }
+        .invoice-block h4 { margin:0 0 5px; font-size:11px; }
+        .inv-table { width:100%; border-collapse:collapse; margin-top:6px; font-size:8px; border:1px solid #000; }
+        .inv-table th, .inv-table td { border:1px solid #000; padding:3px 4px; box-sizing:border-box; font-size:8px; }
+        .inv-table th { background:#f3f4f6; font-weight:600; }
+        .summary-box { margin-top:8px; display:grid; grid-template-columns:1fr 180px; gap:10px; }
         .totals { border:1px solid #000; }
-        .totals td { padding:4px 6px; font-size:12.5px; line-height:1.3; }
-        .footer-note { margin-top:18px; font-size:12px; }
+        .totals td { padding:3px 5px; font-size:9px; line-height:1.3; }
+        .footer-note { margin-top:12px; font-size:9px; }
         
         @media print {
-            .invoice-sheet.page-break { page-break-after: always; }
-            @page { size: A5; margin: 8mm; }
-            body { background: #fff; }
+            @page { 
+                size: A5 portrait; 
+                margin: 10mm; 
+            }
+            body { 
+                background: #fff; 
+                margin: 0;
+                padding: 0;
+            }
             .mainwrap, .card, .controls, .filters { display: none !important; }
-            .modal-backdrop { background: #fff !important; }
-            .modal { max-width: 100% !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; }
+            .modal-backdrop { display: none !important; }
+            .modal { display: none !important; }
             .modal-header { display: none !important; }
             .sidebar, .sidebar-backdrop, .mobile-nav-toggle { display: none !important; }
-            .invoice-sheet { border: none; padding: 8px !important; font-size: 8px !important; min-height: auto !important; }
-            .invoice-header { padding-bottom: 6px !important; }
-            .invoice-brand h2 { font-size: 11px !important; }
-            .invoice-brand > div > div { font-size: 7px !important; line-height: 1.3 !important; }
-            .invoice-brand > div:first-child { width: 40px !important; height: 40px !important; }
-            .invoice-meta { font-size: 8px !important; }
-            .invoice-meta > div:first-child { font-size: 10px !important; }
-            .invoice-meta > div:nth-child(2) { font-size: 9px !important; }
-            .invoice-meta > div:last-child { font-size: 8px !important; }
-            .invoice-block { margin-top: 6px !important; font-size: 7px !important; }
-            .invoice-block h4 { font-size: 8px !important; margin-bottom: 4px !important; padding-bottom: 3px !important; }
+            #hiddenPrintContainer { 
+                display: block !important; 
+                position: static !important;
+                width: 100% !important;
+            }
+            .invoice-sheet { 
+                border: none !important; 
+                padding: 12px !important; 
+                margin: 0 !important;
+                page-break-after: always !important;
+                page-break-inside: avoid !important;
+                min-height: auto !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .invoice-sheet:last-child { 
+                page-break-after: auto !important; 
+            }
+            .invoice-header { 
+                padding-bottom: 6px !important; 
+                margin-bottom: 8px !important;
+            }
+            .invoice-brand h2 { font-size: 12px !important; }
+            .invoice-brand > div > div { font-size: 8px !important; line-height: 1.4 !important; }
+            .invoice-brand > div:first-child { width: 45px !important; height: 45px !important; }
+            .invoice-meta { font-size: 9px !important; }
+            .invoice-meta > div:first-child { font-size: 11px !important; }
+            .invoice-meta > div:nth-child(2) { font-size: 10px !important; }
+            .invoice-meta > div:last-child { font-size: 9px !important; }
+            .invoice-block { margin-top: 8px !important; font-size: 8px !important; }
+            .invoice-block h4 { font-size: 9px !important; margin-bottom: 4px !important; padding-bottom: 3px !important; }
             .invoice-block > div { gap: 8px !important; }
-            .invoice-block > div > div { padding: 6px !important; }
-            .invoice-block > div > div > div { font-size: 7px !important; line-height: 1.5 !important; }
-            .inv-table { margin-top: 6px !important; font-size: 7px !important; }
-            .inv-table, .inv-table th, .inv-table td { border: 1px solid #000 !important; padding: 3px 4px !important; }
-            .inv-table thead th { background: #f3f4f6 !important; }
-            .summary-box { margin-top: 6px !important; gap: 6px !important; grid-template-columns: 1fr 140px !important; }
-            .summary-box > div { min-height: 100px !important; }
-            .summary-box > div > div:nth-child(2) { font-size: 7px !important; padding: 4px 6px !important; }
-            .totals td { padding: 2px 4px !important; font-size: 7px !important; line-height: 1.2 !important; }
-            .totals tr:last-child td { font-size: 8px !important; }
-            .footer-note { margin-top: 8px !important; font-size: 7px !important; }
-            .footer-note table { font-size: 7px !important; }
-            .footer-note table td { padding: 4px !important; font-size: 7px !important; }
-            .footer-note table td div { font-size: 7px !important; line-height: 1.4 !important; }
-            .footer-note table td div:not(:first-child) { margin-top: 8px !important; }
-            .footer-note > div:last-child { margin-top: 4px !important; }
+            .invoice-block > div > div { padding: 8px !important; }
+            .invoice-block > div > div > div { font-size: 8px !important; line-height: 1.6 !important; }
+            .inv-table { margin-top: 8px !important; font-size: 7px !important; }
+            .inv-table, .inv-table th, .inv-table td { border: 1px solid #000 !important; padding: 3px !important; font-size: 7px !important; }
+            .inv-table thead th { background: #f3f4f6 !important; font-weight: 600 !important; }
+            .summary-box { margin-top: 8px !important; gap: 8px !important; grid-template-columns: 1fr 150px !important; }
+            .summary-box > div { min-height: 90px !important; }
+            .summary-box > div > div:nth-child(2) { font-size: 8px !important; padding: 6px 8px !important; }
+            .totals td { padding: 3px 5px !important; font-size: 8px !important; line-height: 1.3 !important; }
+            .totals tr:last-child td { font-size: 9px !important; }
+            .footer-note { margin-top: 10px !important; font-size: 8px !important; }
+            .footer-note table { font-size: 8px !important; }
+            .footer-note table td { padding: 6px !important; font-size: 8px !important; }
+            .footer-note table td div { font-size: 8px !important; line-height: 1.5 !important; }
+            .footer-note table td div:not(:first-child) { margin-top: 10px !important; }
+            .footer-note > div:last-child { margin-top: 6px !important; }
         }
     </style>
 </head>
@@ -208,47 +235,19 @@ include '../templates/sidebar.php';
     </div>
 </div>
 
+<!-- Hidden container for direct printing -->
+<div id="hiddenPrintContainer" style="display: none; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999;"></div>
+
+<!-- Tax Invoice Print Module -->
+<script src="../assets/tax-invoice-print.js"></script>
+
 <script>
-function thaiBahtText(amount) {
-    const numText = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
-    const unitText = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
-
-    function readNumber(num) {
-        let result = '';
-        const s = num.toString();
-        for (let i = 0; i < s.length; i++) {
-            const digit = parseInt(s.charAt(i), 10);
-            const pos = s.length - i - 1;
-            if (digit === 0) continue;
-            if (pos === 0 && digit === 1 && s.length > 1) result += 'เอ็ด';
-            else if (pos === 1 && digit === 2) result += 'ยี่';
-            else if (pos === 1 && digit === 1) result += '';
-            else result += numText[digit];
-            result += unitText[pos];
-        }
-        return result || numText[0];
-    }
-
-    function readMillion(num) {
-        if (num === 0) return numText[0];
-        let result = '';
-        const millions = Math.floor(num / 1000000);
-        const rest = num % 1000000;
-        if (millions > 0) result += readMillion(millions) + 'ล้าน';
-        if (rest > 0) result += readNumber(rest);
-        return result;
-    }
-
-    const amt = Math.max(0, Number(amount) || 0);
-    const integerPart = Math.floor(amt);
-    const satang = Math.round((amt - integerPart) * 100);
-    let text = readMillion(integerPart) + 'บาท';
-    if (satang === 0) text += 'ถ้วน';
-    else text += readMillion(satang) + 'สตางค์';
-    return text;
-}
+// ใช้ thaiBahtText จาก tax-invoice-print.js แล้ว
+// ใช้ generateInvoiceHTML จาก tax-invoice-print.js แล้ว
+// ใช้ printInvoiceDirectly จาก tax-invoice-print.js แล้ว
 
 (function(){
+
     const resultBody = document.getElementById('resultBody');
     const modal = document.getElementById('modal');
     const closeModal = document.getElementById('closeModal');
@@ -311,7 +310,7 @@ function thaiBahtText(amount) {
                 <td class="text-right">${numberFmt(row.payable)}</td>
                 <td>
                     <button class="btn btn-secondary" data-id="${row.id}" style="padding:6px 10px;margin-right:5px;">ดู</button>
-                    <button class="btn btn-primary" data-id="${row.id}" style="padding:6px 10px;" onclick="openPrintModal(${row.id})">
+                    <button class="btn btn-primary" data-id="${row.id}" style="padding:6px 10px;" onclick="printInvoiceDirectly(${row.id})">
                         <span class="material-icons" style="font-size:14px;vertical-align:middle;">print</span> พิมพ์
                     </button>
                 </td>
@@ -371,181 +370,11 @@ function thaiBahtText(amount) {
     const triggerPrint = document.getElementById('triggerPrint');
     
     async function openPrintModal(id) {
-        printContent.innerHTML = '<div style="text-align:center;padding:20px;">กำลังโหลดข้อมูล...</div>';
-        printModal.style.display = 'flex';
-        
-        try {
-            const res = await fetch('../api/get_tax_invoice_detail.php?id=' + id);
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error || 'ไม่พบข้อมูล');
-            
-            const inv = data.invoice;
-            const items = data.items || [];
-            
-            // สร้างเอกสาร
-            const invoiceHTML = generateInvoiceHTML(inv, items);
-            printContent.innerHTML = invoiceHTML;
-            
-        } catch (err) {
-            printContent.innerHTML = `<div style="color:#b91c1c;padding:20px;text-align:center;">เกิดข้อผิดพลาด: ${err.message}</div>`;
-        }
+        // เรียกใช้ฟังก์ชันจาก tax-invoice-print.js
+        await printInvoiceWithPreview(id);
     }
     
-    function generateInvoiceHTML(inv, items) {
-        const docTypeLabels = {
-            tax_invoice: { titleTh: 'ใบกำกับภาษี/ใบเสร็จรับเงิน', titleEn: 'TAX INVOICE' },
-            payment_voucher: { titleTh: 'ใบสำคัญจ่าย', titleEn: 'PAYMENT VOUCHER' },
-            quotation: { titleTh: 'ใบเสนอราคา', titleEn: 'QUOTATION' },
-            invoice: { titleTh: 'ใบแจ้งหนี้', titleEn: 'INVOICE' }
-        };
-        
-        const docInfo = docTypeLabels[inv.doc_type] || docTypeLabels.tax_invoice;
-        
-        // แปลงวันที่เป็น พ.ศ.
-        let formattedDate = '____/____/______';
-        if (inv.inv_date) {
-            const dateObj = new Date(inv.inv_date);
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const year = dateObj.getFullYear() + 543;
-            formattedDate = `${day}/${month}/${year}`;
-        }
-        
-        let itemsHTML = '';
-        items.forEach((item, idx) => {
-            itemsHTML += `
-                <tr>
-                    <td class="text-center">${idx + 1}</td>
-                    <td>${item.item_name}</td>
-                    <td class="text-center">${item.qty}</td>
-                    <td class="text-center">${item.unit}</td>
-                    <td class="text-right">${numberFmt(item.unit_price)}</td>
-                    <td class="text-right">${numberFmt(item.total_price)}</td>
-                </tr>
-            `;
-        });
-        
-        return `
-        <div class="invoice-sheet" id="invoiceSheetToPrint">
-            <div class="invoice-header">
-                <div class="invoice-brand">
-                    <div style="width:70px;height:70px;border:1px solid #000;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-                        <img src="../images/Ichoices.png" alt="ICHOICE Logo" style="max-width:100%;max-height:100%;object-fit:contain;">
-                    </div>
-                    <div>
-                        <h2 style="margin:0;">บริษัท ไอช้อยซ์ จำกัด</h2>
-                        <div style="font-size:12px;line-height:1.4;">
-                            ICHOICE CO., LTD.<br>
-                            สำนักงานใหญ่ : 422/29 ถนนจันทรลาภ ต.ช้างคลาน อ.เมือง จ.เชียงใหม่ 50100<br>
-                            เลขประจำตัวผู้เสียภาษี 0505564015873
-                        </div>
-                    </div>
-                </div>
-                <div class="invoice-meta">
-                    <div style="font-weight:700;font-size:16px;">${docInfo.titleTh}</div>
-                    <div style="font-weight:700;font-size:15px;margin-top:2px;">${docInfo.titleEn}</div>
-                    <div style="margin-top:6px;font-size:13px;font-weight:600;">(ต้นฉบับ / Original)</div>
-                </div>
-            </div>
-
-            <div class="invoice-block">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
-                    <div style="border:1px solid #d1d5db;padding:12px;border-radius:8px;background:#fafafa;">
-                        <h4 style="margin:0 0 10px;border-bottom:1px solid #d1d5db;padding-bottom:6px;font-size:13px;">ข้อมูลลูกค้า</h4>
-                        <div style="font-size:12px;line-height:1.8;">
-                            <div><strong>ลูกค้า:</strong> ${inv.customer_name || '-'}</div>
-                            <div><strong>ที่อยู่:</strong> ${inv.customer_address || '-'}</div>
-                            <div><strong>เลขผู้เสียภาษี:</strong> ${inv.customer_tax_id || '-'}</div>
-                        </div>
-                    </div>
-                    <div style="border:1px solid #d1d5db;padding:12px;border-radius:8px;background:#fafafa;">
-                        <h4 style="margin:0 0 10px;border-bottom:1px solid #d1d5db;padding-bottom:6px;font-size:13px;">ข้อมูลเอกสาร</h4>
-                        <div style="font-size:12px;line-height:1.8;">
-                            <div><strong>เลขที่:</strong> ${inv.inv_no}</div>
-                            <div><strong>เลขแท็กขาย:</strong> ${inv.sales_tag || '-'}</div>
-                            <div><strong>วันที่ออกบิล:</strong> ${inv.inv_date || '-'}</div>
-                            <div><strong>ช่องทางสั่งซื้อ:</strong> ${inv.platform || '-'}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <table class="inv-table" style="margin-top:8px;">
-                <thead>
-                    <tr>
-                        <th style="width:6%;" class="text-center">ลำดับ</th>
-                        <th style="width:44%;">รายการ</th>
-                        <th style="width:12%;" class="text-center">จำนวน</th>
-                        <th style="width:12%;" class="text-center">หน่วย</th>
-                        <th style="width:13%;" class="text-right">ราคาต่อหน่วย</th>
-                        <th style="width:13%;" class="text-right">จำนวนเงิน</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${itemsHTML}
-                </tbody>
-            </table>
-
-            <div class="summary-box">
-                <div style="border:1px solid #000; padding:0; min-height:180px; display:flex; flex-direction:column;">
-                    <div style="flex:2;"></div>
-                    <div style="font-weight:700; padding:8px 10px; background:#e0e0e0; font-size:12px; line-height:1.4;">
-                        ตัวอักษร : ${inv.amount_text || thaiBahtText(inv.payable)}
-                    </div>
-                    <div style="flex:1;"></div>
-                </div>
-                <table class="totals" style="width:100%;">
-                    <tr>
-                        <td>รวมเงิน<br>SUB TOTAL</td>
-                        <td class="text-right">${numberFmt(inv.subtotal)}</td>
-                    </tr>
-                    <tr>
-                        <td>หักส่วนลด<br>DISCOUNT</td>
-                        <td class="text-right">${numberFmt(inv.discount)}</td>
-                    </tr>
-                    <tr>
-                        <td>มูลค่าก่อนภาษี<br>BEFORE VAT</td>
-                        <td class="text-right">${numberFmt(inv.before_vat)}</td>
-                    </tr>
-                    <tr>
-                        <td>ภาษีมูลค่าเพิ่ม<br>VAT</td>
-                        <td class="text-right">${numberFmt(inv.vat)}</td>
-                    </tr>
-                    <tr style="background:#e0e0e0;">
-                        <td style="font-weight:700; padding:8px 10px;">รวมทั้งสิ้น<br>GRAND TOTAL</td>
-                        <td class="text-right" style="font-weight:700;">${numberFmt(inv.grand_total)}</td>
-                    </tr>
-                    <tr>
-                        <td>ส่วนลดอื่น<br>OTHERS DISCOUNTS</td>
-                        <td class="text-right">${numberFmt(inv.special_discount)}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-weight:700; font-size:14px;">จำนวนเงินที่ชำระ<br>ACTUAL PAYMENT</td>
-                        <td class="text-right" style="font-weight:700; font-size:14px;">${numberFmt(inv.payable)}</td>
-                    </tr>
-                </table>
-            </div>
-
-            <div class="footer-note">
-                <table style="width:100%; border-collapse:collapse;">
-                    <tr>
-                        <td style="border:1px solid #000; padding:10px; width:55%; vertical-align:top;">
-                            <div style="font-weight:700;">ผู้รับสินค้า/บริการ</div>
-                            <div style="margin-top:22px;">ลงชื่อ: ________________</div>
-                            <div>วันที่: ____/____/______</div>
-                        </td>
-                        <td style="border:1px solid #000; padding:10px; width:45%; vertical-align:top;">
-                            <div style="font-weight:700;">ผู้รับเงิน</div>
-                            <div style="margin-top:22px;">ลงชื่อ: ________________</div>
-                            <div>วันที่: ${formattedDate}</div>
-                        </td>
-                    </tr>
-                </table>
-                <div style="margin-top:8px;">เอกสารนี้ออกโดยระบบ IchoicePMS</div>
-            </div>
-        </div>
-        `;
-    }
+    // ใช้ generateInvoiceHTML จาก tax-invoice-print.js แล้ว
     
     triggerPrint.addEventListener('click', () => {
         const invoiceSheet = document.getElementById('invoiceSheetToPrint');
@@ -574,6 +403,8 @@ function thaiBahtText(amount) {
     
     closePrintModal.addEventListener('click', () => { printModal.style.display = 'none'; });
     printModal.addEventListener('click', (e) => { if (e.target === printModal) printModal.style.display = 'none'; });
+    
+    // ใช้ printInvoiceDirectly จาก tax-invoice-print.js แล้ว
     
     // Export to global scope
     window.openPrintModal = openPrintModal;

@@ -41,6 +41,8 @@ $today = date('Y-m-d');
         .btn-danger { background: #ef4444; color: #fff; }
         .preview-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 12px; }
         .invoice-sheet { background: #fff; color: #000; padding: 24px; border: 1px solid #d1d5db; min-height: 1000px; }
+        .invoice-sheet { background:#fff; color:#000; padding:16px; border:1px solid #d1d5db; min-height:auto; page-break-after: always; }
+        .invoice-sheet:last-child { page-break-after: auto; }
         .invoice-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111; padding-bottom: 10px; }
         @media print {
             .invoice-sheet.page-break { page-break-after: always; }
@@ -72,13 +74,66 @@ $today = date('Y-m-d');
         .toast.success { background: linear-gradient(135deg, #16a34a, #0f9f57); }
         .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
         @media print {
-            @page { size: A5; margin: 8mm; }
-            body { background: #fff; }
-            .mainwrap, .card, .controls { padding: 0; box-shadow: none; }
-            .page-title { display: none; }
-            .layout { display: block; }
-            .card-form { display: none; }
+            @page { size: A5 portrait; margin: 10mm; }
+            body { background: #fff; margin: 0; padding: 0; }
+            .mainwrap, .card, .controls { display: none !important; }
+            .page-title { display: none !important; }
+            .layout { display: none !important; }
+            .card-form { display: none !important; }
+            .preview-wrap { display: none !important; }
+            .modal-backdrop { display: none !important; }
+            .modal { display: none !important; }
             .sidebar, .sidebar-backdrop, .mobile-nav-toggle { display: none !important; }
+            #hiddenPrintContainer { 
+                display: block !important; 
+                position: static !important;
+                width: 100% !important;
+            }
+            .invoice-sheet { 
+                border: none !important; 
+                padding: 12px !important; 
+                margin: 0 !important;
+                page-break-after: always !important;
+                page-break-inside: avoid !important;
+                min-height: auto !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .invoice-sheet:last-child { 
+                page-break-after: auto !important; 
+            }
+            .invoice-header { 
+                padding-bottom: 6px !important; 
+                margin-bottom: 8px !important;
+            }
+            .invoice-brand h2 { font-size: 12px !important; }
+            .invoice-brand > div > div { font-size: 8px !important; line-height: 1.4 !important; }
+            .invoice-brand > div:first-child { width: 45px !important; height: 45px !important; }
+            .invoice-meta { font-size: 9px !important; }
+            .invoice-meta > div:first-child { font-size: 11px !important; }
+            .invoice-meta > div:nth-child(2) { font-size: 10px !important; }
+            .invoice-meta > div:last-child { font-size: 9px !important; }
+            .invoice-block { margin-top: 8px !important; font-size: 8px !important; }
+            .invoice-block h4 { font-size: 9px !important; margin-bottom: 4px !important; padding-bottom: 3px !important; }
+            .invoice-block > div { gap: 8px !important; }
+            .invoice-block > div > div { padding: 8px !important; }
+            .invoice-block > div > div > div { font-size: 8px !important; line-height: 1.6 !important; }
+            .inv-table { margin-top: 8px !important; font-size: 7px !important; }
+            .inv-table, .inv-table th, .inv-table td { border: 1px solid #000 !important; padding: 3px !important; font-size: 7px !important; }
+            .inv-table thead th { background: #f3f4f6 !important; font-weight: 600 !important; }
+            .summary-box { margin-top: 8px !important; gap: 8px !important; grid-template-columns: 1fr 150px !important; }
+            .summary-box > div { min-height: 90px !important; }
+            .summary-box > div > div:nth-child(2) { font-size: 8px !important; padding: 6px 8px !important; }
+            .totals { border: 1px solid #000; }
+            .totals td { padding: 3px 5px !important; font-size: 8px !important; line-height: 1.3 !important; }
+            .totals tr:last-child td { font-size: 9px !important; }
+            .footer-note { margin-top: 10px !important; font-size: 8px !important; }
+            .footer-note table { font-size: 8px !important; }
+            .footer-note table td { padding: 6px !important; font-size: 8px !important; }
+            .footer-note table td div { font-size: 8px !important; line-height: 1.5 !important; }
+            .footer-note table td div:not(:first-child) { margin-top: 10px !important; }
+            .footer-note > div:last-child { margin-top: 6px !important; }
+        }
             .invoice-sheet { border: none; padding: 8px !important; font-size: 8px !important; min-height: auto !important; }
             .invoice-header { padding-bottom: 6px !important; }
             .invoice-brand h2 { font-size: 11px !important; }
@@ -209,7 +264,6 @@ $today = date('Y-m-d');
             <div class="controls">
                 <button type="button" class="btn btn-primary" id="previewBtn">อัปเดตตัวอย่าง</button>
                 <button type="button" class="btn btn-primary" id="saveBtn">บันทึกข้อมูล</button>
-                <button type="button" class="btn btn-secondary" id="printBtn">พิมพ์ใบกำกับภาษี</button>
             </div>
         </div>
 
@@ -338,15 +392,46 @@ $today = date('Y-m-d');
     </div>
 </div>
 
+<!-- โมดอลพรีวิวหลังบันทึกสำเร็จ -->
+<div class="modal-backdrop" id="previewModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+    <div class="modal" style="background:#fff; width:90%; max-width:900px; border-radius:16px; padding:20px; max-height:90vh; overflow:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="margin:0; font-size:18px;">บันทึกสำเร็จ - ใบกำกับภาษี</h3>
+            <button class="btn btn-secondary" id="closePreviewModal" style="padding:8px 12px;">ปิด</button>
+        </div>
+        <div style="text-align:center; margin-bottom:16px;">
+            <p style="color:#16a34a; font-weight:600; margin:8px 0;">✓ บันทึกข้อมูลสำเร็จแล้ว</p>
+            <p style="color:#6b7280; font-size:14px; margin:4px 0;">เลขที่: <strong id="preview_inv_no">-</strong></p>
+        </div>
+        <div style="text-align:center; margin-bottom:16px;">
+            <button type="button" class="btn btn-primary" id="printInvoiceBtn" style="padding:12px 20px;">
+                <span class="material-icons" style="font-size:18px; vertical-align:middle;">print</span> 
+                พิมพ์ใบกำกับภาษี (ต้นฉบับ + สำเนา)
+            </button>
+        </div>
+        <div id="previewContent" style="background:#f5f7fb; padding:16px; border-radius:12px; max-height:400px; overflow:auto;">
+            <p style="text-align:center; color:#6b7280;">กำลังโหลด...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Tax Invoice Print Module -->
+<script src="../assets/tax-invoice-print.js"></script>
+
 <script>
 (function() {
     const itemBody = document.getElementById('itemBody');
     const addRowBtn = document.getElementById('addRowBtn');
     const previewBtn = document.getElementById('previewBtn');
-    const printBtn = document.getElementById('printBtn');
     const saveBtn = document.getElementById('saveBtn');
     const docTypeSelect = document.getElementById('doc_type');
     const docNoLabel = document.getElementById('doc_no_label');
+    const previewModal = document.getElementById('previewModal');
+    const closePreviewModal = document.getElementById('closePreviewModal');
+    const printInvoiceBtn = document.getElementById('printInvoiceBtn');
+    const previewContent = document.getElementById('previewContent');
+    const previewInvNo = document.getElementById('preview_inv_no');
+    let savedInvoiceId = null;
     
     const docTypeLabels = {
         tax_invoice: { titleTh: 'ใบกำกับภาษี/ใบเสร็จรับเงิน', titleEn: 'TAX INVOICE', label: 'เลขที่ใบกำกับภาษี', docNoLabel: 'เลขที่ใบกำกับภาษี:' },
@@ -604,6 +689,13 @@ $today = date('Y-m-d');
             });
             const data = await res.json();
             if (data.success) {
+                // เก็บ ID ที่บันทึกไว้
+                savedInvoiceId = data.id || data.invoice_id;
+                
+                // แสดงโมดอลพรีวิว
+                previewInvNo.textContent = payload.inv_no;
+                showPreviewModal(savedInvoiceId);
+                
                 showToast('success', 'บันทึกสำเร็จ เลขที่ ' + payload.inv_no);
             } else {
                 showToast('error', 'บันทึกไม่สำเร็จ: ' + (data.error || 'ไม่ทราบสาเหตุ'));
@@ -620,6 +712,183 @@ $today = date('Y-m-d');
         const docType = docTypeSelect.value;
         docNoLabel.textContent = docTypeLabels[docType].label;
         updatePreview();
+    }
+    
+    // ฟังก์ชันแสดงโมดอลพรีวิว
+    async function showPreviewModal(invoiceId) {
+        previewModal.style.display = 'flex';
+        previewContent.innerHTML = '<p style="text-align:center; color:#6b7280;">กำลังโหลดตัวอย่าง...</p>';
+        
+        try {
+            const res = await fetch('../api/get_tax_invoice_detail.php?id=' + invoiceId);
+            const data = await res.json();
+            
+            if (data.success) {
+                const inv = data.invoice;
+                const items = data.items || [];
+                
+                // สร้างตัวอย่างแบบย่อ
+                let itemsList = '';
+                items.slice(0, 5).forEach((item, idx) => {
+                    itemsList += `<div style="padding:6px 0; border-bottom:1px solid #e5e7eb;">
+                        ${idx + 1}. ${item.item_name} (${item.qty} ${item.unit}) - ${numberFmt(item.total_price)} บาท
+                    </div>`;
+                });
+                
+                if (items.length > 5) {
+                    itemsList += `<div style="padding:6px 0; color:#6b7280; font-style:italic;">... และอีก ${items.length - 5} รายการ</div>`;
+                }
+                
+                previewContent.innerHTML = `
+                    <div style="background:#fff; padding:16px; border-radius:8px;">
+                        <div style="margin-bottom:12px;">
+                            <strong>ลูกค้า:</strong> ${inv.customer_name || '-'}<br>
+                            <strong>เลขผู้เสียภาษี:</strong> ${inv.customer_tax_id || '-'}<br>
+                            <strong>วันที่:</strong> ${inv.inv_date || '-'}
+                        </div>
+                        <div style="margin-bottom:12px;">
+                            <strong>รายการสินค้า:</strong>
+                            ${itemsList}
+                        </div>
+                        <div style="text-align:right; padding-top:12px; border-top:2px solid #e5e7eb;">
+                            <div style="font-size:16px; font-weight:700; color:#16a34a;">
+                                ยอดชำระ: ${numberFmt(inv.payable)} บาท
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                throw new Error(data.error || 'ไม่สามารถดึงข้อมูลได้');
+            }
+        } catch (err) {
+            previewContent.innerHTML = `<p style="text-align:center; color:#ef4444;">เกิดข้อผิดพลาด: ${err.message}</p>`;
+        }
+    }
+    
+    // Event listeners สำหรับโมดอล
+    closePreviewModal.addEventListener('click', () => {
+        previewModal.style.display = 'none';
+    });
+    
+    previewModal.addEventListener('click', (e) => {
+        if (e.target === previewModal) {
+            previewModal.style.display = 'none';
+        }
+    });
+    
+    // ปุ่มพิมพ์ในโมดอล - ใช้ฟังก์ชันจาก tax-invoice-print.js
+    printInvoiceBtn.addEventListener('click', () => {
+        // พิมพ์จากข้อมูลฟอร์มโดยตรง
+        printFromCurrentForm();
+    });
+    
+    // ฟังก์ชันพิมพ์จากข้อมูลฟอร์มปัจจุบัน
+    function printFromCurrentForm() {
+        // รวบรวมข้อมูลจากฟอร์ม
+        const docType = document.getElementById('doc_type').value;
+        const invNo = document.getElementById('inv_no').value;
+        const salesTag = document.getElementById('sales_tag').value;
+        const invDate = document.getElementById('inv_date').value;
+        const platformSelect = document.getElementById('platform');
+        const platformOther = document.getElementById('platform_other');
+        const platform = platformSelect.value === 'อื่นๆ' && platformOther.value 
+            ? platformOther.value 
+            : platformSelect.value;
+        const customer = document.getElementById('customer').value;
+        const taxId = document.getElementById('tax_id').value;
+        const address = document.getElementById('address').value;
+        const discount = parseFloat(document.getElementById('discount').value) || 0;
+        const specialDiscount = parseFloat(document.getElementById('special_discount').value) || 0;
+        
+        // รวบรวมรายการสินค้า
+        const items = [];
+        const rows = itemBody.querySelectorAll('tr');
+        rows.forEach((tr, idx) => {
+            const name = tr.querySelector('.item-name').value || '';
+            const qty = parseFloat(tr.querySelector('.item-qty').value) || 0;
+            const unit = tr.querySelector('.item-unit').value || '';
+            const price = parseFloat(tr.querySelector('.item-price').value) || 0;
+            const total = qty * price;
+            
+            if (name && qty > 0) {
+                items.push({
+                    item_no: idx + 1,
+                    item_name: name,
+                    qty: qty,
+                    unit: unit,
+                    unit_price: price,
+                    total_price: total
+                });
+            }
+        });
+        
+        // คำนวณยอดรวม
+        let subtotal = 0;
+        items.forEach(item => {
+            subtotal += item.total_price;
+        });
+        
+        const totalAfterDiscount = Math.max(subtotal - discount, 0);
+        const beforeVat = totalAfterDiscount / 1.07;
+        const vat = totalAfterDiscount - beforeVat;
+        const payable = Math.max(totalAfterDiscount - specialDiscount, 0);
+        const grandTotal = totalAfterDiscount;
+        
+        // สร้าง invoice object
+        const invoice = {
+            doc_type: docType,
+            inv_no: invNo,
+            sales_tag: salesTag,
+            inv_date: invDate,
+            platform: platform,
+            customer_name: customer,
+            customer_tax_id: taxId,
+            customer_address: address,
+            subtotal: subtotal,
+            discount: discount,
+            before_vat: beforeVat,
+            vat: vat,
+            grand_total: grandTotal,
+            special_discount: specialDiscount,
+            payable: payable,
+            amount_text: thaiBahtText(payable)
+        };
+        
+        // ตรวจสอบว่ามีข้อมูลครบหรือไม่
+        if (!items.length) {
+            alert('กรุณาเพิ่มรายการสินค้าก่อนพิมพ์');
+            return;
+        }
+        
+        // ใช้ generateInvoiceHTML จาก tax-invoice-print.js
+        if (typeof generateInvoiceHTML !== 'function') {
+            alert('ไม่พบฟังก์ชันสร้างเอกสาร กรุณาโหลดหน้าใหม่');
+            return;
+        }
+        
+        // สร้าง container สำหรับพิมพ์
+        let container = document.getElementById('hiddenPrintContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'hiddenPrintContainer';
+            container.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999;';
+            document.body.appendChild(container);
+        }
+        
+        // สร้างเอกสารต้นฉบับและสำเนา
+        const originalHTML = generateInvoiceHTML(invoice, items, false);
+        const copyHTML = generateInvoiceHTML(invoice, items, true);
+        
+        // ใส่ทั้งสองฉบับใน container
+        container.innerHTML = originalHTML + copyHTML;
+        
+        // พิมพ์
+        window.print();
+        
+        // ลบเนื้อหาหลังพิมพ์เสร็จ
+        setTimeout(() => {
+            container.innerHTML = '';
+        }, 100);
     }
     
     // จัดการแสดง/ซ่อนช่องระบุช่องทางอื่นๆ
@@ -656,37 +925,6 @@ $today = date('Y-m-d');
     document.getElementById('special_discount').addEventListener('input', updatePreview);
     previewBtn.addEventListener('click', () => { itemBody.querySelectorAll('tr').forEach(recalcRow); updatePreview(); });
     saveBtn.addEventListener('click', saveInvoice);
-    printBtn.addEventListener('click', () => {
-        updatePreview();
-        
-        // สร้างโคลนสำหรับเอกสารสำเนา
-        const invoiceSheet = document.getElementById('invoiceSheet');
-        const clonedSheet = invoiceSheet.cloneNode(true);
-        
-        // เปลี่ยนสถานะเอกสารต้นฉบับให้มี page-break
-        invoiceSheet.classList.add('page-break');
-        
-        // เปลี่ยนสถานะในโคลนเป็นสำเนา
-        clonedSheet.id = 'invoiceSheetCopy';
-        const copyStatus = clonedSheet.querySelector('#pv_doc_status');
-        if (copyStatus) {
-            copyStatus.textContent = '(สำเนา / Copy)';
-        }
-        
-        // เพิ่มโคลนไปหลังต้นฉบับ
-        invoiceSheet.parentNode.appendChild(clonedSheet);
-        
-        // พิมพ์ทั้งสองฉบับพร้อมกัน
-        window.print();
-        
-        // ลบโคลนและ class page-break หลังพิมพ์เสร็จ
-        setTimeout(() => {
-            invoiceSheet.classList.remove('page-break');
-            if (clonedSheet.parentNode) {
-                clonedSheet.parentNode.removeChild(clonedSheet);
-            }
-        }, 100);
-    });
 })();
 </script>
 </body>
