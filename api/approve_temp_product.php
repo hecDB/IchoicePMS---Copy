@@ -118,7 +118,7 @@ try {
         ':unit' => $temp_product['unit'] ?? '',
         ':product_category_id' => $category_id ?? 1,
         ':product_image' => $temp_product['product_image'],
-        ':remark_color' => $temp_product['remark'] ?? '',
+        ':remark_color' => '', // remark_color ไม่ใช่ remark ปกติ - ใช้ค่าว่างหรือข้อมูลเฉพาะสี
         ':remark_split' => $temp_product['remark_split'] ?? 0,
         ':is_active' => 1,
         ':created_by' => $_SESSION['user_id'] ?? $temp_product['created_by']

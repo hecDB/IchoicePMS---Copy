@@ -1168,29 +1168,40 @@ function fetchDamagedReasonId() {
                 console.log(`  - ${r.reason_id}: ${r.reason_name} (is_returnable: ${r.is_returnable})`);
             });
             
-            // ค้นหา reason ที่มี "ชำรุด" ในชื่อ (ยืดหยุ่นมากขึ้น)
-            const damagedReasons = response.data.filter(r => {
-                const name = (r.reason_name || '').toLowerCase();
-                return name.includes('ชำรุด') || name.includes('damaged');
+            // ค้นหา reason ที่ชื่อตรงกับ "สินค้าชำรุดบางส่วน" อย่างแม่นยำ (สำหรับ damaged_return_inspections.php)
+            const exactMatch = response.data.find(r => {
+                const name = (r.reason_name || '').trim();
+                return name === 'สินค้าชำรุดบางส่วน';
             });
             
-            if (damagedReasons.length > 0) {
-                damagedReasonId = damagedReasons[0].reason_id;
-                console.log('✅ Found damaged reason: reason_id =', damagedReasonId, 'name:', damagedReasons[0].reason_name);
+            if (exactMatch) {
+                damagedReasonId = exactMatch.reason_id;
+                console.log('✅ Found exact damaged reason: reason_id =', damagedReasonId, 'name:', exactMatch.reason_name);
             } else {
-                // ถ้าไม่เจอ "ชำรุด" ให้ค้นหา reason แรกที่ is_returnable = 0
-                const fallbackReasons = response.data.filter(r => r.is_returnable === '0' || r.is_returnable === 0);
+                // Fallback: ค้นหา reason ที่มี "ชำรุดบางส่วน" ในชื่อ
+                const partialMatch = response.data.find(r => {
+                    const name = (r.reason_name || '').toLowerCase();
+                    return name.includes('ชำรุดบางส่วน') || name.includes('ชำรุด') && name.includes('บางส่วน');
+                });
                 
-                if (fallbackReasons.length > 0) {
-                    damagedReasonId = fallbackReasons[0].reason_id;
-                    console.log('⚠️ Using fallback reason: reason_id =', damagedReasonId, 'name:', fallbackReasons[0].reason_name);
+                if (partialMatch) {
+                    damagedReasonId = partialMatch.reason_id;
+                    console.log('⚠️ Found partial match: reason_id =', damagedReasonId, 'name:', partialMatch.reason_name);
                 } else {
-                    console.error('❌ No suitable return reason found!');
-                    console.log('Available reasons:');
-                    response.data.forEach(r => {
-                        console.log(`  - ${r.reason_id}: ${r.reason_name} (is_returnable: ${r.is_returnable})`);
-                    });
-                    damagedReasonId = null;
+                    // ถ้ายังไม่เจอ ให้ค้นหา reason แรกที่ is_returnable = 0
+                    const fallbackReasons = response.data.filter(r => r.is_returnable === '0' || r.is_returnable === 0);
+                    
+                    if (fallbackReasons.length > 0) {
+                        damagedReasonId = fallbackReasons[0].reason_id;
+                        console.log('⚠️ Using fallback reason: reason_id =', damagedReasonId, 'name:', fallbackReasons[0].reason_name);
+                    } else {
+                        console.error('❌ No suitable return reason found!');
+                        console.log('Available reasons:');
+                        response.data.forEach(r => {
+                            console.log(`  - ${r.reason_id}: ${r.reason_name} (is_returnable: ${r.is_returnable})`);
+                        });
+                        damagedReasonId = null;
+                    }
                 }
             }
         },
@@ -2529,11 +2540,27 @@ $(document).ready(function() {
                     console.log('  → [' + r.reason_id + '] "' + r.reason_name + '" (is_returnable: ' + r.is_returnable + ', is_active: ' + r.is_active + ')');
                 });
 
-                // ค้นหา reason ที่มี "ชำรุด" หรือ "damaged"
-                const match = response.data.find(r => {
-                    const name = (r.reason_name || '').toLowerCase();
-                    return name.includes('ชำรุด') || name.includes('damaged');
+                // ค้นหา reason ที่ชื่อตรงกับ "สินค้าชำรุดบางส่วน" อย่างแม่นยำ
+                let match = response.data.find(r => {
+                    const name = (r.reason_name || '').trim();
+                    return name === 'สินค้าชำรุดบางส่วน';
                 });
+
+                // Fallback: ค้นหา reason ที่มี "ชำรุดบางส่วน" ในชื่อ
+                if (!match) {
+                    match = response.data.find(r => {
+                        const name = (r.reason_name || '').toLowerCase();
+                        return name.includes('ชำรุดบางส่วน') || (name.includes('ชำรุด') && name.includes('บางส่วน'));
+                    });
+                }
+
+                // Last resort: ค้นหา reason ที่มี "ชำรุด"
+                if (!match) {
+                    match = response.data.find(r => {
+                        const name = (r.reason_name || '').toLowerCase();
+                        return name.includes('ชำรุด') || name.includes('damaged');
+                    });
+                }
 
                 if (match) {
                     damagedReasonId = match.reason_id;

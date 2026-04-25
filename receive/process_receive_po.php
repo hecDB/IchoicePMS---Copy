@@ -319,11 +319,13 @@ if ($action === 'cancel_item') {
         }
         
         // Check if PO item exists and get details
-        $check_sql = "SELECT poi.item_id, poi.qty as ordered_qty, COALESCE(SUM(ri.receive_qty), 0) as received_qty
+        $check_sql = "SELECT poi.item_id, poi.qty as ordered_qty, 
+                             COALESCE(SUM(ri.receive_qty), 0) as received_qty,
+                             COALESCE(poi.cancel_qty, 0) as current_cancel_qty
                      FROM purchase_order_items poi
                      LEFT JOIN receive_items ri ON poi.item_id = ri.item_id
                      WHERE poi.item_id = ? AND poi.po_id = ?
-                     GROUP BY poi.item_id";
+                     GROUP BY poi.item_id, poi.cancel_qty";
         $check_stmt = $pdo->prepare($check_sql);
         $check_stmt->execute([$item_id, $po_id]);
         $item_info = $check_stmt->fetch(PDO::FETCH_ASSOC);
@@ -334,7 +336,8 @@ if ($action === 'cancel_item') {
         
         $ordered_qty = $item_info['ordered_qty'];
         $received_qty = $item_info['received_qty'];
-        $remaining_qty = $ordered_qty - $received_qty;
+        $current_cancel_qty = $item_info['current_cancel_qty'];
+        $remaining_qty = $ordered_qty - $received_qty - $current_cancel_qty;
         
         // Validate cancel_qty based on cancel_type
         if ($cancel_type === 'cancel_partial') {
@@ -358,16 +361,23 @@ if ($action === 'cancel_item') {
         // Start transaction
         $pdo->beginTransaction();
         
+        // Calculate total cancel_qty after this cancellation
+        $new_total_cancel_qty = $current_cancel_qty + $cancel_qty;
+        
+        // Determine cancellation status based on actual quantities
+        $is_fully_cancelled = ($new_total_cancel_qty >= $remaining_qty + $current_cancel_qty);
+        
         // Update purchase_order_items with cancellation information
+        // Use += to accumulate cancel_qty instead of overwriting
         $cancel_sql = "UPDATE purchase_order_items SET 
-                      cancel_qty = ?, 
+                      cancel_qty = cancel_qty + ?, 
                       cancelled_by = ?, 
                       cancelled_at = NOW(), 
                       cancel_reason = ?, 
                       cancel_notes = ?";
         
-        if ($cancel_type === 'cancel_all') {
-            $cancel_sql .= ", is_cancelled = 1";
+        if ($is_fully_cancelled) {
+            $cancel_sql .= ", is_cancelled = 1, is_partially_cancelled = 0";
         } else {
             $cancel_sql .= ", is_partially_cancelled = 1";
         }
@@ -383,7 +393,7 @@ if ($action === 'cancel_item') {
             $item_id
         ]);
         
-        $message = "ยกเลิกสินค้า {$cancel_qty} หน่วยสำเร็จ";
+        $message = "ยกเลิกสินค้า {$cancel_qty} หน่วยสำเร็จ (ยกเลิกสะสม: {$new_total_cancel_qty} หน่วย)";
         
         // Log the cancellation
         try {

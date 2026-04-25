@@ -1235,8 +1235,22 @@ if ($action === 'create_return') {
         
         $return_id = $pdo->lastInsertId();
         
-        // Debug log
-        error_log("📝 Created return record: return_id=$return_id, po_id=$po_id, reason_name=" . $reason['reason_name']);
+        // Enhanced debug log for damaged items tracking
+        error_log("📝 Created return record:");
+        error_log("   - return_id: $return_id");
+        error_log("   - return_code: $return_code");
+        error_log("   - po_id: $po_id");
+        error_log("   - reason_id: $reason_id");
+        error_log("   - reason_name: " . $reason['reason_name']);
+        error_log("   - product_name: $product_name");
+        error_log("   - return_qty: $return_qty");
+        error_log("   - return_status: pending");
+        error_log("   - is_returnable: " . $reason['is_returnable']);
+        
+        // Alert if this is "สินค้าชำรุดบางส่วน"
+        if ($reason['reason_name'] === 'สินค้าชำรุดบางส่วน') {
+            error_log("🔔 DAMAGED ITEM ALERT: This return should appear in damaged_return_inspections.php");
+        }
         
         sendJsonResponse([
             'status' => 'success',
@@ -1314,7 +1328,8 @@ if ($action === 'get_returns') {
 if ($action === 'list_damaged_inspections') {
     try {
         $status = $_GET['status'] ?? 'pending';
-        $conditions = ['ri.reason_id = 8']; // Filter for damaged items
+        // Filter for damaged items by reason_name instead of hard-coded reason_id
+        $conditions = ["ri.reason_name = 'สินค้าชำรุดบางส่วน'"];
         $params = [];
 
         if ($status !== 'all') {
@@ -1375,7 +1390,7 @@ if ($action === 'get_damaged_inspection') {
             LEFT JOIN users u ON ri.created_by = u.user_id
             LEFT JOIN users u2 ON ri.inspected_by = u2.user_id
             LEFT JOIN users u3 ON ri.restocked_by = u3.user_id
-            WHERE ri.return_id = :inspection_id AND ri.reason_id = 8
+            WHERE ri.return_id = :inspection_id AND ri.reason_name = 'สินค้าชำรุดบางส่วน'
         ");
         $stmt->execute([':inspection_id' => $inspection_id]);
         $inspection = $stmt->fetch(PDO::FETCH_ASSOC);
