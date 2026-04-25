@@ -1552,7 +1552,6 @@ function submitDamagedItem() {
 // Toggle completed POs function
 function toggleCompletedPOs() {
     const button = $('#toggleText');
-    const tableBody = $('.table-body').first();
     
     if (!window.showingCompleted) {
         // Load completed POs
@@ -1565,7 +1564,7 @@ function toggleCompletedPOs() {
             success: function(response) {
                 if (response.success && response.data.length > 0) {
                     displayCompletedPOs(response.data);
-                    button.text('ซ่อนที่รับครบแล้ว');
+                    button.text('กลับไปรายการรับสินค้า');
                     window.showingCompleted = true;
                 } else {
                     Swal.fire({
@@ -2937,88 +2936,67 @@ $(document).ready(function() {
     }, 300000);
 });
 
-// Toggle completed POs function
-function toggleCompletedPOs() {
-    const button = $('#toggleText');
-    const tableBody = $('.table-body .row').first();
-    
-    if (!window.showingCompleted) {
-        // Load completed POs
-        button.text('กำลังโหลด...');
-        
-        $.ajax({
-            url: 'get_completed_pos.php',
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.success && response.data.length > 0) {
-                    displayCompletedPOs(response.data);
-                    button.text('ซ่อนที่รับครบแล้ว');
-                    window.showingCompleted = true;
-                } else {
-                    Swal.fire({
-                        icon: 'info',
-                        title: 'ไม่มีรายการ',
-                        text: 'ไม่พบใบสั่งซื้อที่รับครบแล้ว',
-                        timer: 2000
-                    });
-                    button.text('ดูที่รับครบแล้ว');
-                }
-            },
-            error: function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาด',
-                    text: 'ไม่สามารถโหลดข้อมูลได้'
-                });
-                button.text('ดูที่รับครบแล้ว');
-            }
-        });
-    } else {
-        // Hide completed POs - reload page
-        location.reload();
-    }
-}
-
 function displayCompletedPOs(completedPOs) {
-    let html = '';
-    
     if (!completedPOs || completedPOs.length === 0) {
-        html = `
-            <div class="col-12">
-                <div class="text-center py-5">
-                    <span class="material-icons mb-3" style="font-size: 4rem; color: #9ca3af;">done_all</span>
-                    <h5 class="text-muted">ไม่มีใบสั่งซื้อที่รับครบแล้ว</h5>
-                    <p class="text-muted mb-0">กรุณากลับไปตรวจสอบสถานะอื่นๆ</p>
-                </div>
+        const emptyHtml = `
+            <div class="text-center py-5">
+                <span class="material-icons mb-3" style="font-size: 4rem; color: #9ca3af;">inbox</span>
+                <h5 class="text-muted">ไม่พบใบสั่งซื้อที่เสร็จสมบูรณ์</h5>
+                <p class="text-muted mb-0">ยังไม่มีใบสั่งซื้อที่รับครบแล้ว</p>
             </div>
         `;
-    } else {
-        completedPOs.forEach(function(po) {
+        // Get the main container
+        const mainContainer = $('.mainwrap .container-fluid').first();
+        mainContainer.find('.table-card').remove(); // ลบการ์ดเดิมทั้งหมด
+        mainContainer.append(`<div class="table-card"><div class="table-body">${emptyHtml}</div></div>`);
+        return;
+    }
+    
+    // แยก PO ตามประเภท
+    const regularPOs = completedPOs.filter(po => !po.remark || !po.remark.toLowerCase().includes('new product'));
+    const newProductPOs = completedPOs.filter(po => po.remark && po.remark.toLowerCase().includes('new product'));
+    
+    let htmlContent = '';
+    
+    // ส่วนที่ 1: ใบสั่งซื้อปกติ (สินค้าเติม)
+    if (regularPOs.length > 0) {
+        let regularHtml = '';
+        regularPOs.forEach(function(po) {
             const hasCancelled = parseFloat(po.total_cancelled_qty || 0) > 0;
             
-            html += `
+            regularHtml += `
                 <div class="col-sm-6 col-lg-4 col-xl-3 mb-3">
-                    <div class="po-card" style="opacity: 0.85; border-left: 4px solid #10b981;">
-                        <div class="po-card-header">
+                    <div class="po-card" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-left: 4px solid #10b981;">
+                        <div class="po-card-header" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div style="flex: 1; min-width: 0;">
-                                    <h6 class="mb-1 fw-bold" style="font-size: 0.95rem;">${escapeHtml(po.po_number)}</h6>
-                                    <p class="text-muted mb-1 small" style="font-size: 0.75rem;">${escapeHtml(po.supplier_name)}</p>
-                                    <div class="small text-muted">${formatDate(po.po_date)}</div>
+                                    <h6 class="mb-1 fw-bold text-success">${escapeHtml(po.po_number)}</h6>
+                                    <small class="text-success" style="opacity: 0.8;">${escapeHtml(po.supplier_name)}</small>
                                 </div>
-                                <div class="text-end" style="margin-left: 10px;">
-                                    <span class="po-status-badge status-received d-block mb-2" style="font-size: 0.7rem;">รับครบแล้ว</span>
-                                    ${hasCancelled ? `<span class="material-icons" style="color: #f59e0b; font-size: 1.4rem;" title="มีรายการที่ถูกยกเลิก">warning</span>` : ''}
+                                <div class="text-end">
+                                    <span class="badge bg-success text-white fw-bold" style="font-size: 0.7rem;">รับครบแล้ว</span>
+                                    ${hasCancelled ? `<div><span class="material-icons mt-1" style="color: #f59e0b; font-size: 1.2rem;" title="มีรายการที่ถูกยกเลิก">warning</span></div>` : ''}
                                 </div>
                             </div>
                         </div>
-                        
                         <div class="card-body">
-                            <button type="button" 
-                                    class="btn btn-primary btn-sm w-100 view-po-btn"
-                                    data-po-id="${po.po_id}"
-                                    data-po-number="${escapeHtml(po.po_number)}"
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-muted">จำนวนรับ:</small>
+                                <strong class="text-success">${parseFloat(po.total_received_qty).toLocaleString()}</strong>
+                            </div>
+                            ${hasCancelled ? `
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-muted">ยกเลิก:</small>
+                                <strong class="text-danger">${parseFloat(po.total_cancelled_qty).toLocaleString()}</strong>
+                            </div>
+                            ` : ''}
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <small class="text-muted">วันที่:</small>
+                                <small>${formatDate(po.po_date)}</small>
+                            </div>
+                            <button class="btn btn-success btn-sm w-100 view-po-btn" 
+                                    data-po-id="${po.po_id}" 
+                                    data-po-number="${escapeHtml(po.po_number)}" 
                                     data-supplier="${escapeHtml(po.supplier_name)}"
                                     data-remark="${escapeHtml(po.remark || '')}"
                                     data-mode="view">
@@ -3030,16 +3008,98 @@ function displayCompletedPOs(completedPOs) {
                 </div>
             `;
         });
+        
+        htmlContent += `
+            <div class="table-card mb-4">
+                <div class="table-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <h5 class="table-title mb-0" style="color: white;">
+                        <span class="material-icons me-2">check_circle</span>
+                        ใบสั่งซื้อปกติ (สินค้าเติม) - รับครบแล้ว
+                        <span class="badge bg-white text-success ms-2">${regularPOs.length} รายการ</span>
+                    </h5>
+                </div>
+                <div class="table-body">
+                    <div class="row g-3">
+                        ${regularHtml}
+                    </div>
+                </div>
+            </div>
+        `;
     }
     
-    // Create a new wrapper for completed POs with unique id
-    const completedContainer = `<div class="row g-3" id="completedPOsRow">${html}</div>`;
+    // ส่วนที่ 2: ใบสั่งซื้อสินค้าใหม่
+    if (newProductPOs.length > 0) {
+        let newProductHtml = '';
+        newProductPOs.forEach(function(po) {
+            const hasCancelled = parseFloat(po.total_cancelled_qty || 0) > 0;
+            
+            newProductHtml += `
+                <div class="col-sm-6 col-lg-4 col-xl-3 mb-3">
+                    <div class="po-card" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 4px solid #3b82f6;">
+                        <div class="po-card-header" style="background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div style="flex: 1; min-width: 0;">
+                                    <h6 class="mb-1 fw-bold text-primary">${escapeHtml(po.po_number)}</h6>
+                                    <small class="text-primary" style="opacity: 0.8;">${escapeHtml(po.supplier_name)}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-primary text-white fw-bold" style="font-size: 0.7rem;">สินค้าใหม่</span>
+                                    ${hasCancelled ? `<div><span class="material-icons mt-1" style="color: #f59e0b; font-size: 1.2rem;" title="มีรายการที่ถูกยกเลิก">warning</span></div>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-muted">จำนวนรับ:</small>
+                                <strong class="text-primary">${parseFloat(po.total_received_qty).toLocaleString()}</strong>
+                            </div>
+                            ${hasCancelled ? `
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-muted">ยกเลิก:</small>
+                                <strong class="text-danger">${parseFloat(po.total_cancelled_qty).toLocaleString()}</strong>
+                            </div>
+                            ` : ''}
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <small class="text-muted">วันที่:</small>
+                                <small>${formatDate(po.po_date)}</small>
+                            </div>
+                            <button class="btn btn-primary btn-sm w-100 view-po-btn" 
+                                    data-po-id="${po.po_id}" 
+                                    data-po-number="${escapeHtml(po.po_number)}" 
+                                    data-supplier="${escapeHtml(po.supplier_name)}"
+                                    data-remark="${escapeHtml(po.remark || '')}"
+                                    data-mode="view">
+                                <span class="material-icons" style="font-size: 1rem;">visibility</span>
+                                ดูรายละเอียด
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        htmlContent += `
+            <div class="table-card">
+                <div class="table-header" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                    <h5 class="table-title mb-0" style="color: white;">
+                        <span class="material-icons me-2">fiber_new</span>
+                        ใบสั่งซื้อสินค้าใหม่ - รับครบแล้ว
+                        <span class="badge bg-white text-primary ms-2">${newProductPOs.length} รายการ</span>
+                    </h5>
+                </div>
+                <div class="table-body">
+                    <div class="row g-3">
+                        ${newProductHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
     
-    // Get the table-body element
-    const tableBody = $('.table-body').first();
-    
-    // Clear existing content and add completed POs
-    tableBody.html(completedContainer);
+    // อัปเดต DOM
+    const mainContainer = $('.mainwrap .container-fluid').first();
+    mainContainer.find('.table-card').remove(); // ลบการ์ดเดิมทั้งหมด
+    mainContainer.append(htmlContent);
     
     // Re-bind click events
     $('.view-po-btn').off('click').on('click', function() {

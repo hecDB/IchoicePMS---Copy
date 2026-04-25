@@ -1,0 +1,45 @@
+# Environment Configuration
+.env
+config/.env
+
+# Database
+*.sql
+*.sqlite
+*.db
+
+# Logs
+*.log
+logs/
+error_log
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Vendor (if using Composer)
+# vendor/
+
+# Uploads (if sensitive)
+# uploads/
+# images/products/
+
+# Backups
+backup/
+*.backup
+*.bak
+
+# Cache
+cache/
+*.cache

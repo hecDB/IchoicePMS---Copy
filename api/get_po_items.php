@@ -36,7 +36,15 @@ try {
             COALESCE(c.code, 'THB') as currency_code,
             COALESCE(SUM(ri.receive_qty), 0) as received_qty,
             COALESCE(dmg.damaged_qty, 0) as damaged_qty,
-            GREATEST(poi.qty - COALESCE(SUM(ri.receive_qty), 0) - COALESCE(poi.cancel_qty, 0) - COALESCE(dmg.damaged_qty, 0), 0) as remaining_qty,
+            COALESCE(pending_inspection.pending_qty, 0) as pending_inspection_qty,
+            GREATEST(
+                poi.qty 
+                - COALESCE(SUM(ri.receive_qty), 0) 
+                - COALESCE(poi.cancel_qty, 0) 
+                - COALESCE(dmg.damaged_qty, 0)
+                - COALESCE(pending_inspection.pending_qty, 0), 
+                0
+            ) as remaining_qty,
             MAX(ri.expiry_date) as expiry_date,
             poi.is_cancelled,
             poi.is_partially_cancelled,
@@ -53,13 +61,22 @@ try {
         LEFT JOIN (
             SELECT item_id, SUM(return_qty) AS damaged_qty
             FROM returned_items
-            WHERE reason_name = 'สินค้าชำรุดบางส่วน' AND return_status IN ('pending', 'approved', 'completed')
+            WHERE reason_name = 'สินค้าชำรุดบางส่วน' 
+                AND return_status IN ('approved', 'completed')
+                AND is_returnable = 0
             GROUP BY item_id
         ) dmg ON poi.item_id = dmg.item_id
+        LEFT JOIN (
+            SELECT item_id, SUM(return_qty) AS pending_qty
+            FROM returned_items
+            WHERE reason_name = 'สินค้าชำรุดบางส่วน' 
+                AND return_status = 'pending'
+            GROUP BY item_id
+        ) pending_inspection ON poi.item_id = pending_inspection.item_id
         WHERE poi.po_id = :po_id AND poi.temp_product_id IS NULL
         GROUP BY poi.item_id, poi.product_id, p.name, p.sku, p.barcode, p.unit, p.image, poi.qty, poi.price_per_unit, poi.total, c.code,
                  poi.is_cancelled, poi.is_partially_cancelled, poi.cancel_qty, poi.cancel_reason, poi.cancel_notes, poi.cancelled_at, poi.cancelled_by,
-                 dmg.damaged_qty
+                 dmg.damaged_qty, pending_inspection.pending_qty
         ORDER BY p.name
     ";
     
@@ -78,6 +95,7 @@ try {
         $item['remaining_qty'] = (float)($item['remaining_qty'] ?? 0);
         $item['cancel_qty'] = (float)($item['cancel_qty'] ?? 0);
         $item['damaged_qty'] = (float)($item['damaged_qty'] ?? 0);
+        $item['pending_inspection_qty'] = (float)($item['pending_inspection_qty'] ?? 0);
         $item['is_cancelled'] = (bool)$item['is_cancelled'];
         $item['is_partially_cancelled'] = (bool)$item['is_partially_cancelled'];
     }

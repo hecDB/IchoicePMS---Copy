@@ -626,6 +626,7 @@ function updatePOStatus($pdo, $po_id) {
             COALESCE(poi.cancel_qty, 0) as cancel_qty,
             COALESCE(damaged_unsellable_summary.total_damaged_unsellable, 0) as damaged_unsellable_qty,
             COALESCE(damaged_sellable_summary.total_damaged_sellable, 0) as damaged_sellable_qty,
+            COALESCE(pending_inspection_summary.total_pending_inspection, 0) as pending_inspection_qty,
             poi.is_cancelled,
             poi.is_partially_cancelled
         FROM purchase_order_items poi
@@ -637,15 +638,21 @@ function updatePOStatus($pdo, $po_id) {
         LEFT JOIN (
             SELECT item_id, SUM(return_qty) as total_damaged_unsellable
             FROM returned_items
-            WHERE is_returnable = 0
+            WHERE is_returnable = 0 AND return_status IN ('approved', 'completed')
             GROUP BY item_id
         ) damaged_unsellable_summary ON poi.item_id = damaged_unsellable_summary.item_id
         LEFT JOIN (
             SELECT item_id, SUM(return_qty) as total_damaged_sellable
             FROM returned_items
-            WHERE is_returnable = 1
+            WHERE is_returnable = 1 AND return_status IN ('approved', 'completed')
             GROUP BY item_id
         ) damaged_sellable_summary ON poi.item_id = damaged_sellable_summary.item_id
+        LEFT JOIN (
+            SELECT item_id, SUM(return_qty) as total_pending_inspection
+            FROM returned_items
+            WHERE return_status = 'pending'
+            GROUP BY item_id
+        ) pending_inspection_summary ON poi.item_id = pending_inspection_summary.item_id
         WHERE poi.po_id = ?
     ";
     
@@ -662,6 +669,7 @@ function updatePOStatus($pdo, $po_id) {
         $total_damaged_unsellable = 0;
         $total_damaged_sellable = 0;
         $total_cancelled = 0;
+        $total_pending_inspection = 0;
         
         foreach ($items_data as $item) {
             $total_items++;
@@ -671,21 +679,23 @@ function updatePOStatus($pdo, $po_id) {
             $cancel_qty = floatval($item['cancel_qty']);
             $damaged_unsellable_qty = floatval($item['damaged_unsellable_qty']);
             $damaged_sellable_qty = floatval($item['damaged_sellable_qty']);
+            $pending_inspection_qty = floatval($item['pending_inspection_qty']);
             
             // Accumulate totals
             $total_received += $received_qty;
             $total_damaged_unsellable += $damaged_unsellable_qty;
             $total_damaged_sellable += $damaged_sellable_qty;
             $total_cancelled += $cancel_qty;
+            $total_pending_inspection += $pending_inspection_qty;
             
             // Calculate total processed: received + damaged (both types) + cancelled
-            // All count toward fulfillment because they've been accounted for
+            // NOTE: pending_inspection is NOT counted as processed yet
             $total_processed = $received_qty + $damaged_unsellable_qty + $damaged_sellable_qty + $cancel_qty;
             
             // Check if item is fully processed (allow small floating point rounding error)
             if ($total_processed >= $ordered_qty - 0.0001) {
                 $fully_processed_items++;
-            } else if ($received_qty > 0 || $cancel_qty > 0 || $damaged_unsellable_qty > 0 || $damaged_sellable_qty > 0) {
+            } else if ($received_qty > 0 || $cancel_qty > 0 || $damaged_unsellable_qty > 0 || $damaged_sellable_qty > 0 || $pending_inspection_qty > 0) {
                 // Item has partial processing
                 $any_partial_processing = true;
             }
@@ -695,8 +705,8 @@ function updatePOStatus($pdo, $po_id) {
         $new_status = 'pending'; // Default
         $remarks = '';
         
-        // If all items have been fully processed
-        if ($fully_processed_items >= $total_items) {
+        // If all items have been fully processed AND no pending inspections
+        if ($fully_processed_items >= $total_items && $total_pending_inspection == 0) {
             $new_status = 'completed';
             
             // Build summary remarks
@@ -725,7 +735,7 @@ function updatePOStatus($pdo, $po_id) {
             $new_status = 'partial';
         }
         
-        error_log("PO Status Update: PO_ID=$po_id, Total Items=$total_items, Fully Processed=$fully_processed_items, New Status=$new_status, Remarks=$remarks");
+        error_log("PO Status Update: PO_ID=$po_id, Total Items=$total_items, Fully Processed=$fully_processed_items, Pending Inspection=$total_pending_inspection, New Status=$new_status, Remarks=$remarks");
         
         // Update PO status and remarks
         if (!empty($remarks)) {

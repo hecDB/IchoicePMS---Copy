@@ -29,7 +29,16 @@ try {
             poi.total as total_price,
             c.code as currency_code,
             COALESCE(received_summary.total_received, 0) as received_qty,
-            GREATEST(poi.qty - COALESCE(received_summary.total_received, 0) - COALESCE(poi.cancel_qty, 0), 0) as remaining_qty,
+            COALESCE(dmg.damaged_qty, 0) as damaged_qty,
+            COALESCE(pending_inspection.pending_qty, 0) as pending_inspection_qty,
+            GREATEST(
+                poi.qty 
+                - COALESCE(received_summary.total_received, 0) 
+                - COALESCE(poi.cancel_qty, 0)
+                - COALESCE(dmg.damaged_qty, 0)
+                - COALESCE(pending_inspection.pending_qty, 0), 
+                0
+            ) as remaining_qty,
             COALESCE(received_summary.expiry_date, NULL) as expiry_date,
             poi.is_cancelled,
             poi.is_partially_cancelled,
@@ -45,6 +54,21 @@ try {
             FROM receive_items 
             GROUP BY item_id
         ) received_summary ON poi.item_id = received_summary.item_id
+        LEFT JOIN (
+            SELECT item_id, SUM(return_qty) AS damaged_qty
+            FROM returned_items
+            WHERE reason_name = 'สินค้าชำรุดบางส่วน' 
+                AND return_status IN ('approved', 'completed')
+                AND is_returnable = 0
+            GROUP BY item_id
+        ) dmg ON poi.item_id = dmg.item_id
+        LEFT JOIN (
+            SELECT item_id, SUM(return_qty) AS pending_qty
+            FROM returned_items
+            WHERE reason_name = 'สินค้าชำรุดบางส่วน' 
+                AND return_status = 'pending'
+            GROUP BY item_id
+        ) pending_inspection ON poi.item_id = pending_inspection.item_id
         LEFT JOIN purchase_orders po ON poi.po_id = po.po_id
         LEFT JOIN currencies c ON po.currency_id = c.currency_id
         WHERE poi.po_id = :po_id AND poi.temp_product_id IS NOT NULL
@@ -73,6 +97,8 @@ try {
             'total_price' => isset($item['total_price']) ? (float)$item['total_price'] : (float)$item['order_qty'] * (float)$item['unit_price'],
             'currency_code' => $item['currency_code'] ?? 'THB',
             'received_qty' => (float)$item['received_qty'],
+            'damaged_qty' => isset($item['damaged_qty']) ? (float)$item['damaged_qty'] : 0.0,
+            'pending_inspection_qty' => isset($item['pending_inspection_qty']) ? (float)$item['pending_inspection_qty'] : 0.0,
             'remaining_qty' => (float)$item['remaining_qty'],
             'expiry_date' => $item['expiry_date'] ?? null,
             'product_image' => $item['product_image'] ?? null,
