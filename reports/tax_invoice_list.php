@@ -15,18 +15,39 @@ include '../templates/sidebar.php';
     <link rel="stylesheet" href="../assets/sidebar.css">
     <link rel="stylesheet" href="../assets/components.css">
     <link rel="stylesheet" href="../assets/mainwrap-modern.css">
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         body { background: #f5f7fb; }
         .mainwrap { padding: 24px; }
         .page-title { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
         .page-title .material-icons { font-size:32px; color:#385dfa; }
-        .filters { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap:12px 14px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:14px; box-shadow:0 10px 24px rgba(31,41,55,0.06); }
-        .filters label { font-size:13px; color:#4b5563; margin-bottom:6px; display:block; font-weight:600; }
-        .filters input, .filters select { width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; font-size:13px; }
-        .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
-        .btn { border:none; border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; font-size:13px; }
+        .filters { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:24px; box-shadow:0 10px 24px rgba(31,41,55,0.08); }
+        .filters-header { display:flex; align-items:center; gap:8px; margin-bottom:18px; padding-bottom:12px; border-bottom:2px solid #f3f4f6; }
+        .filters-header .material-icons { color:#385dfa; font-size:24px; }
+        .filters-header h3 { margin:0; font-size:16px; font-weight:700; color:#111827; }
+        .date-inputs { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:16px; }
+        .input-group { position:relative; }
+        .input-group label { font-size:13px; color:#4b5563; margin-bottom:8px; display:flex; align-items:center; gap:6px; font-weight:600; }
+        .input-group label .material-icons { font-size:18px; color:#6b7280; }
+        .input-wrapper { position:relative; display:flex; align-items:center; }
+        .input-wrapper .material-icons { position:absolute; left:12px; font-size:20px; color:#9ca3af; pointer-events:none; }
+        .filters input { width:100%; padding:12px 12px 12px 44px; border:2px solid #e5e7eb; border-radius:12px; background:#fff; font-size:14px; transition:all 0.3s ease; font-family:inherit; }
+        .filters input:hover { border-color:#cbd5e1; }
+        .filters input:focus { outline:none; border-color:#385dfa; box-shadow:0 0 0 3px rgba(56,93,250,0.1); }
+        .quick-dates { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; padding:12px; background:#f8fafc; border-radius:10px; }
+        .quick-dates-label { font-size:12px; color:#6b7280; font-weight:600; width:100%; margin-bottom:4px; }
+        .btn-quick { border:1px solid #e5e7eb; border-radius:8px; padding:6px 12px; font-weight:600; cursor:pointer; font-size:12px; background:#fff; color:#374151; transition:all 0.2s ease; }
+        .btn-quick:hover { background:#385dfa; color:#fff; border-color:#385dfa; transform:translateY(-1px); box-shadow:0 4px 12px rgba(56,93,250,0.2); }
+        .actions { display:flex; gap:12px; flex-wrap:wrap; }
+        .btn { border:none; border-radius:12px; padding:12px 24px; font-weight:700; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; gap:8px; transition:all 0.3s ease; }
+        .btn .material-icons { font-size:18px; }
         .btn-primary { background: linear-gradient(135deg, #385dfa 0%, #4f46e5 100%); color:#fff; box-shadow:0 8px 18px rgba(56,93,250,0.25); }
-        .btn-secondary { background:#fff; color:#111827; border:1px solid #d1d5db; }
+        .btn-primary:hover { transform:translateY(-2px); box-shadow:0 12px 24px rgba(56,93,250,0.35); }
+        .btn-secondary { background:#fff; color:#374151; border:2px solid #e5e7eb; }
+        .btn-secondary:hover { background:#f9fafb; border-color:#cbd5e1; }
+        .btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color:#fff; box-shadow:0 8px 18px rgba(16,185,129,0.25); }
+        .btn-success:hover { transform:translateY(-2px); box-shadow:0 12px 24px rgba(16,185,129,0.35); }
         .card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:14px; box-shadow:0 12px 30px rgba(31,41,55,0.06); margin-top:14px; }
         table { width:100%; border-collapse:collapse; }
         th, td { padding:10px; border-bottom:1px solid #e5e7eb; font-size:13px; }
@@ -35,6 +56,8 @@ include '../templates/sidebar.php';
         .badge { display:inline-flex; align-items:center; padding:3px 8px; border-radius:999px; font-size:11px; font-weight:600; }
         .badge.blue { background:rgba(56,93,250,0.12); color:#1d4ed8; }
         .badge.green { background:rgba(34,197,94,0.12); color:#15803d; }
+        .badge.orange { background:rgba(249,115,22,0.12); color:#c2410c; }
+        .badge.purple { background:rgba(168,85,247,0.12); color:#7e22ce; }
         .no-data { text-align:center; padding:20px; color:#6b7280; }
         .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:2100; }
         .modal { background:#fff; width:90%; max-width:920px; border-radius:14px; padding:16px; box-shadow:0 20px 48px rgba(0,0,0,0.18); max-height:90vh; overflow:auto; }
@@ -140,39 +163,58 @@ include '../templates/sidebar.php';
     </div>
 
     <div class="filters">
-        <div>
-            <label>ค้นหา (เลขที่/ลูกค้า/อ้างอิง)</label>
-            <input type="text" id="q" placeholder="เช่น 2026-001 หรือ ชื่อลูกค้า">
+        <div class="filters-header">
+            <span class="material-icons">date_range</span>
+            <h3>เลือกช่วงวันที่</h3>
         </div>
-        <div>
-            <label>เลขที่ใบกำกับภาษี</label>
-            <input type="text" id="inv_no" placeholder="คำค้นบางส่วน">
+        
+        <div class="quick-dates">
+            <div class="quick-dates-label">ทางลัด:</div>
+            <button class="btn-quick" data-range="today">วันนี้</button>
+            <button class="btn-quick" data-range="yesterday">เมื่อวาน</button>
+            <button class="btn-quick" data-range="thisWeek">สัปดาห์นี้</button>
+            <button class="btn-quick" data-range="lastWeek">สัปดาห์ที่แล้ว</button>
+            <button class="btn-quick" data-range="thisMonth">เดือนนี้</button>
+            <button class="btn-quick" data-range="lastMonth">เดือนที่แล้ว</button>
+            <button class="btn-quick" data-range="thisYear">ปีนี้</button>
         </div>
-        <div>
-            <label>ชื่อลูกค้า</label>
-            <input type="text" id="customer" placeholder="ชื่อลูกค้า">
+        
+        <div class="date-inputs">
+            <div class="input-group">
+                <label>
+                    <span class="material-icons">event</span>
+                    วันที่เริ่ม
+                </label>
+                <div class="input-wrapper">
+                    <span class="material-icons">calendar_today</span>
+                    <input type="date" id="date_from">
+                </div>
+            </div>
+            <div class="input-group">
+                <label>
+                    <span class="material-icons">event</span>
+                    วันที่สิ้นสุด
+                </label>
+                <div class="input-wrapper">
+                    <span class="material-icons">calendar_today</span>
+                    <input type="date" id="date_to">
+                </div>
+            </div>
         </div>
-        <div>
-            <label>วันที่เริ่ม</label>
-            <input type="date" id="date_from">
-        </div>
-        <div>
-            <label>วันที่สิ้นสุด</label>
-            <input type="date" id="date_to">
-        </div>
-        <div>
-            <label>ช่องทางขาย</label>
-            <select id="platform">
-                <option value="">ทั้งหมด</option>
-                <option value="Shopee">Shopee</option>
-                <option value="Lazada">Lazada</option>
-                <option value="หน้าร้าน">หน้าร้าน</option>
-                <option value="อื่นๆ">อื่นๆ</option>
-            </select>
-        </div>
+        
         <div class="actions">
-            <button class="btn btn-primary" id="searchBtn">ค้นหา</button>
-            <button class="btn btn-secondary" id="resetBtn">ล้างค่า</button>
+            <button class="btn btn-primary" id="searchBtn">
+                <span class="material-icons">search</span>
+                ค้นหา
+            </button>
+            <button class="btn btn-secondary" id="resetBtn">
+                <span class="material-icons">refresh</span>
+                ล้างค่า
+            </button>
+            <button class="btn btn-success" id="exportBtn">
+                <span class="material-icons">file_download</span>
+                ส่งออก Excel
+            </button>
         </div>
     </div>
 
@@ -253,6 +295,8 @@ include '../templates/sidebar.php';
     const closeModal = document.getElementById('closeModal');
     const detailGrid = document.getElementById('detailGrid');
     const detailItemsBody = document.querySelector('#detailItems tbody');
+    
+    let currentData = []; // Store current table data for export
 
     function numberFmt(num){ return (num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     
@@ -265,15 +309,21 @@ include '../templates/sidebar.php';
         };
         return types[docType] || 'ใบกำกับภาษี';
     }
+    
+    function getDocTypeBadgeColor(docType) {
+        const colors = {
+            'tax_invoice': 'blue',
+            'payment_voucher': 'green',
+            'quotation': 'orange',
+            'invoice': 'purple'
+        };
+        return colors[docType] || 'blue';
+    }
 
     function gatherFilters(){
         return {
-            q: document.getElementById('q').value.trim(),
-            inv_no: document.getElementById('inv_no').value.trim(),
-            customer: document.getElementById('customer').value.trim(),
             date_from: document.getElementById('date_from').value,
-            date_to: document.getElementById('date_to').value,
-            platform: document.getElementById('platform').value
+            date_to: document.getElementById('date_to').value
         };
     }
 
@@ -284,7 +334,8 @@ include '../templates/sidebar.php';
             const res = await fetch('../api/list_tax_invoices.php?' + params.toString());
             const data = await res.json();
             if (!data.success) throw new Error(data.error || 'ไม่สามารถดึงข้อมูล');
-            renderTable(data.data || []);
+            currentData = data.data || []; // Store data for export
+            renderTable(currentData);
         } catch(err){
             resultBody.innerHTML = `<tr><td colspan="9" class="no-data">เกิดข้อผิดพลาด: ${err.message}</td></tr>`;
         }
@@ -300,12 +351,13 @@ include '../templates/sidebar.php';
             const tr = document.createElement('tr');
             const platform = row.platform || '-';
             const docTypeName = getDocTypeName(row.doc_type);
+            const badgeColor = getDocTypeBadgeColor(row.doc_type);
             tr.innerHTML = `
                 <td>${row.inv_no}</td>
                 <td>${row.inv_date || '-'}</td>
                 <td>${row.customer_name || '-'}</td>
                 <td>${platform}</td>
-                <td><span class="badge blue">${docTypeName}</span></td>
+                <td><span class="badge ${badgeColor}">${docTypeName}</span></td>
                 <td class="text-right">${numberFmt(row.grand_total)}</td>
                 <td class="text-right">${numberFmt(row.payable)}</td>
                 <td>
@@ -409,9 +461,112 @@ include '../templates/sidebar.php';
     // Export to global scope
     window.openPrintModal = openPrintModal;
 
+    // Quick date range buttons
+    document.querySelectorAll('.btn-quick').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const range = this.dataset.range;
+            const today = new Date();
+            let fromDate, toDate;
+            
+            switch(range) {
+                case 'today':
+                    fromDate = toDate = today;
+                    break;
+                case 'yesterday':
+                    fromDate = toDate = new Date(today.setDate(today.getDate() - 1));
+                    break;
+                case 'thisWeek':
+                    const firstDay = today.getDate() - today.getDay();
+                    fromDate = new Date(today.setDate(firstDay));
+                    toDate = new Date();
+                    break;
+                case 'lastWeek':
+                    const lastWeekEnd = new Date(today.setDate(today.getDate() - today.getDay() - 1));
+                    const lastWeekStart = new Date(lastWeekEnd);
+                    lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
+                    fromDate = lastWeekStart;
+                    toDate = lastWeekEnd;
+                    break;
+                case 'thisMonth':
+                    fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                    toDate = new Date();
+                    break;
+                case 'lastMonth':
+                    fromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    toDate = new Date(today.getFullYear(), today.getMonth(), 0);
+                    break;
+                case 'thisYear':
+                    fromDate = new Date(today.getFullYear(), 0, 1);
+                    toDate = new Date();
+                    break;
+            }
+            
+            if (fromDate && toDate) {
+                document.getElementById('date_from').value = formatDate(fromDate);
+                document.getElementById('date_to').value = formatDate(toDate);
+                fetchList();
+            }
+        });
+    });
+    
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    // Export to Excel Function
+    function exportToExcel() {
+        if (!currentData || currentData.length === 0) {
+            alert('ไม่มีข้อมูลให้ส่งออก');
+            return;
+        }
+        
+        // Prepare data for Excel
+        const excelData = currentData.map(row => {
+            return {
+                'เลขที่ใบกำกับภาษี': row.inv_no || '',
+                'วันทัี่': row.inv_date || '',
+                'ชื่อลูกค้า': row.customer_name || '',
+                'ช่องทางขาย': row.platform || '',
+                'ประเภทเอกสาร': getDocTypeName(row.doc_type),
+                'ยอดรวม': parseFloat(row.grand_total || 0).toFixed(2),
+                'ยอดชำระ': parseFloat(row.payable || 0).toFixed(2)
+            };
+        });
+        
+        // Create workbook and worksheet
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(excelData);
+        
+        // Set column widths
+        ws['!cols'] = [
+            { wch: 18 },  // เลขที่
+            { wch: 12 },  // วันที่
+            { wch: 30 },  // ลูกค้า
+            { wch: 15 },  // ช่องทาง
+            { wch: 20 },  // ประเภท
+            { wch: 15 },  // ยอดรวม
+            { wch: 15 }   // ยอดชำระ
+        ];
+        
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(wb, ws, 'รายการใบกำกับภาษี');
+        
+        // Generate filename with current date and time
+        const now = new Date();
+        const filename = `รายการใบกำกับภาษี_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.xlsx`;
+        
+        // Write file
+        XLSX.writeFile(wb, filename, { bookType: 'xlsx', type: 'binary' });
+    }
+    
+    document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+
     document.getElementById('searchBtn').addEventListener('click', fetchList);
     document.getElementById('resetBtn').addEventListener('click', () => {
-        ['q','inv_no','customer','date_from','date_to','platform'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        ['date_from','date_to'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         fetchList();
     });
 

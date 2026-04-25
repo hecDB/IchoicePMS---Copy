@@ -30,6 +30,12 @@ $today = date('Y-m-d');
         .field label { display: block; font-size: 13px; color: #4b5563; margin-bottom: 6px; font-weight: 600; }
         .field input, .field textarea, .field select { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; font-size: 14px; background: #f8fafc; }
         .field textarea { min-height: 70px; }
+        .input-with-btn { display: flex; gap: 8px; align-items: stretch; }
+        .input-with-btn input { flex: 1; }
+        .btn-icon { border: none; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; font-size: 13px; background: #f3f4f6; color: #374151; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease; }
+        .btn-icon:hover { background: #e5e7eb; }
+        .btn-icon .material-icons { font-size: 18px; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .item-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
         .item-table th, .item-table td { border: 1px solid #e5e7eb; padding: 8px 10px; font-size: 13px; }
         .item-table th { background: #f8fafc; text-align: left; }
@@ -191,7 +197,12 @@ $today = date('Y-m-d');
                 </div>
                 <div class="field">
                     <label for="inv_no"><span id="doc_no_label">เลขที่ใบกำกับภาษี</span></label>
-                    <input id="inv_no" type="text" value="202601-001" autocomplete="off">
+                    <div class="input-with-btn">
+                        <input id="inv_no" type="text" value="202604-001" autocomplete="off" placeholder="คลิกปุ่มสร้างอัตโนมัติ">
+                        <button type="button" class="btn-icon" id="generateInvNoBtn" title="สร้างเลขอัตโนมัติ">
+                            <span class="material-icons">autorenew</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="field">
                     <label for="sales_tag">เลขแท็กรายการขายสินค้า</label>
@@ -431,7 +442,81 @@ $today = date('Y-m-d');
     const printInvoiceBtn = document.getElementById('printInvoiceBtn');
     const previewContent = document.getElementById('previewContent');
     const previewInvNo = document.getElementById('preview_inv_no');
+    const generateInvNoBtn = document.getElementById('generateInvNoBtn');
+    const invNoInput = document.getElementById('inv_no');
     let savedInvoiceId = null;
+    
+    // ฟังก์ชันสร้างเลขที่อัตโนมัติ
+    async function generateInvoiceNumber(silent = false) {
+        const originalBtn = generateInvNoBtn.innerHTML;
+        generateInvNoBtn.disabled = true;
+        generateInvNoBtn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite;">sync</span>';
+        
+        try {
+            const docType = docTypeSelect.value;
+            const res = await fetch('../api/get_next_invoice_number.php?doc_type=' + encodeURIComponent(docType));
+            
+            // ตรวจสอบว่า response status OK
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            
+            // อ่าน response เป็น text ก่อน
+            const text = await res.text();
+            
+            // ตรวจสอบว่าไม่ใช่ empty response
+            if (!text || text.trim() === '') {
+                throw new Error('เซิร์ฟเวอร์ตอบกลับเป็นค่าว่าง');
+            }
+            
+            // ตรวจสอบว่า response เป็น JSON หรือไม่
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                console.error('Response is not JSON:', text.substring(0, 200));
+                throw new Error('เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง');
+            }
+            
+            // แปลง text เป็น JSON
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (parseErr) {
+                console.error('JSON parse error:', parseErr);
+                console.error('Response text:', text.substring(0, 200));
+                throw new Error('ข้อมูลจากเซิร์ฟเวอร์ไม่ถูกต้อง');
+            }
+            
+            if (data.success) {
+                invNoInput.value = data.inv_no;
+                updatePreview();
+                
+                if (!silent) {
+                    const docTypeName = docTypeLabels[data.doc_type]?.titleTh || 'เอกสาร';
+                    showToast('success', `สร้างเลขที่: ${data.inv_no} (${docTypeName})`);
+                }
+            } else {
+                throw new Error(data.error || 'ไม่สามารถสร้างเลขได้');
+            }
+        } catch (err) {
+            console.error('Error generating invoice number:', err);
+            
+            // ตั้งค่า default ถ้า API ผิดพลาด
+            const yearMonth = new Date().getFullYear().toString() + String(new Date().getMonth() + 1).padStart(2, '0');
+            invNoInput.value = yearMonth + '-001';
+            updatePreview();
+            
+            // แสดง error เฉพาะเมื่อไม่ใช่ silent mode
+            if (!silent) {
+                showToast('error', 'ไม่สามารถสร้างเลขอัตโนมัติ ใช้เลขเริ่มต้น');
+            }
+        } finally {
+            generateInvNoBtn.disabled = false;
+            generateInvNoBtn.innerHTML = originalBtn;
+        }
+    }
+    
+    // เรียกใช้เลขอัตโนมัติตอนโหลดหน้า (silent mode - ไม่แสดง error)
+    generateInvoiceNumber(true);
     
     const docTypeLabels = {
         tax_invoice: { titleTh: 'ใบกำกับภาษี/ใบเสร็จรับเงิน', titleEn: 'TAX INVOICE', label: 'เลขที่ใบกำกับภาษี', docNoLabel: 'เลขที่ใบกำกับภาษี:' },
@@ -711,7 +796,8 @@ $today = date('Y-m-d');
     function updateDocTypeLabel() {
         const docType = docTypeSelect.value;
         docNoLabel.textContent = docTypeLabels[docType].label;
-        updatePreview();
+        // สร้างเลขใหม่เมื่อเปลี่ยนประเภทเอกสาร (silent mode)
+        generateInvoiceNumber(true);
     }
     
     // ฟังก์ชันแสดงโมดอลพรีวิว
@@ -912,6 +998,7 @@ $today = date('Y-m-d');
     updatePreview();
 
     docTypeSelect.addEventListener('change', updateDocTypeLabel);
+    generateInvNoBtn.addEventListener('click', generateInvoiceNumber);
     addRowBtn.addEventListener('click', () => { addRow(); bindRowEvents(); });
     document.getElementById('sales_tag').addEventListener('input', updatePreview);
     platformOtherInput.addEventListener('input', updatePreview);
