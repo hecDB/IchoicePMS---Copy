@@ -26,6 +26,10 @@ try {
         throw new Exception('กรุณากรอกข้อมูลเบื้องต้น');
     }
 
+    if (!isset($_POST['po_number']) || trim((string)$_POST['po_number']) === '') {
+        throw new Exception('กรุณาระบุเลขที่ใบสั่งซื้อ (PO Number)');
+    }
+
     // ตรวจสอบสินค้า
     if (empty($_POST['product_name']) || count($_POST['product_name']) === 0) {
         throw new Exception('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ');
@@ -34,6 +38,7 @@ try {
     $supplier_id = (int)$_POST['supplier_id'];
     $order_date = $_POST['order_date'];
     $currency_id = (int)$_POST['currency_id'];
+    $po_number = trim((string)$_POST['po_number']);
     $po_remark = $_POST['po_remark'] ?? '';
     $created_by = $_SESSION['user_id'];
 
@@ -51,6 +56,13 @@ try {
         throw new Exception('สกุลเงินไม่มีอยู่');
     }
 
+    // ไม่ให้เลข PO ซ้ำ ทั้งกรณีกด Generate และกรอกเอง
+    $stmt = $pdo->prepare("SELECT po_id FROM purchase_orders WHERE po_number = ? LIMIT 1");
+    $stmt->execute([$po_number]);
+    if ($stmt->fetch(PDO::FETCH_ASSOC)) {
+        throw new Exception('เลขที่ใบสั่งซื้อซ้ำในระบบ กรุณาสร้างใหม่หรือกรอกเลขอื่น');
+    }
+
     // สร้างใบ PO - ใช้ status 'pending' และ remark 'ซื้อสินค้ามาใหม่'
     $po_status = 'pending';
     $final_remark = 'New Product Purchase';
@@ -59,19 +71,21 @@ try {
         $final_remark .= ' (' . trim($po_remark) . ')';
     }
     
+    // สร้าง po_id เองแบบปลอดภัยใน transaction เพื่อรองรับกรณี schema ไม่มี AUTO_INCREMENT
+    $stmt = $pdo->query("SELECT COALESCE(MAX(po_id), 0) + 1 AS next_po_id FROM purchase_orders FOR UPDATE");
+    $nextPoRow = $stmt->fetch(PDO::FETCH_ASSOC);
+    $po_id = isset($nextPoRow['next_po_id']) ? (int)$nextPoRow['next_po_id'] : 0;
+
+    if ($po_id <= 0) {
+        throw new Exception('ไม่สามารถสร้างเลขอ้างอิงใบสั่งซื้อได้');
+    }
+
     $stmt = $pdo->prepare("
         INSERT INTO purchase_orders 
-        (supplier_id, order_date, status, ordered_by, remark, currency_id) 
-        VALUES (?, ?, ?, ?, ?, ?)
+        (po_id, po_number, supplier_id, order_date, status, ordered_by, remark, currency_id) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmt->execute([$supplier_id, $order_date, $po_status, $created_by, $final_remark, $currency_id]);
-
-    $po_id = $pdo->lastInsertId();
-    $po_number = 'PO-New-' . date('Y') . '-' . str_pad($po_id, 5, '0', STR_PAD_LEFT);
-    
-    // อัปเดต PO number
-    $stmt = $pdo->prepare("UPDATE purchase_orders SET po_number = ? WHERE po_id = ?");
-    $stmt->execute([$po_number, $po_id]);
+    $stmt->execute([$po_id, $po_number, $supplier_id, $order_date, $po_status, $created_by, $final_remark, $currency_id]);
 
     // บันทึกรายการสินค้า
     $product_names = $_POST['product_name'] ?? [];

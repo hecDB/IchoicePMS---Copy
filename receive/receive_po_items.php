@@ -1168,20 +1168,30 @@ function fetchDamagedReasonId() {
                 console.log(`  - ${r.reason_id}: ${r.reason_name} (is_returnable: ${r.is_returnable})`);
             });
             
-            const match = response.data.find(r => (r.reason_name || '').trim() === 'สินค้าชำรุดบางส่วน');
+            // ค้นหา reason ที่มี "ชำรุด" ในชื่อ (ยืดหยุ่นมากขึ้น)
+            const damagedReasons = response.data.filter(r => {
+                const name = (r.reason_name || '').toLowerCase();
+                return name.includes('ชำรุด') || name.includes('damaged');
+            });
             
-            if (match) {
-                damagedReasonId = match.reason_id;
-                console.log('✅ Found damaged reason: reason_id =', damagedReasonId);
+            if (damagedReasons.length > 0) {
+                damagedReasonId = damagedReasons[0].reason_id;
+                console.log('✅ Found damaged reason: reason_id =', damagedReasonId, 'name:', damagedReasons[0].reason_name);
             } else {
-                console.warn('⚠️ Cannot find "สินค้าชำรุดบางส่วน" reason');
-                console.log('Available non-zero returnable reasons:');
-                response.data.forEach(r => {
-                    if (r.is_returnable === '0' || r.is_returnable === 0) {
-                        console.log(`  - ${r.reason_id}: ${r.reason_name}`);
-                    }
-                });
-                damagedReasonId = null;
+                // ถ้าไม่เจอ "ชำรุด" ให้ค้นหา reason แรกที่ is_returnable = 0
+                const fallbackReasons = response.data.filter(r => r.is_returnable === '0' || r.is_returnable === 0);
+                
+                if (fallbackReasons.length > 0) {
+                    damagedReasonId = fallbackReasons[0].reason_id;
+                    console.log('⚠️ Using fallback reason: reason_id =', damagedReasonId, 'name:', fallbackReasons[0].reason_name);
+                } else {
+                    console.error('❌ No suitable return reason found!');
+                    console.log('Available reasons:');
+                    response.data.forEach(r => {
+                        console.log(`  - ${r.reason_id}: ${r.reason_name} (is_returnable: ${r.is_returnable})`);
+                    });
+                    damagedReasonId = null;
+                }
             }
         },
         error: function(xhr, status, error) {
@@ -2468,16 +2478,98 @@ $(document).ready(function() {
         const unit = $(this).data('unit');
         const sku = $(this).data('sku');
 
-        if (!damagedReasonId) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'ไม่พบเหตุผล "สินค้าชำรุดบางส่วน"',
-                text: 'กรุณาเพิ่มเหตุผลการคืนสินค้าหรือแจ้งผู้ดูแลระบบ'
-            });
+        console.log('🖱️ [ขั้น 1] กดปุ่มสินค้าชำรุด - damagedReasonId ปัจจุบัน:', damagedReasonId);
+
+        // ถ้ามี damagedReasonId แล้ว เปิด modal ได้เลย
+        if (damagedReasonId) {
+            console.log('✅ [ขั้น 2] damagedReasonId พร้อมใช้:', damagedReasonId, '→ เปิด modal');
+            showDamagedItemModal({ itemId, productId, productName, orderedQty, remainingQty, unit, sku });
             return;
         }
 
-        showDamagedItemModal({ itemId, productId, productName, orderedQty, remainingQty, unit, sku });
+        // damagedReasonId ยังเป็น null → ลอง fetch ใหม่
+        console.warn('⚠️ [ขั้น 2] damagedReasonId เป็น null → กำลัง fetch เหตุผลใหม่...');
+
+        Swal.fire({
+            title: 'กำลังโหลดข้อมูลเหตุผล...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        $.ajax({
+            url: '../api/returned_items_api.php?action=get_reasons',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                console.log('📥 [ขั้น 3] ผลลัพธ์จาก API get_reasons:', response);
+
+                if (!response || response.status !== 'success') {
+                    console.error('❌ [ขั้น 3] API ส่งค่าผิดปกติ:', response);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เรียก API ไม่สำเร็จ',
+                        html: '<p>API ส่งค่ากลับมาผิดปกติ</p><pre style="font-size:0.75rem;text-align:left;background:#f8f9fa;padding:8px;border-radius:4px;max-height:150px;overflow:auto;">' + JSON.stringify(response, null, 2) + '</pre>',
+                        confirmButtonText: 'ตกลง'
+                    });
+                    return;
+                }
+
+                if (!Array.isArray(response.data) || response.data.length === 0) {
+                    console.error('❌ [ขั้น 3] ตาราง return_reasons ว่างเปล่า');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ตาราง return_reasons ว่างเปล่า',
+                        html: '<p>ไม่พบข้อมูลเหตุผลในฐานข้อมูล</p><p class="text-danger mt-2">กรุณาเพิ่มข้อมูลในตาราง <strong>return_reasons</strong></p>',
+                        confirmButtonText: 'ตกลง'
+                    });
+                    return;
+                }
+
+                console.log('📋 [ขั้น 4] เหตุผลทั้งหมดที่พบ (' + response.data.length + ' รายการ):');
+                response.data.forEach(r => {
+                    console.log('  → [' + r.reason_id + '] "' + r.reason_name + '" (is_returnable: ' + r.is_returnable + ', is_active: ' + r.is_active + ')');
+                });
+
+                // ค้นหา reason ที่มี "ชำรุด" หรือ "damaged"
+                const match = response.data.find(r => {
+                    const name = (r.reason_name || '').toLowerCase();
+                    return name.includes('ชำรุด') || name.includes('damaged');
+                });
+
+                if (match) {
+                    damagedReasonId = match.reason_id;
+                    console.log('✅ [ขั้น 5] พบเหตุผลชำรุด:', damagedReasonId, '"' + match.reason_name + '" → เปิด modal');
+                    Swal.close();
+                    showDamagedItemModal({ itemId, productId, productName, orderedQty, remainingQty, unit, sku });
+                } else {
+                    console.error('❌ [ขั้น 5] ไม่พบเหตุผลที่มีคำว่า "ชำรุด" หรือ "damaged"');
+                    const reasonListHtml = response.data.map(r =>
+                        '<tr><td>' + r.reason_id + '</td><td>' + (r.reason_name || '') + '</td><td>' + r.is_returnable + '</td><td>' + r.is_active + '</td></tr>'
+                    ).join('');
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'ไม่พบเหตุผล "สินค้าชำรุด" ในระบบ',
+                        html: '<p class="text-start">เหตุผลที่มีในฐานข้อมูล (<strong>' + response.data.length + '</strong> รายการ):</p>'
+                            + '<div style="max-height:200px;overflow:auto;">'
+                            + '<table class="table table-sm table-bordered" style="font-size:0.8rem;">'
+                            + '<thead><tr><th>ID</th><th>ชื่อเหตุผล</th><th>is_returnable</th><th>is_active</th></tr></thead>'
+                            + '<tbody>' + reasonListHtml + '</tbody></table></div>'
+                            + '<p class="mt-2 text-danger">กรุณาเพิ่มเหตุผลที่มีคำว่า <strong>"ชำรุด"</strong> ในตาราง <strong>return_reasons</strong></p>',
+                        confirmButtonText: 'ตกลง',
+                        width: '600px'
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ [ขั้น 3] เรียก API ล้มเหลว - HTTP Status:', xhr.status, 'Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เชื่อมต่อ API ไม่ได้ (HTTP ' + xhr.status + ')',
+                    html: '<pre style="font-size:0.75rem;text-align:left;background:#f8f9fa;padding:8px;border-radius:4px;max-height:200px;overflow:auto;">' + (xhr.responseText || error) + '</pre>',
+                    confirmButtonText: 'ตกลง'
+                });
+            }
+        });
     });
     
     // Confirm cancel item - Reset event binding
