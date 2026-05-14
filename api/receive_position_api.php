@@ -14,9 +14,14 @@ try {
     $receiveData = null;
     if ($receive_id > 0) {
         // หา item_id, ราคา และ product_id จาก receive_items
-        $sql = "SELECT poi.product_id, poi.temp_product_id, poi.price_per_unit, poi.sale_price, r.remark, r.expiry_date
+        $sql = "SELECT poi.product_id, poi.temp_product_id, poi.price_per_unit, poi.sale_price,
+                       COALESCE(NULLIF(poi.price_original, 0), poi.price_per_unit) as price_original,
+                       COALESCE(c.code, 'THB') as currency_code, COALESCE(c.symbol, '฿') as currency_symbol,
+                       r.remark, r.expiry_date
                 FROM receive_items r
                 LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
+                LEFT JOIN purchase_orders po ON r.po_id = po.po_id
+                LEFT JOIN currencies c ON po.currency_id = c.currency_id
                 WHERE r.receive_id = ? LIMIT 1";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$receive_id]);
@@ -66,6 +71,9 @@ try {
         'bin' => $locationData['bin'] ?? '',
         'shelf' => $locationData['shelf'] ?? '',
         'price_per_unit' => $receiveData['price_per_unit'] ?? '',
+        'price_original' => $receiveData['price_original'] ?? $receiveData['price_per_unit'] ?? '',
+        'currency_code' => $receiveData['currency_code'] ?? 'THB',
+        'currency_symbol' => $receiveData['currency_symbol'] ?? '฿',
         'sale_price' => $receiveData['sale_price'] ?? '',
         'remark' => $receiveData['remark'] ?? '',
         'expiry_date' => $receiveData['expiry_date'] ?? ''

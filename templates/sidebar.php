@@ -192,11 +192,11 @@
                 </a>
                 <a href="<?= getPath('orders/purchase_order_create.php') ?>" class="submenu-item<?=isActive('purchase_order_create.php')?>">
                     <span class="material-icons">add_shopping_cart</span>
-                    <span class="submenu-text">สร้างใบสั่งซื้อใหม่</span>
+                    <span class="submenu-text">สร้างใบสั่งซื้อ</span>
                 </a>
                 <a href="<?= getPath('orders/purchase_order_create_new_product.php') ?>" class="submenu-item<?=isActive('purchase_order_create_new_product.php')?>">
                     <span class="material-icons">new_releases</span>
-                    <span class="submenu-text">ซื้อสินค้าใหม่</span>
+                    <span class="submenu-text">สร้างใบสั่งซื้อ New SKU</span>
                 </a>
                 <a href="<?= getPath('receive/receive_po_items.php') ?>" class="submenu-item<?=isActive('receive_po_items.php')?>">
                     <span class="material-icons">input</span>
@@ -247,7 +247,7 @@
                 </a>
                 <a href="<?= getPath('receive/transaction_view_separated.php') ?>" class="submenu-item<?=isActive('transaction_view_separated.php')?>">
                     <span class="material-icons">new_releases</span>
-                    <span class="submenu-text">สินค้าซื้อใหม่</span>
+                    <span class="submenu-text">จัดการสินค้า New SKU</span>
                 </a>
                 <a href="<?= getPath('stock/low_stock.php') ?>" class="submenu-item<?=isActive('low_stock.php')?>">
                     <span class="material-icons">warning</span>

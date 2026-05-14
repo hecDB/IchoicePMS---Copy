@@ -134,7 +134,7 @@ function generateInvoiceHTML(inv, items, isCopy = false) {
                     <h4 style="margin:0 0 8px;border-bottom:1px solid #d1d5db;padding-bottom:4px;font-size:11px;">ข้อมูลเอกสาร</h4>
                     <div style="font-size:10px;line-height:1.7;">
                         <div><strong>เลขที่:</strong> ${inv.inv_no}</div>
-                        <div><strong>เลขแท็กขาย:</strong> ${inv.sales_tag || '-'}</div>
+                        <div><strong>เลขอ้างอิง:</strong> ${inv.sales_tag || '-'}</div>
                         <div><strong>วันที่ออกบิล:</strong> ${inv.inv_date || '-'}</div>
                         <div><strong>ช่องทางสั่งซื้อ:</strong> ${inv.platform || '-'}</div>
                     </div>

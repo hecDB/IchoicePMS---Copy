@@ -1397,6 +1397,9 @@ $(document).ready(function() {
         $('#edit-bin').val('');
         $('#edit-shelf').val('');
         $('#edit-price-cost').val('');
+        $('#edit-price-cost-hidden').val('');
+        $('#edit-currency-badge').text('THB').removeClass('bg-primary').addClass('bg-secondary');
+        $('#edit-price-thb-row').addClass('d-none');
         $('#edit-price-sale').val('');
         $('#edit-weight').val(weightRaw !== undefined && weightRaw !== null ? weightRaw : '');
         $('#edit-true-cost').val(trueCost ? trueCost.toFixed(2) : '');
@@ -1435,8 +1438,27 @@ $(document).ready(function() {
                 setSelectWithDynamicOption($('#edit-shelf'), shelf);
                 
                 // ใส่ราคาและข้อมูลอื่นๆ ที่ได้จาก API
-                $('#edit-price-cost').val(priceCost);
+                const priceOriginal = resp.price_original || resp.price_per_unit || '';
+                const priceBase = resp.price_per_unit || '';   // THB base price
+                const currencyCode = resp.currency_code || 'THB';
+                $('#edit-price-cost').val(priceOriginal);
+                $('#edit-price-cost-hidden').val(priceBase);
                 $('#edit-price-sale').val(priceSale);
+                // อัพเดทสกุลเงินที่แสดงใน badge ราคาซื้อ
+                $('#edit-currency-badge').text(currencyCode);
+                // เปลี่ยนสีตาม currency (ถ้าไม่ใช่ THB ให้เป็นสีน้ำเงินเพื่อเตือนสายตา)
+                if (currencyCode !== 'THB') {
+                    $('#edit-currency-badge').removeClass('bg-secondary').addClass('bg-primary');
+                    // แสดงแถวราคาเทียบเท่า THB
+                    if (priceBase) {
+                        const thbVal = parseFloat(priceBase);
+                        $('#edit-price-thb-equiv').text(thbVal.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                    }
+                    $('#edit-price-thb-row').removeClass('d-none');
+                } else {
+                    $('#edit-currency-badge').removeClass('bg-primary').addClass('bg-secondary');
+                    $('#edit-price-thb-row').addClass('d-none');
+                }
                 if (weightFromAPI !== '') {
                     $('#edit-weight').val(weightFromAPI);
                 }
@@ -2272,19 +2294,43 @@ $(document).ready(function() {
                             </div>
                         </div>
                     </div>
-                    <div class="row g-2 mb-2">
-                        <div class="col-6">
-                            <label for="edit-price-cost" class="form-label field-accent field-purchase">ราคาซื้อ</label>
-                            <input type="number" step="0.01" class="form-control field-input-purchase" name="price_per_unit" id="edit-price-cost" readonly>
+                    <!-- Price comparison section -->
+                    <div class="card mb-2 border-0 bg-light">
+                        <div class="card-body p-2">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label for="edit-price-cost" class="form-label field-accent field-purchase mb-1">
+                                        ราคาซื้อ/หน่วย
+                                        <span id="edit-currency-badge" class="badge bg-secondary ms-1" style="font-size:0.7rem;">THB</span>
+                                    </label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm field-input-purchase" id="edit-price-cost" readonly>
+                                    <input type="hidden" name="price_per_unit" id="edit-price-cost-hidden">
+                                </div>
+                                <div class="col-6">
+                                    <label for="edit-price-sale" class="form-label field-accent field-sale mb-1">
+                                        ราคาขาย/หน่วย
+                                        <span class="badge bg-warning text-dark ms-1" style="font-size:0.7rem;">THB</span>
+                                    </label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm field-input-sale" name="sale_price" id="edit-price-sale" readonly>
+                                </div>
+                            </div>
+                            <!-- THB equivalent row — shown only when purchase currency != THB -->
+                            <div id="edit-price-thb-row" class="d-none">
+                                <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#eff6ff;border:1px dashed #93c5fd;">
+                                    <span class="material-icons" style="font-size:1rem;color:#3b82f6;">swap_horiz</span>
+                                    <small class="text-muted">ราคาซื้อ (THB เทียบเท่า):</small>
+                                    <strong id="edit-price-thb-equiv" class="field-input-cost" style="font-size:0.95rem;">-</strong>
+                                    <span class="badge bg-secondary" style="font-size:0.65rem;">THB</span>
+                                    <span class="ms-auto text-muted" style="font-size:0.7rem;">(ราคาฐาน)</span>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                    <div class="row g-2 mb-2">
                         <div class="col-6">
                             <label for="edit-weight" class="form-label field-accent field-weight">น้ำหนัก (กก.)</label>
                             <input type="number" step="0.01" min="0" class="form-control field-input-weight" id="edit-weight" placeholder="-" readonly>
                         </div>
-                    </div>
-                    <div class="mb-2">
-                        <label for="edit-price-sale" class="form-label field-accent field-sale">ราคาขาย</label>
-                        <input type="number" step="0.01" class="form-control field-input-sale" name="sale_price" id="edit-price-sale" readonly>
                     </div>
                     <div class="mb-2">
                         <label class="form-label">ประเภทการเปลี่ยนแปลง</label>

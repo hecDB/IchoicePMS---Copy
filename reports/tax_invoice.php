@@ -205,7 +205,7 @@ $today = date('Y-m-d');
                     </div>
                 </div>
                 <div class="field">
-                    <label for="sales_tag">เลขแท็กรายการขายสินค้า</label>
+                    <label for="sales_tag">เลขอ้างอิง</label>
                     <input id="sales_tag" type="text" placeholder="เช่น TAG-001" autocomplete="off">
                 </div>
                 <div class="field">
@@ -317,7 +317,7 @@ $today = date('Y-m-d');
                             <h4 style="margin:0 0 10px;border-bottom:1px solid #d1d5db;padding-bottom:6px;font-size:13px;">ข้อมูลเอกสาร</h4>
                             <div style="font-size:12px;line-height:1.8;">
                                 <div><strong><span id="pv_doc_no_label">เลขที่:</span></strong> <span id="pv_inv_no">-</span></div>
-                                <div><strong>เลขแท็กขาย:</strong> <span id="pv_sales_tag">-</span></div>
+                                <div><strong>เลขอ้างอิง:</strong> <span id="pv_sales_tag">-</span></div>
                                 <div><strong>วันที่ออกบิล:</strong> <span id="pv_inv_date">-</span></div>
                                 <div><strong>ช่องทางสั่งซื้อ:</strong> <span id="pv_platform">-</span></div>
                             </div>

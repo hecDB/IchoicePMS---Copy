@@ -32,6 +32,7 @@ try {
             p.image,
             poi.qty as order_qty,
             poi.price_per_unit as unit_price,
+            COALESCE(NULLIF(poi.price_original, 0), poi.price_per_unit) as price_original,
             poi.total as total_price,
             COALESCE(c.code, 'THB') as currency_code,
             COALESCE(SUM(ri.receive_qty), 0) as received_qty,
@@ -74,7 +75,7 @@ try {
             GROUP BY item_id
         ) pending_inspection ON poi.item_id = pending_inspection.item_id
         WHERE poi.po_id = :po_id AND poi.temp_product_id IS NULL
-        GROUP BY poi.item_id, poi.product_id, p.name, p.sku, p.barcode, p.unit, p.image, poi.qty, poi.price_per_unit, poi.total, c.code,
+        GROUP BY poi.item_id, poi.product_id, p.name, p.sku, p.barcode, p.unit, p.image, poi.qty, poi.price_per_unit, poi.price_original, poi.total, c.code,
                  poi.is_cancelled, poi.is_partially_cancelled, poi.cancel_qty, poi.cancel_reason, poi.cancel_notes, poi.cancelled_at, poi.cancelled_by,
                  dmg.damaged_qty, pending_inspection.pending_qty
         ORDER BY p.name
@@ -90,6 +91,7 @@ try {
     foreach ($items as &$item) {
         $item['order_qty'] = (float)$item['order_qty'];
         $item['unit_price'] = (float)$item['unit_price'];
+        $item['price_original'] = (float)$item['price_original'];
         $item['total_price'] = (float)$item['total_price'];
         $item['received_qty'] = (float)($item['received_qty'] ?? 0);
         $item['remaining_qty'] = (float)($item['remaining_qty'] ?? 0);

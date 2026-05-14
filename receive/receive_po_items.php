@@ -1982,7 +1982,7 @@ function displayPoItems(items, mode) {
                     <td><span class="badge bg-secondary">${escapeHtml(item.sku)}</span></td>
                     <td>${escapeHtml(item.unit)}</td>
                     <td class="fw-bold text-info">${parseFloat(item.order_qty).toLocaleString()}</td>
-                    <td>${parseFloat(item.unit_price).toLocaleString()} ${escapeHtml(item.currency_code || '')}</td>
+                    <td>${parseFloat(item.price_original > 0 ? item.price_original : item.unit_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ${escapeHtml(item.currency_code || '')}</td>
                     <td class="fw-bold text-success">${parseFloat(item.received_qty || 0).toLocaleString()}</td>
                     <td class="fw-bold ${cancelledQty > 0 ? 'text-danger' : 'text-muted'}">
                         ${cancelledQty > 0 ? `<span title="${cancelTooltip}">${cancelledQty.toLocaleString()}</span>` : '-'}

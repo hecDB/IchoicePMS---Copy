@@ -384,7 +384,7 @@ include '../templates/sidebar.php';
             document.getElementById('modalTitle').textContent = 'รายละเอียดใบกำกับภาษี #' + inv.inv_no;
             detailGrid.innerHTML = `
                 <div>วันที่: <strong>${inv.inv_date || '-'}</strong></div>
-                <div>เลขแท็กขาย: ${inv.sales_tag || '-'}</div>
+                <div>เลขอ้างอิง: ${inv.sales_tag || '-'}</div>
                 <div>ลูกค้า: ${inv.customer_name || '-'}</div>
                 <div>ช่องทางขาย: ${inv.platform || '-'}</div>
                 <div>ประเภทเอกสาร: ${getDocTypeName(inv.doc_type)}</div>
