@@ -9295,3 +9295,116 @@
 [20-Mar-2026 09:27:22 Europe/Berlin] Processing product: ID=16, Name=กระปิ, Qty=1, Price=300, Receive_ID=12
 [20-Mar-2026 09:27:22 Europe/Berlin] Successfully issued: Product ID 16, Qty 1, Receive ID 12, Sale Order ID 1
 [20-Mar-2026 09:27:22 Europe/Berlin] Issue completed: 1 successful, 0 errors
+[15-May-2026 04:43:10 Europe/Berlin] === product_search_api.php START ===
+[15-May-2026 04:43:10 Europe/Berlin] Request query: pro
+[15-May-2026 04:43:10 Europe/Berlin] Request method: GET
+[15-May-2026 04:43:10 Europe/Berlin] Request URI: /api/product_search_api.php?q=pro&type=issue&available_only=true
+[15-May-2026 04:43:10 Europe/Berlin] Searching for: 'pro' with limit: 10
+[15-May-2026 04:43:10 Europe/Berlin] About to encode 0 results for type: issue
+[15-May-2026 04:43:10 Europe/Berlin] Sent JSON response length: 15
+[15-May-2026 04:43:10 Europe/Berlin] === product_search_api.php END ===
+[15-May-2026 04:43:12 Europe/Berlin] === product_search_api.php START ===
+[15-May-2026 04:43:12 Europe/Berlin] Request query: pro
+[15-May-2026 04:43:12 Europe/Berlin] Request method: GET
+[15-May-2026 04:43:12 Europe/Berlin] Request URI: /api/product_search_api.php?q=pro&type=issue&available_only=true
+[15-May-2026 04:43:12 Europe/Berlin] Searching for: 'pro' with limit: 10
+[15-May-2026 04:43:12 Europe/Berlin] About to encode 0 results for type: issue
+[15-May-2026 04:43:12 Europe/Berlin] Sent JSON response length: 15
+[15-May-2026 04:43:12 Europe/Berlin] === product_search_api.php END ===
+[15-May-2026 04:43:14 Europe/Berlin] === product_search_api.php START ===
+[15-May-2026 04:43:14 Europe/Berlin] Request query: prot
+[15-May-2026 04:43:14 Europe/Berlin] Request method: GET
+[15-May-2026 04:43:14 Europe/Berlin] Request URI: /api/product_search_api.php?q=prot&type=issue&available_only=true
+[15-May-2026 04:43:14 Europe/Berlin] Searching for: 'prot' with limit: 10
+[15-May-2026 04:43:14 Europe/Berlin] About to encode 0 results for type: issue
+[15-May-2026 04:43:14 Europe/Berlin] Sent JSON response length: 15
+[15-May-2026 04:43:14 Europe/Berlin] === product_search_api.php END ===
+[15-May-2026 04:43:14 Europe/Berlin] === product_search_api.php START ===
+[15-May-2026 04:43:14 Europe/Berlin] Request query: pro
+[15-May-2026 04:43:14 Europe/Berlin] Request method: GET
+[15-May-2026 04:43:14 Europe/Berlin] Request URI: /api/product_search_api.php?q=pro&type=issue&available_only=true
+[15-May-2026 04:43:14 Europe/Berlin] Searching for: 'pro' with limit: 10
+[15-May-2026 04:43:14 Europe/Berlin] About to encode 0 results for type: issue
+[15-May-2026 04:43:14 Europe/Berlin] Sent JSON response length: 15
+[15-May-2026 04:43:14 Europe/Berlin] === product_search_api.php END ===
+[15-May-2026 04:43:15 Europe/Berlin] === product_search_api.php START ===
+[15-May-2026 04:43:15 Europe/Berlin] Request query: proe
+[15-May-2026 04:43:15 Europe/Berlin] Request method: GET
+[15-May-2026 04:43:15 Europe/Berlin] Request URI: /api/product_search_api.php?q=proe&type=issue&available_only=true
+[15-May-2026 04:43:15 Europe/Berlin] Searching for: 'proe' with limit: 10
+[15-May-2026 04:43:15 Europe/Berlin] About to encode 0 results for type: issue
+[15-May-2026 04:43:15 Europe/Berlin] Sent JSON response length: 15
+[15-May-2026 04:43:15 Europe/Berlin] === product_search_api.php END ===
+[15-May-2026 04:43:47 Europe/Berlin] === product_search_api.php START ===
+[15-May-2026 04:43:47 Europe/Berlin] Request query: 1234567000001
+[15-May-2026 04:43:47 Europe/Berlin] Request method: GET
+[15-May-2026 04:43:47 Europe/Berlin] Request URI: /api/product_search_api.php?q=1234567000001&type=issue&available_only=true
+[15-May-2026 04:43:47 Europe/Berlin] Searching for: '1234567000001' with limit: 10
+[15-May-2026 04:43:47 Europe/Berlin] About to encode 3 results for type: issue
+[15-May-2026 04:43:47 Europe/Berlin] Sent JSON response length: 3472
+[15-May-2026 04:43:47 Europe/Berlin] === product_search_api.php END ===
+[15-May-2026 04:44:20 Europe/Berlin] Issue request: Tag=554874556985, Products=1, User=1, Selected Platform=TikTok
+[15-May-2026 04:44:20 Europe/Berlin] Selected platform from request: TikTok
+[15-May-2026 04:44:20 Europe/Berlin] Selected pattern_name from request: TikTok-TH-J&T Express
+[15-May-2026 04:44:20 Europe/Berlin] Validation result: {"valid":true,"platform":"TikTok","pattern_name":"TikTok-TH-J&T Express","pattern_id":7,"description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 12 \u0e2b\u0e25\u0e31\u0e01","matched_count":1,"matched_patterns":[{"pattern_id":7,"platform":"TikTok","pattern_name":"TikTok-TH-J&T Express","regex_pattern":"^[0-9]{12}$","description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 12 \u0e2b\u0e25\u0e31\u0e01"}]}
+[15-May-2026 04:44:20 Europe/Berlin] Final platform for issue: TikTok, Pattern: TikTok-TH-J&T Express
+[15-May-2026 04:44:20 Europe/Berlin] Created sale_order_id: 2 with platform: TikTok, remark: แท็คส่งออก: 554874556985 | แพลตฟอร์ม: TikTok | รูปแบบ: TikTok-TH-J&T Express
+[15-May-2026 04:44:20 Europe/Berlin] Raw product data: {"product_id":1,"receive_id":18,"receive_item_id":19,"po_id":7,"name":"\u0e1b\u0e32\u0e01\u0e01\u0e32\u0e25\u0e39\u0e01\u0e25\u0e37\u0e48\u0e19\u0e2a\u0e35\u0e19\u0e49\u0e33\u0e40\u0e07\u0e34\u0e19","sku":"prd001","barcode":"1234567000001","available_qty":6,"expiry_date":"2026-05-31","lot_info":"\u0e25\u0e47\u0e2d\u0e15\u0e23\u0e31\u0e1a: 14\/05\/2026 | \u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38: 31\/05\/2026","sale_price":55,"image":"images\/pen_blue.jpg","image_url":"..\/images\/pen_blue.jpg","batch_count":3,"receive_batches":[{"receive_id":16,"available_qty":2,"expiry_date":"2026-05-31","created_at":"2026-05-14 16:11:56","remark_color":null,"remark_split":null},{"receive_id":17,"available_qty":3,"expiry_date":"2026-05-30","created_at":"2026-05-14 16:15:45","remark_color":null,"remark_split":null},{"receive_id":18,"available_qty":1,"expiry_date":"2026-05-31","created_at":"2026-05-14 16:22:57","remark_color":null,"remark_split":null}],"issue_qty":6}
+[15-May-2026 04:44:20 Europe/Berlin] Processing product: ID=1, Name=ปากกาลูกลื่นสีน้ำเงิน, Qty=6, Price=55, Receive_ID=18
+[15-May-2026 04:44:20 Europe/Berlin] Successfully issued: Product ID 1, Qty 2, Receive ID 16, Sale Order ID 2
+[15-May-2026 04:44:20 Europe/Berlin] Successfully issued: Product ID 1, Qty 3, Receive ID 17, Sale Order ID 2
+[15-May-2026 04:44:20 Europe/Berlin] Successfully issued: Product ID 1, Qty 1, Receive ID 18, Sale Order ID 2
+[15-May-2026 04:44:20 Europe/Berlin] Issue completed: 3 successful, 0 errors
+[15-May-2026 04:51:15 Europe/Berlin] === product_search_api.php START ===
+[15-May-2026 04:51:15 Europe/Berlin] Request query: 1234567000001
+[15-May-2026 04:51:15 Europe/Berlin] Request method: GET
+[15-May-2026 04:51:15 Europe/Berlin] Request URI: /api/product_search_api.php?q=1234567000001&type=issue&available_only=true
+[15-May-2026 04:51:15 Europe/Berlin] Searching for: '1234567000001' with limit: 10
+[15-May-2026 04:51:15 Europe/Berlin] About to encode 3 results for type: issue
+[15-May-2026 04:51:15 Europe/Berlin] Sent JSON response length: 3122
+[15-May-2026 04:51:15 Europe/Berlin] === product_search_api.php END ===
+[15-May-2026 04:51:40 Europe/Berlin] === product_search_api.php START ===
+[15-May-2026 04:51:40 Europe/Berlin] Request query: 1234567000001
+[15-May-2026 04:51:40 Europe/Berlin] Request method: GET
+[15-May-2026 04:51:40 Europe/Berlin] Request URI: /api/product_search_api.php?q=1234567000001&type=issue&available_only=true
+[15-May-2026 04:51:40 Europe/Berlin] Searching for: '1234567000001' with limit: 10
+[15-May-2026 04:51:40 Europe/Berlin] About to encode 3 results for type: issue
+[15-May-2026 04:51:40 Europe/Berlin] Sent JSON response length: 3122
+[15-May-2026 04:51:40 Europe/Berlin] === product_search_api.php END ===
+[15-May-2026 04:51:44 Europe/Berlin] === product_search_api.php START ===
+[15-May-2026 04:51:44 Europe/Berlin] Request query: 1234567000001
+[15-May-2026 04:51:44 Europe/Berlin] Request method: GET
+[15-May-2026 04:51:44 Europe/Berlin] Request URI: /api/product_search_api.php?q=1234567000001&type=issue&available_only=true
+[15-May-2026 04:51:44 Europe/Berlin] Searching for: '1234567000001' with limit: 10
+[15-May-2026 04:51:44 Europe/Berlin] About to encode 3 results for type: issue
+[15-May-2026 04:51:44 Europe/Berlin] Sent JSON response length: 3122
+[15-May-2026 04:51:44 Europe/Berlin] === product_search_api.php END ===
+[15-May-2026 04:51:50 Europe/Berlin] === product_search_api.php START ===
+[15-May-2026 04:51:50 Europe/Berlin] Request query: 1234567000001
+[15-May-2026 04:51:50 Europe/Berlin] Request method: GET
+[15-May-2026 04:51:50 Europe/Berlin] Request URI: /api/product_search_api.php?q=1234567000001&type=issue&available_only=true
+[15-May-2026 04:51:50 Europe/Berlin] Searching for: '1234567000001' with limit: 10
+[15-May-2026 04:51:50 Europe/Berlin] About to encode 3 results for type: issue
+[15-May-2026 04:51:50 Europe/Berlin] Sent JSON response length: 3122
+[15-May-2026 04:51:50 Europe/Berlin] === product_search_api.php END ===
+[15-May-2026 04:51:54 Europe/Berlin] === product_search_api.php START ===
+[15-May-2026 04:51:54 Europe/Berlin] Request query: 1234567000001
+[15-May-2026 04:51:54 Europe/Berlin] Request method: GET
+[15-May-2026 04:51:54 Europe/Berlin] Request URI: /api/product_search_api.php?q=1234567000001&type=issue&available_only=true
+[15-May-2026 04:51:54 Europe/Berlin] Searching for: '1234567000001' with limit: 10
+[15-May-2026 04:51:54 Europe/Berlin] About to encode 3 results for type: issue
+[15-May-2026 04:51:54 Europe/Berlin] Sent JSON response length: 3122
+[15-May-2026 04:51:54 Europe/Berlin] === product_search_api.php END ===
+[15-May-2026 04:52:16 Europe/Berlin] Issue request: Tag=8745695574455558746, Products=2, User=1, Selected Platform=Shopee
+[15-May-2026 04:52:16 Europe/Berlin] Selected platform from request: Shopee
+[15-May-2026 04:52:16 Europe/Berlin] Selected pattern_name from request: Shopee-TH-Express Delivery (SHP Food)
+[15-May-2026 04:52:16 Europe/Berlin] Validation result: {"valid":true,"platform":"Shopee","pattern_name":"DeliveryFood","pattern_id":14,"description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 19 \u0e2b\u0e25\u0e31\u0e01 (Food Delivery)","matched_count":3,"matched_patterns":[{"pattern_id":14,"platform":"Shopee","pattern_name":"DeliveryFood","regex_pattern":"^[0-9]{19}$","description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 19 \u0e2b\u0e25\u0e31\u0e01 (Food Delivery)"},{"pattern_id":15,"platform":"Shopee","pattern_name":"Shopee-TH-Instant Delivery (\u0e2a\u0e48\u0e07\u0e17\u0e31\u0e19\u0e17\u0e35)","regex_pattern":"^[0-9]{19}$","description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 19 \u0e2b\u0e25\u0e31\u0e01"},{"pattern_id":5,"platform":"Shopee","pattern_name":"Shopee-TH-Express Delivery (SHP Food)","regex_pattern":"^[0-9]{19}$","description":"\u0e15\u0e31\u0e27\u0e40\u0e25\u0e02\u0e25\u0e49\u0e27\u0e19 19 \u0e2b\u0e25\u0e31\u0e01"}],"needs_confirmation":true}
+[15-May-2026 04:52:16 Europe/Berlin] Final platform for issue: Shopee, Pattern: Shopee-TH-Express Delivery (SHP Food)
+[15-May-2026 04:52:16 Europe/Berlin] Created sale_order_id: 3 with platform: Shopee, remark: แท็คส่งออก: 8745695574455558746 | แพลตฟอร์ม: Shopee | รูปแบบ: Shopee-TH-Express Delivery (SHP Food)
+[15-May-2026 04:52:16 Europe/Berlin] Raw product data: {"product_id":1,"receive_id":21,"receive_item_id":24,"po_id":11,"name":"\u0e1b\u0e32\u0e01\u0e01\u0e32\u0e25\u0e39\u0e01\u0e25\u0e37\u0e48\u0e19\u0e2a\u0e35\u0e19\u0e49\u0e33\u0e40\u0e07\u0e34\u0e19","sku":"prd001","barcode":"1234567000001","available_qty":1,"expiry_date":null,"lot_info":"\u0e25\u0e47\u0e2d\u0e15\u0e23\u0e31\u0e1a: 15\/05\/2026","sale_price":10,"image":"images\/pen_blue.jpg","image_url":"..\/images\/pen_blue.jpg","batch_count":1,"receive_batches":[{"receive_id":21,"available_qty":1,"expiry_date":null,"created_at":"2026-05-15 09:50:06","remark_color":null,"remark_split":null}],"issue_qty":1}
+[15-May-2026 04:52:16 Europe/Berlin] Processing product: ID=1, Name=ปากกาลูกลื่นสีน้ำเงิน, Qty=1, Price=10, Receive_ID=21
+[15-May-2026 04:52:16 Europe/Berlin] Successfully issued: Product ID 1, Qty 1, Receive ID 21, Sale Order ID 3
+[15-May-2026 04:52:16 Europe/Berlin] Raw product data: {"product_id":1,"receive_id":1,"receive_item_id":1,"po_id":1,"name":"\u0e1b\u0e32\u0e01\u0e01\u0e32\u0e25\u0e39\u0e01\u0e25\u0e37\u0e48\u0e19\u0e2a\u0e35\u0e19\u0e49\u0e33\u0e40\u0e07\u0e34\u0e19","sku":"prd001","barcode":"1234567000001","available_qty":50,"expiry_date":"2027-12-31","lot_info":"\u0e25\u0e47\u0e2d\u0e15\u0e23\u0e31\u0e1a: 03\/03\/2026 | \u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38: 31\/12\/2027","sale_price":10,"image":"images\/pen_blue.jpg","image_url":"..\/images\/pen_blue.jpg","batch_count":1,"receive_batches":[{"receive_id":1,"available_qty":50,"expiry_date":"2027-12-31","created_at":"2026-03-03 15:18:51","remark_color":"\u0e2a\u0e35\u0e19\u0e49\u0e33\u0e40\u0e07\u0e34\u0e19","remark_split":"1"}],"issue_qty":12}
+[15-May-2026 04:52:16 Europe/Berlin] Processing product: ID=1, Name=ปากกาลูกลื่นสีน้ำเงิน, Qty=12, Price=10, Receive_ID=1
+[15-May-2026 04:52:16 Europe/Berlin] Successfully issued: Product ID 1, Qty 12, Receive ID 1, Sale Order ID 3
+[15-May-2026 04:52:16 Europe/Berlin] Issue completed: 2 successful, 0 errors

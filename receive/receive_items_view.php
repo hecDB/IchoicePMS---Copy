@@ -937,6 +937,7 @@ unset($sortedIndices, $runningTotals);
                             data-true-cost="<?= $trueCost ?>"
                             data-transaction-type="<?= htmlspecialchars($row['transaction_type']) ?>"
                             data-created-date="<?= date('Y-m-d', strtotime($row['created_at'])) ?>"
+                            data-sale-price="<?= htmlspecialchars((string)($row['sale_price'] ?? '')) ?>"
                             class="<?= ($row['quantity_direction'] ?? 'plus') === 'minus' ? 'table-danger' : '' ?>">
                             <!-- 1. Image -->
                             <td>
@@ -1089,6 +1090,14 @@ unset($sortedIndices, $runningTotals);
                                 <?php else: ?>
                                     <span class="text-muted">-</span>
                                 <?php endif; ?>
+                                <?php if (!empty($row['sale_price']) && ($row['transaction_type'] ?? '') === 'receive'): ?>
+                                    <small class="d-block mt-1 sale-price-cell" data-id="<?= $row['transaction_id'] ?>">
+                                        <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">
+                                            <span class="material-icons" style="font-size: 0.65rem; vertical-align: middle;">sell</span>
+                                            ราคาขาย: ฿<?= number_format((float)$row['sale_price'], 2) ?>
+                                        </span>
+                                    </small>
+                                <?php endif; ?>
                             </td>
 
                             <!-- 12. Actions -->
@@ -1181,6 +1190,98 @@ $(document).ready(function() {
         const trueCost = baseCostVal + (weightVal * 850);
         // true-cost display removed; keep computation for potential future use
     }
+
+    // ===== Sale Price Calculator Functions =====
+    function updateEditCalcTrueCost() {
+        const purchasePrice = parseFloat($('#edit-calc-purchase-price').val()) || 0;
+        const weightVal = parseFloat($('#edit-calc-weight').val());
+        const hasWeight = !isNaN(weightVal) && weightVal >= 0;
+        const weightCost = hasWeight ? weightVal * 850 : 0;
+        const trueCost = purchasePrice + weightCost;
+        $('#edit-calc-true-cost').val(trueCost > 0 || hasWeight ? trueCost.toFixed(2) : '');
+        // ถ้ายังไม่มีราคาขาย ให้แนะนำจากต้นทุน
+        const currentSalePrice = parseFloat($('#edit-calc-sale-price').val()) || 0;
+        if (currentSalePrice === 0 && trueCost > 0) {
+            $('#edit-calc-sale-price').val(trueCost.toFixed(2));
+        }
+        updateEditCalcNetProfit();
+    }
+
+    function calculateEditDetailedProfit(salePrice, cost) {
+        if (!isFinite(salePrice) || salePrice <= 0) return null;
+        const fee15       = salePrice * 0.15;
+        const expense17   = salePrice * 0.17;
+        const commission5 = (salePrice - fee15) * 0.05;
+        const grossProfit = salePrice - cost - fee15 - expense17 - commission5;
+        const corpTax20   = grossProfit * 0.20;
+        const netProfit   = grossProfit - corpTax20;
+        const netPct      = (netProfit * 100) / salePrice;
+        return { netProfit, netPct };
+    }
+
+    function updateEditCalcNetProfit() {
+        const saleVal     = parseFloat($('#edit-calc-sale-price').val()) || 0;
+        const trueCostVal = parseFloat($('#edit-calc-true-cost').val()) || 0;
+        const $display    = $('#edit-calc-net-profit');
+        if (saleVal <= 0) { $display.text('-'); return; }
+        const data = calculateEditDetailedProfit(saleVal, trueCostVal);
+        if (data) {
+            $display.text(data.netProfit.toFixed(2) + ' บาท (' + data.netPct.toFixed(2) + '%)');
+            $display.css('color', data.netProfit >= 0 ? '#dc2626' : '#ea580c');
+        } else {
+            $display.text('-');
+        }
+    }
+
+    // ปุ่มแก้ไขราคาขาย → เปิด calculator panel
+    $(document).off('click', '#edit-sale-price-unlock-btn').on('click', '#edit-sale-price-unlock-btn', function() {
+        const purchasePrice = parseFloat($('#edit-price-cost-hidden').val()) || parseFloat($('#edit-price-cost').val()) || 0;
+        const currentSalePrice = parseFloat($('#edit-price-sale').val()) || 0;
+        const currentWeight = parseFloat($('#edit-weight').val());
+        $('#edit-calc-purchase-price').val(purchasePrice > 0 ? purchasePrice.toFixed(2) : '');
+        $('#edit-calc-weight').val(!isNaN(currentWeight) && currentWeight > 0 ? currentWeight : '');
+        $('#edit-calc-sale-price').val(currentSalePrice > 0 ? currentSalePrice.toFixed(2) : '');
+        $('#edit-price-calculator').removeClass('d-none');
+        updateEditCalcTrueCost();
+        setTimeout(function() { $('#edit-calc-weight').focus(); }, 100);
+    });
+
+    // ปิด calculator panel
+    $(document).off('click', '#edit-price-calculator-close').on('click', '#edit-price-calculator-close', function() {
+        $('#edit-price-calculator').addClass('d-none');
+    });
+
+    // คำนวณต้นทุนเมื่อกรอกน้ำหนักใน calculator
+    $(document).off('input', '#edit-calc-weight').on('input', '#edit-calc-weight', function() {
+        updateEditCalcTrueCost();
+    });
+
+    // คำนวณกำไรเมื่อกรอกราคาขายใน calculator
+    $(document).off('input', '#edit-calc-sale-price').on('input', '#edit-calc-sale-price', function() {
+        updateEditCalcNetProfit();
+    });
+
+    // ปุ่ม "ใช้ราคาขายนี้" — นำราคาที่คำนวณได้ไปใส่ใน field ราคาขายจริง
+    $(document).off('click', '#edit-apply-sale-price').on('click', '#edit-apply-sale-price', function() {
+        const newSalePrice = parseFloat($('#edit-calc-sale-price').val()) || 0;
+        if (newSalePrice <= 0) {
+            Swal.fire({ icon: 'warning', title: 'กรุณากรอกราคาขาย', text: 'ราคาขายต้องมากกว่า 0', confirmButtonText: 'ตกลง' });
+            return;
+        }
+        // อัพเดทน้ำหนักใน field แสดงผลด้วย (ถ้ามีการกรอก)
+        const newWeight = parseFloat($('#edit-calc-weight').val());
+        if (!isNaN(newWeight) && newWeight >= 0) {
+            $('#edit-weight').val(newWeight);
+        }
+        $('#edit-price-sale').val(newSalePrice.toFixed(2));
+        window.editSalePriceChanged = true;
+        $('#edit-sale-price-changed').val('1');
+        $('#edit-price-calculator').addClass('d-none');
+        // แสดง badge เพื่อยืนยันว่าราคาขายถูกเปลี่ยนแล้ว
+        const $salePriceLabel = $('#edit-price-sale').closest('.col-6').find('.form-label');
+        $salePriceLabel.find('.sale-price-changed-badge').remove();
+        $salePriceLabel.append('<span class="sale-price-changed-badge badge bg-danger text-white ms-1" style="font-size:0.65rem;">แก้ไขแล้ว</span>');
+    });
 
     // Function to bind action button events (delete functionality removed)
     window.bindEditButtonEvents = function() {
@@ -1400,7 +1501,9 @@ $(document).ready(function() {
         $('#edit-price-cost-hidden').val('');
         $('#edit-currency-badge').text('THB').removeClass('bg-primary').addClass('bg-secondary');
         $('#edit-price-thb-row').addClass('d-none');
-        $('#edit-price-sale').val('');
+        // ใส่ราคาขายจาก data attribute เป็นค่าเริ่มต้น (ก่อน AJAX response)
+        const salePriceFromRow = row.data('sale-price');
+        $('#edit-price-sale').val(salePriceFromRow !== undefined && salePriceFromRow !== '' ? salePriceFromRow : '');
         $('#edit-weight').val(weightRaw !== undefined && weightRaw !== null ? weightRaw : '');
         $('#edit-true-cost').val(trueCost ? trueCost.toFixed(2) : '');
         updateTrueCostDisplay();
@@ -1409,6 +1512,12 @@ $(document).ready(function() {
         // ล้างข้อมูลการแบ่งจำนวนก่อนหน้า
         window.currentSplitData = null;
         window.additionalPOs = [];
+        window.editSalePriceChanged = false;
+        $('#edit-sale-price-changed').val('0');
+        // ล้าง badge แก้ไขราคาขาย และปิด calculator panel
+        $('#edit-price-sale').closest('.col-6').find('.sale-price-changed-badge').remove();
+        $('#edit-price-sale').closest('.col-6').find('.sale-price-hint').remove();
+        $('#edit-price-calculator').addClass('d-none');
         if (window.splitMainPO) {
             window.splitMainPO = null;
         }
@@ -1439,20 +1548,33 @@ $(document).ready(function() {
                 
                 // ใส่ราคาและข้อมูลอื่นๆ ที่ได้จาก API
                 const priceOriginal = resp.price_original || resp.price_per_unit || '';
-                const priceBase = resp.price_per_unit || '';   // THB base price
+                const priceBase = resp.price_per_unit || '';   // THB base price (คำนวณจาก exchange_rate แล้ว)
                 const currencyCode = resp.currency_code || 'THB';
+                const exchangeRate = parseFloat(resp.exchange_rate) || 1;
                 $('#edit-price-cost').val(priceOriginal);
                 $('#edit-price-cost-hidden').val(priceBase);
                 $('#edit-price-sale').val(priceSale);
+                window.editSalePriceChanged = false; // reset — การเซ็ตค่าเริ่มต้นจาก API ไม่นับว่าแก้ไข
+                $('#edit-sale-price-changed').val('0');
+                // แสดง tooltip ถ้าราคาขายถูกดึงจาก PO ล่าสุด (ไม่ใช่ item ปัจจุบัน)
+                const $salePriceLabel = $('#edit-price-sale').closest('.col-6').find('.form-label');
+                if (resp.sale_price_source === 'latest_po') {
+                    $salePriceLabel.find('.sale-price-hint').remove();
+                    $salePriceLabel.append('<span class="sale-price-hint badge bg-info text-white ms-1" style="font-size:0.65rem;" title="ดึงจากราคาขายล่าสุดของสินค้า">ล่าสุด</span>');
+                } else {
+                    $salePriceLabel.find('.sale-price-hint').remove();
+                }
                 // อัพเดทสกุลเงินที่แสดงใน badge ราคาซื้อ
                 $('#edit-currency-badge').text(currencyCode);
                 // เปลี่ยนสีตาม currency (ถ้าไม่ใช่ THB ให้เป็นสีน้ำเงินเพื่อเตือนสายตา)
                 if (currencyCode !== 'THB') {
                     $('#edit-currency-badge').removeClass('bg-secondary').addClass('bg-primary');
-                    // แสดงแถวราคาเทียบเท่า THB
-                    if (priceBase) {
-                        const thbVal = parseFloat(priceBase);
+                    // แสดงแถวราคาเทียบเท่า THB (คำนวณจาก price_original × exchange_rate)
+                    if (priceOriginal && exchangeRate) {
+                        const thbVal = parseFloat(priceOriginal) * exchangeRate;
                         $('#edit-price-thb-equiv').text(thbVal.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                        // อัพเดท hidden field ด้วยค่าที่คำนวณใหม่
+                        $('#edit-price-cost-hidden').val(thbVal.toFixed(4));
                     }
                     $('#edit-price-thb-row').removeClass('d-none');
                 } else {
@@ -1612,45 +1734,73 @@ $(document).ready(function() {
             }
             // ราคาและน้ำหนักไม่ให้แก้ไขแล้ว จึงไม่ต้อง validate ช่องราคา
 
-            // ปรับจำนวนตามประเภท
-            let qtyType = $('#edit-qty-type').val();
-            if(qtyType === 'minus') qty = -Math.abs(qty);
-            else qty = Math.abs(qty);
-            $('#edit-receive-qty').val(qty);
+            // ฟังก์ชันดำเนินการบันทึกจริง (ใช้ร่วมกันระหว่างกรณีปกติและผ่าน confirmation)
+            function doSaveEdit() {
+                // ปรับจำนวนตามประเภท
+                let qtyType = $('#edit-qty-type').val();
+                if(qtyType === 'minus') qty = -Math.abs(qty);
+                else qty = Math.abs(qty);
+                $('#edit-receive-qty').val(qty);
 
-            // รวมตำแหน่งเป็น description ด้วย (optionally ส่งไป backend)
-            let rowCode = $('#edit-row-code').val();
-            let bin = $('#edit-bin').val();
-            let shelf = $('#edit-shelf').val();
-            if($('#edit-form input[name="location_desc"]').length === 0){
-                $('#edit-form').append('<input type="hidden" name="location_desc" id="edit-location-desc">');
-            }
-            let locDesc = rowCode && bin && shelf ? `${rowCode}-${bin}-${shelf}` : '';
-            $('#edit-location-desc').val(locDesc);
+                // รวมตำแหน่งเป็น description ด้วย (optionally ส่งไป backend)
+                let rowCode = $('#edit-row-code').val();
+                let bin = $('#edit-bin').val();
+                let shelf = $('#edit-shelf').val();
+                if($('#edit-form input[name="location_desc"]').length === 0){
+                    $('#edit-form').append('<input type="hidden" name="location_desc" id="edit-location-desc">');
+                }
+                let locDesc = rowCode && bin && shelf ? `${rowCode}-${bin}-${shelf}` : '';
+                $('#edit-location-desc').val(locDesc);
 
-            let formData = $('#edit-form').serialize();
-            
-            // Debug: Log form data being sent
-            console.log('=== FORM DATA BEING SENT ===');
-            console.log('Form serialized data:', formData);
-            console.log('Expiry date field value:', $('#edit-expiry-date').val());
-            console.log('Expiry date field exists:', $('#edit-expiry-date').length > 0);
-            console.log('Expiry date field name attr:', $('#edit-expiry-date').attr('name'));
-            
-            // เพิ่มข้อมูลการแบ่งจำนวน (ถ้ามี)
-            if (window.currentSplitData) {
-                formData += '&split_data=' + encodeURIComponent(JSON.stringify(window.currentSplitData));
-                console.log('Split data added:', window.currentSplitData);
-            }
-            
-            Swal.fire({
-                title: 'กำลังบันทึก...',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading(); }
-            });
-            $.post('receive_edit.php', formData, function(resp){
+                let formData = $('#edit-form').serialize();
+
+                // Debug: Log form data being sent
+                console.log('=== FORM DATA BEING SENT ===');
+                console.log('Form serialized data:', formData);
+                console.log('Expiry date field value:', $('#edit-expiry-date').val());
+                console.log('Expiry date field exists:', $('#edit-expiry-date').length > 0);
+                console.log('Expiry date field name attr:', $('#edit-expiry-date').attr('name'));
+
+                // เพิ่มข้อมูลการแบ่งจำนวน (ถ้ามี)
+                if (window.currentSplitData) {
+                    formData += '&split_data=' + encodeURIComponent(JSON.stringify(window.currentSplitData));
+                    console.log('Split data added:', window.currentSplitData);
+                }
+
+                Swal.fire({
+                    title: 'กำลังบันทึก...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+                $.post('receive_edit.php', formData, function(resp){
                 $btn.prop('disabled', false);
                  if(resp.success){
+                        // อัพเดทราคาขายในตารางทันที (ก่อน reload)
+                        const newSalePrice = parseFloat($('#edit-price-sale').val()) || 0;
+                        const editedId = $('#edit-receive-id').val();
+                        const $editedRow = $('tr[data-id="' + editedId + '"]');
+                        if ($editedRow.length) {
+                            $editedRow.attr('data-sale-price', newSalePrice);
+                            const $saleCell = $editedRow.find('.sale-price-cell[data-id="' + editedId + '"]');
+                            if (newSalePrice > 0) {
+                                const formatted = newSalePrice.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                const badgeHtml = '<span class="badge bg-warning text-dark" style="font-size: 0.7rem;"><span class="material-icons" style="font-size: 0.65rem; vertical-align: middle;">sell</span> ราคาขาย: ฿' + formatted + '</span>';
+                                if ($saleCell.length) {
+                                    $saleCell.html(badgeHtml);
+                                } else {
+                                    // สร้างใหม่ถ้ายังไม่มี
+                                    const $remarkTd = $editedRow.find('td').eq(10);
+                                    if ($remarkTd.find('.text-muted').text() === '-') {
+                                        $remarkTd.find('.text-muted').replaceWith('<small class="d-block mt-1 sale-price-cell" data-id="' + editedId + '">' + badgeHtml + '</small>');
+                                    } else {
+                                        $remarkTd.append('<small class="d-block mt-1 sale-price-cell" data-id="' + editedId + '">' + badgeHtml + '</small>');
+                                    }
+                                }
+                            } else if ($saleCell.length) {
+                                $saleCell.remove();
+                            }
+                        }
+
                         Swal.fire({
                             icon: 'success',
                             title: 'บันทึกสำเร็จ',
@@ -1670,6 +1820,41 @@ $(document).ready(function() {
                 $btn.prop('disabled', false);
                 Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
             });
+            } // end doSaveEdit
+
+            // ตรวจสอบว่ามีการแก้ไขราคาขายหรือไม่ → ถ้ามี แสดง confirmation ก่อน
+            if (window.editSalePriceChanged && priceSale > 0) {
+                const poNumber = $('#edit-po-number').val() || '-';
+                const formattedPrice = priceSale.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ยืนยันการเปลี่ยนราคาขาย',
+                    html: `
+                        <div class="text-start" style="font-size:0.9rem;">
+                            <p>ราคาขายที่ตั้งใหม่: <strong class="text-danger">${formattedPrice} บาท</strong></p>
+                            <hr class="my-2">
+                            <p class="mb-1">หากบันทึก:</p>
+                            <ul class="mb-2 ps-3">
+                                <li>ราคาขายนี้จะถูกบันทึกเป็น <strong>ราคาขายล่าสุด</strong> ของสินค้านี้ตั้งแต่ใบ PO <strong>${poNumber}</strong> เป็นต้นไป</li>
+                                <li>PO ที่สั่งซื้อสินค้าเดียวกันหลังจากนี้ จะดึงราคาขาย <strong>${formattedPrice} บาท</strong> ไปแสดงเป็นราคาขายล่าสุดโดยอัตโนมัติ</li>
+                            </ul>
+                            <small class="text-muted">กดยืนยันเพื่อดำเนินการต่อ</small>
+                        </div>`,
+                    showCancelButton: true,
+                    confirmButtonColor: '#d97706',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'ยืนยัน บันทึกราคาขาย',
+                    cancelButtonText: 'ยกเลิก'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        doSaveEdit();
+                    } else {
+                        $btn.prop('disabled', false);
+                    }
+                });
+            } else {
+                doSaveEdit();
+            }
         });
 
     // Delete functionality removed for security reasons
@@ -2260,6 +2445,7 @@ $(document).ready(function() {
             <div class="modal-body">
                 <form id="edit-form">
                     <input type="hidden" name="receive_id" id="edit-receive-id">
+                    <input type="hidden" name="sale_price_changed" id="edit-sale-price-changed" value="0">
                     <div class="mb-2">
                         <label for="edit-remark" class="form-label">หมายเหตุ</label>
                         <input type="text" class="form-control" name="remark" id="edit-remark">
@@ -2311,7 +2497,12 @@ $(document).ready(function() {
                                         ราคาขาย/หน่วย
                                         <span class="badge bg-warning text-dark ms-1" style="font-size:0.7rem;">THB</span>
                                     </label>
-                                    <input type="number" step="0.01" class="form-control form-control-sm field-input-sale" name="sale_price" id="edit-price-sale" readonly>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm field-input-sale" name="sale_price" id="edit-price-sale" placeholder="0.00" readonly>
+                                        <button type="button" class="btn btn-outline-warning" id="edit-sale-price-unlock-btn" title="แก้ไขราคาขาย">
+                                            <span class="material-icons" style="font-size:0.95rem;vertical-align:middle;">edit</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <!-- THB equivalent row — shown only when purchase currency != THB -->
@@ -2324,6 +2515,46 @@ $(document).ready(function() {
                                     <span class="ms-auto text-muted" style="font-size:0.7rem;">(ราคาฐาน)</span>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                    <!-- Pricing calculator panel — shown when user clicks the edit sale price button -->
+                    <div id="edit-price-calculator" class="d-none mb-2">
+                        <div class="p-3 rounded" style="background:#dae9f8;border:1px solid #93c5fd;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong style="font-size:0.9rem;color:#1d4ed8;">
+                                    <span class="material-icons" style="font-size:1rem;vertical-align:middle;">calculate</span>
+                                    คำนวณราคาขาย
+                                </strong>
+                                <button type="button" class="btn-close btn-sm" id="edit-price-calculator-close" aria-label="ปิด"></button>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label mb-1" style="font-size:0.8rem;">ราคาซื้อ</label>
+                                    <input type="text" class="form-control form-control-sm text-danger fw-semibold" id="edit-calc-purchase-price" readonly>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label mb-1" style="font-size:0.8rem;">น้ำหนัก (กิโลกรัม)</label>
+                                    <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="edit-calc-weight" placeholder="เช่น 0.30" inputmode="decimal">
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-1" style="font-size:0.8rem;">ราคาต้นทุน (PO + น้ำหนัก)</label>
+                                <input type="text" class="form-control form-control-sm" id="edit-calc-true-cost" placeholder="0.00" readonly>
+                                <small class="text-muted" style="font-size:0.7rem;">คำนวณจาก ราคาซื้อ PO + (น้ำหนัก × 850 บาท/กก. หรือ 85 บาท/ขีด)</small>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-1" style="font-size:0.8rem;">ราคาขาย (บาท)</label>
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm field-input-sale fw-bold" id="edit-calc-sale-price" placeholder="0.00" inputmode="decimal">
+                                <div class="d-flex align-items-center justify-content-between mt-1">
+                                    <span class="badge bg-danger-subtle text-danger fw-semibold" style="font-size:0.65rem;letter-spacing:0.2px;">กำไรสุทธิ & %กำไรสุทธิ</span>
+                                    <span id="edit-calc-net-profit" class="fw-bold text-danger" style="font-size:0.8rem;">-</span>
+                                </div>
+                                <small class="text-muted" style="font-size:0.7rem;">สูตร: ค่าธรรมเนียม15% + ค่าใช้จ่าย17% + ค่าคอมมิชชั่น5% + ภาษีนิติบุคคล20%</small>
+                            </div>
+                            <button type="button" class="btn btn-warning btn-sm w-100" id="edit-apply-sale-price">
+                                <span class="material-icons" style="font-size:0.9rem;vertical-align:middle;">check</span>
+                                ใช้ราคาขายนี้
+                            </button>
                         </div>
                     </div>
                     <div class="row g-2 mb-2">

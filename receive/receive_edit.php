@@ -14,7 +14,8 @@ $location_desc = isset($_POST['location_desc']) ? trim($_POST['location_desc']) 
 $price_per_unit = isset($_POST['price_per_unit']) ? floatval($_POST['price_per_unit']) : 0;
 $sale_price = isset($_POST['sale_price']) ? floatval($_POST['sale_price']) : 0;
 $receive_qty = isset($_POST['receive_qty']) ? intval($_POST['receive_qty']) : 0;
-$expiry_date = isset($_POST['expiry_date']) ? $_POST['expiry_date'] : null;
+$expiry_date = (isset($_POST['expiry_date']) && $_POST['expiry_date'] !== '') ? $_POST['expiry_date'] : null;
+$sale_price_changed = isset($_POST['sale_price_changed']) ? trim($_POST['sale_price_changed']) : '0';
 $row_code = isset($_POST['row_code']) ? trim($_POST['row_code']) : '';
 $bin = isset($_POST['bin']) ? trim($_POST['bin']) : '';
 $shelf = isset($_POST['shelf']) ? trim($_POST['shelf']) : '';
@@ -62,6 +63,9 @@ try {
     if (!$originalData) {
         throw new Exception('ไม่พบข้อมูลรายการรับสินค้า');
     }
+
+    // บันทึก PO เดิมก่อนการเปลี่ยนแปลง เพื่อใช้อัพเดทสถานะภายหลัง
+    $old_po_id = (int)($originalData['po_id'] ?? 0);
     
     // ตรวจสอบว่ามีการแบ่งจำนวนหรือไม่
     if ($is_split && $split_data) {
@@ -187,7 +191,42 @@ try {
                 ->execute([$price_per_unit, $sale_price, $current_item_id]);
         }
     }
+
+    // ถ้าผู้ใช้ตั้งใจเปลี่ยนราคาขาย → กระจายไปยัง purchase_order_items ทุกรายการของสินค้าเดียวกัน
+    if ($sale_price_changed === '1' && $sale_price > 0) {
+        $productIdForSaleUpdate = (int)($originalData['product_id'] ?? 0);
+        if ($productIdForSaleUpdate > 0) {
+            $pdo->prepare("UPDATE purchase_order_items SET sale_price=? WHERE product_id=?")
+                ->execute([$sale_price, $productIdForSaleUpdate]);
+            error_log("Propagated sale_price=$sale_price to all PO items for product_id=$productIdForSaleUpdate");
+        }
+    }
     
+    // อัพเดทสถานะ PO ทุกตัวที่ได้รับผลกระทบจากการเปลี่ยนแปลงนี้
+    $affectedPoIds = [];
+    if ($is_split && !empty($split_data)) {
+        // Split — กระทบ PO เดิม + PO หลักใหม่ + PO เพิ่มเติมทั้งหมด
+        $splitParsed = json_decode($split_data, true);
+        if ($splitParsed) {
+            $affectedPoIds[] = $old_po_id;
+            $affectedPoIds[] = (int)($splitParsed['mainPoId'] ?? 0);
+            foreach ($splitParsed['additionalPOs'] ?? [] as $addPO) {
+                $affectedPoIds[] = (int)($addPO['poId'] ?? 0);
+            }
+        }
+    } elseif ($po_id > 0 && $item_id > 0) {
+        // เปลี่ยน PO — กระทบ PO เดิมและ PO ใหม่
+        $affectedPoIds[] = $old_po_id;
+        $affectedPoIds[] = $po_id;
+    } else {
+        // อัพเดทปกติ — กระทบ PO ปัจจุบันเท่านั้น
+        $affectedPoIds[] = $old_po_id;
+    }
+    foreach (array_unique(array_filter($affectedPoIds)) as $affPoId) {
+        updatePOStatus($pdo, $affPoId);
+        error_log("PO status recalculated for po_id=$affPoId");
+    }
+
     // Commit transaction
     $pdo->commit();
     
@@ -350,6 +389,114 @@ function handleQuantitySplit($pdo, $receive_id, $originalData, $splitInfo, $rema
                 updateLocationForReceiveItem($pdo, $newReceiveId, $addItemId, $row_code, $bin, $shelf);
             }
         }
+    }
+}
+
+/**
+ * คำนวณและอัพเดทสถานะ PO จากยอดรับจริงในตาราง receive_items
+ * (ซิงค์กับ logic เดียวกับ process_receive_po.php :: updatePOStatus)
+ */
+function updatePOStatus($pdo, $po_id) {
+    $status_sql = "
+        SELECT 
+            poi.item_id,
+            poi.qty as ordered_qty,
+            COALESCE(received_summary.total_received, 0) as received_qty,
+            COALESCE(poi.cancel_qty, 0) as cancel_qty,
+            COALESCE(damaged_unsellable_summary.total_damaged_unsellable, 0) as damaged_unsellable_qty,
+            COALESCE(damaged_sellable_summary.total_damaged_sellable, 0) as damaged_sellable_qty,
+            COALESCE(pending_inspection_summary.total_pending_inspection, 0) as pending_inspection_qty
+        FROM purchase_order_items poi
+        LEFT JOIN (
+            SELECT item_id, SUM(receive_qty) as total_received 
+            FROM receive_items 
+            GROUP BY item_id
+        ) received_summary ON poi.item_id = received_summary.item_id
+        LEFT JOIN (
+            SELECT item_id, SUM(return_qty) as total_damaged_unsellable
+            FROM returned_items
+            WHERE is_returnable = 0 AND return_status IN ('approved', 'completed')
+            GROUP BY item_id
+        ) damaged_unsellable_summary ON poi.item_id = damaged_unsellable_summary.item_id
+        LEFT JOIN (
+            SELECT item_id, SUM(return_qty) as total_damaged_sellable
+            FROM returned_items
+            WHERE is_returnable = 1 AND return_status IN ('approved', 'completed')
+            GROUP BY item_id
+        ) damaged_sellable_summary ON poi.item_id = damaged_sellable_summary.item_id
+        LEFT JOIN (
+            SELECT item_id, SUM(return_qty) as total_pending_inspection
+            FROM returned_items
+            WHERE return_status = 'pending'
+            GROUP BY item_id
+        ) pending_inspection_summary ON poi.item_id = pending_inspection_summary.item_id
+        WHERE poi.po_id = ?
+    ";
+
+    $status_stmt = $pdo->prepare($status_sql);
+    $status_stmt->execute([$po_id]);
+    $items_data = $status_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!$items_data || count($items_data) === 0) {
+        return;
+    }
+
+    $total_items = 0;
+    $fully_processed_items = 0;
+    $any_partial_processing = false;
+    $total_received = 0;
+    $total_damaged_unsellable = 0;
+    $total_damaged_sellable = 0;
+    $total_cancelled = 0;
+    $total_pending_inspection = 0;
+
+    foreach ($items_data as $item) {
+        $total_items++;
+        $ordered_qty            = floatval($item['ordered_qty']);
+        $received_qty           = floatval($item['received_qty']);
+        $cancel_qty             = floatval($item['cancel_qty']);
+        $damaged_unsellable_qty = floatval($item['damaged_unsellable_qty']);
+        $damaged_sellable_qty   = floatval($item['damaged_sellable_qty']);
+        $pending_inspection_qty = floatval($item['pending_inspection_qty']);
+
+        $total_received           += $received_qty;
+        $total_damaged_unsellable += $damaged_unsellable_qty;
+        $total_damaged_sellable   += $damaged_sellable_qty;
+        $total_cancelled          += $cancel_qty;
+        $total_pending_inspection += $pending_inspection_qty;
+
+        $total_processed = $received_qty + $damaged_unsellable_qty + $damaged_sellable_qty + $cancel_qty;
+
+        if ($total_processed >= $ordered_qty - 0.0001) {
+            $fully_processed_items++;
+        } elseif ($received_qty > 0 || $cancel_qty > 0 || $damaged_unsellable_qty > 0 || $damaged_sellable_qty > 0 || $pending_inspection_qty > 0) {
+            $any_partial_processing = true;
+        }
+    }
+
+    $new_status = 'pending';
+    $remarks = '';
+
+    if ($fully_processed_items >= $total_items && $total_pending_inspection == 0) {
+        $new_status = 'completed';
+        $remark_parts = [];
+        if ($total_received > 0)           { $remark_parts[] = 'รับดี: '             . round($total_received, 2); }
+        if ($total_damaged_sellable > 0)   { $remark_parts[] = 'ชำรุด(ขายได้): '    . round($total_damaged_sellable, 2); }
+        if ($total_damaged_unsellable > 0) { $remark_parts[] = 'ชำรุด(ขายไม่ได้): ' . round($total_damaged_unsellable, 2); }
+        if ($total_cancelled > 0)          { $remark_parts[] = 'ยกเลิก: '            . round($total_cancelled, 2); }
+        $remarks = !empty($remark_parts) ? 'ครบตามสั่ง [' . implode(' + ', $remark_parts) . ']' : 'ครบตามสั่ง';
+    } elseif ($any_partial_processing || $fully_processed_items > 0) {
+        $new_status = 'partial';
+    }
+
+    error_log("updatePOStatus: po_id=$po_id total_items=$total_items fully_processed=$fully_processed_items new_status=$new_status");
+
+    if (!empty($remarks)) {
+        $pdo->prepare("UPDATE purchase_orders SET status = ?, remark = CONCAT(COALESCE(remark, ''), '\n', ?) WHERE po_id = ?")
+            ->execute([$new_status, $remarks, $po_id]);
+    } else {
+        $pdo->prepare("UPDATE purchase_orders SET status = ? WHERE po_id = ?")
+            ->execute([$new_status, $po_id]);
     }
 }
 

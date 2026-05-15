@@ -17,7 +17,9 @@ try {
         $sql = "SELECT poi.product_id, poi.temp_product_id, poi.price_per_unit, poi.sale_price,
                        COALESCE(NULLIF(poi.price_original, 0), poi.price_per_unit) as price_original,
                        COALESCE(c.code, 'THB') as currency_code, COALESCE(c.symbol, '฿') as currency_symbol,
-                       r.remark, r.expiry_date
+                       COALESCE(c.exchange_rate, 1) as exchange_rate,
+                       r.remark, r.expiry_date, r.created_at as receive_created_at,
+                       po.po_id as current_po_id
                 FROM receive_items r
                 LEFT JOIN purchase_order_items poi ON r.item_id = poi.item_id
                 LEFT JOIN purchase_orders po ON r.po_id = po.po_id
@@ -64,17 +66,48 @@ try {
     }
 
     // รวมข้อมูลทั้งหมด
+    $currencyCode   = $receiveData['currency_code'] ?? 'THB';
+    $priceOriginal  = (float)($receiveData['price_original'] ?? 0);
+    $exchangeRate   = (float)($receiveData['exchange_rate'] ?? 1);
+    // คำนวณราคาซื้อ (THB เทียบเท่า) จาก exchange_rate ปัจจุบันเสมอ
+    $priceThb = ($currencyCode !== 'THB' && $exchangeRate > 0)
+        ? $priceOriginal * $exchangeRate
+        : $priceOriginal;
+
+    // ราคาขาย: ใช้จาก purchase_order_items ของ item นี้ก่อน
+    // ถ้าไม่มี (= 0 หรือ null) → ดึงราคาขายล่าสุดของสินค้าจาก PO อื่นๆ
+    $salePrice = (float)($receiveData['sale_price'] ?? 0);
+    $latestSalePriceSource = 'current_item';
+    if ($salePrice <= 0 && !empty($receiveData['product_id'])) {
+        $sqlLatestSale = "SELECT poi.sale_price
+                          FROM purchase_order_items poi
+                          JOIN purchase_orders po ON poi.po_id = po.po_id
+                          WHERE poi.product_id = ?
+                          AND poi.sale_price > 0
+                          ORDER BY po.order_date DESC, po.created_at DESC, poi.item_id DESC
+                          LIMIT 1";
+        $stmtLatest = $pdo->prepare($sqlLatestSale);
+        $stmtLatest->execute([$receiveData['product_id']]);
+        $latestSaleRow = $stmtLatest->fetch(PDO::FETCH_ASSOC);
+        if ($latestSaleRow && (float)$latestSaleRow['sale_price'] > 0) {
+            $salePrice = (float)$latestSaleRow['sale_price'];
+            $latestSalePriceSource = 'latest_po';
+        }
+    }
+
     $result = [
         'success' => true,
         'location_id' => $locationData['location_id'] ?? null,
         'row_code' => $locationData['row_code'] ?? '',
         'bin' => $locationData['bin'] ?? '',
         'shelf' => $locationData['shelf'] ?? '',
-        'price_per_unit' => $receiveData['price_per_unit'] ?? '',
-        'price_original' => $receiveData['price_original'] ?? $receiveData['price_per_unit'] ?? '',
-        'currency_code' => $receiveData['currency_code'] ?? 'THB',
+        'price_per_unit' => round($priceThb, 4),
+        'price_original' => $priceOriginal,
+        'currency_code' => $currencyCode,
         'currency_symbol' => $receiveData['currency_symbol'] ?? '฿',
-        'sale_price' => $receiveData['sale_price'] ?? '',
+        'exchange_rate' => $exchangeRate,
+        'sale_price' => $salePrice > 0 ? $salePrice : '',
+        'sale_price_source' => $latestSalePriceSource,
         'remark' => $receiveData['remark'] ?? '',
         'expiry_date' => $receiveData['expiry_date'] ?? ''
     ];
