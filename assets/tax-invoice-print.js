@@ -7,6 +7,15 @@
  * 2. เรียกฟังก์ชัน: printInvoiceDirectly(invoiceId)
  */
 
+// Inject A5 print page size globally for all pages using this module
+(function() {
+    if (document.getElementById('taxInvoicePageStyle')) return;
+    const style = document.createElement('style');
+    style.id = 'taxInvoicePageStyle';
+    style.textContent = '@media print { @page { size: A5 portrait; margin: 0; } }';
+    document.head.appendChild(style);
+})();
+
 // ฟังก์ชันแปลงตัวเลขเป็นคำอ่านภาษาไทย
 function thaiBahtText(amount) {
     const numText = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
@@ -83,6 +92,7 @@ function generateInvoiceHTML(inv, items, isCopy = false) {
         formattedDate = `${day}/${month}/${year}`;
     }
     
+    const ROWS_PER_PAGE = 10;
     let itemsHTML = '';
     items.forEach((item, idx) => {
         itemsHTML += `
@@ -96,6 +106,11 @@ function generateInvoiceHTML(inv, items, isCopy = false) {
             </tr>
         `;
     });
+    // เติมแถวว่างให้ครบ 10 แถวต่อหน้า (items=0 → 10 แถวว่าง, items=10 → 0, items=11 → 9)
+    const padCount = items.length === 0 ? ROWS_PER_PAGE : (ROWS_PER_PAGE - (items.length % ROWS_PER_PAGE)) % ROWS_PER_PAGE;
+    for (let i = 0; i < padCount; i++) {
+        itemsHTML += `<tr style="height:22px;"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>`;
+    }
     
     return `
     <div class="invoice-sheet">
@@ -176,6 +191,10 @@ function generateInvoiceHTML(inv, items, isCopy = false) {
                     <td class="text-right">${numberFmt(inv.discount)}</td>
                 </tr>
                 <tr>
+                    <td>ค่าจัดส่ง<br>SHIPPING</td>
+                    <td class="text-right">${numberFmt(inv.shipping)}</td>
+                </tr>
+                <tr>
                     <td>มูลค่าก่อนภาษี<br>BEFORE VAT</td>
                     <td class="text-right">${numberFmt(inv.before_vat)}</td>
                 </tr>
@@ -220,6 +239,24 @@ function generateInvoiceHTML(inv, items, isCopy = false) {
 }
 
 /**
+ * รอให้รูปภาพทั้งหมดใน container โหลดเสร็จก่อนพิมพ์
+ * @param {HTMLElement} container
+ * @returns {Promise}
+ */
+function waitForImages(container) {
+    const images = Array.from(container.querySelectorAll('img'));
+    if (images.length === 0) return Promise.resolve();
+    return Promise.all(images.map(img => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        return new Promise(resolve => {
+            img.onload = resolve;
+            img.onerror = resolve;
+            setTimeout(resolve, 3000); // timeout 3s กันค้าง
+        });
+    }));
+}
+
+/**
  * พิมพ์ใบกำกับภาษีโดยตรง (ต้นฉบับ + สำเนา)
  * @param {Number} id - รหัสใบกำกับภาษี
  * @param {String} apiPath - path ของ API (default: '../api/get_tax_invoice_detail.php')
@@ -230,11 +267,12 @@ async function printInvoiceDirectly(id, apiPath = '../api/get_tax_invoice_detail
     if (!container) {
         container = document.createElement('div');
         container.id = 'hiddenPrintContainer';
-        container.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999;';
         document.body.appendChild(container);
     }
     
-    container.innerHTML = '<div style="text-align:center;padding:20px;">กำลังโหลดข้อมูล...</div>';
+    // ซ่อนแบบ off-screen (ไม่ใช้ display:none เพื่อให้รูปโหลดได้)
+    container.style.cssText = 'position: fixed; top: -9999px; left: -9999px; width: 148mm; visibility: hidden; z-index: -1;';
+    container.innerHTML = '';
     
     try {
         const res = await fetch(`${apiPath}?id=${id}`);
@@ -244,14 +282,13 @@ async function printInvoiceDirectly(id, apiPath = '../api/get_tax_invoice_detail
         const inv = data.invoice;
         const items = data.items || [];
         
-        // สร้างเอกสารต้นฉบับ
+        // สร้างเอกสารต้นฉบับและสำเนา
         const originalHTML = generateInvoiceHTML(inv, items, false);
-        
-        // สร้างเอกสารสำเนา
         const copyHTML = generateInvoiceHTML(inv, items, true);
-        
-        // ใส่ทั้งสองฉบับใน container
         container.innerHTML = originalHTML + copyHTML;
+        
+        // รอให้รูปภาพโหลดเสร็จก่อนพิมพ์
+        await waitForImages(container);
         
         // พิมพ์
         window.print();
@@ -259,11 +296,13 @@ async function printInvoiceDirectly(id, apiPath = '../api/get_tax_invoice_detail
         // ลบเนื้อหาหลังพิมพ์เสร็จ
         setTimeout(() => {
             container.innerHTML = '';
-        }, 100);
+            container.style.cssText = 'display: none;';
+        }, 500);
         
     } catch (err) {
         alert('เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + err.message);
         container.innerHTML = '';
+        container.style.cssText = 'display: none;';
     }
 }
 

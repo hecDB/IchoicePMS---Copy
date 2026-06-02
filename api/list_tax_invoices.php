@@ -47,7 +47,7 @@ try {
         $params[':platform'] = $platform;
     }
 
-    $sql = "SELECT id, inv_no, inv_date, customer_name, platform, grand_total, payable, sales_tag, doc_type, created_at
+    $sql = "SELECT id, inv_no, inv_date, customer_name, customer_tax_id, platform, grand_total, vat, payable, sales_tag, doc_type, created_at
             FROM tax_invoices";
     if ($where) {
         $sql .= ' WHERE ' . implode(' AND ', $where);

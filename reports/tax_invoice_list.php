@@ -39,6 +39,7 @@ include '../templates/sidebar.php';
         .quick-dates-label { font-size:12px; color:#6b7280; font-weight:600; width:100%; margin-bottom:4px; }
         .btn-quick { border:1px solid #e5e7eb; border-radius:8px; padding:6px 12px; font-weight:600; cursor:pointer; font-size:12px; background:#fff; color:#374151; transition:all 0.2s ease; }
         .btn-quick:hover { background:#385dfa; color:#fff; border-color:#385dfa; transform:translateY(-1px); box-shadow:0 4px 12px rgba(56,93,250,0.2); }
+        .btn-quick.active { background:#385dfa; color:#fff; border-color:#385dfa; box-shadow:0 4px 12px rgba(56,93,250,0.2); }
         .actions { display:flex; gap:12px; flex-wrap:wrap; }
         .btn { border:none; border-radius:12px; padding:12px 24px; font-weight:700; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; gap:8px; transition:all 0.3s ease; }
         .btn .material-icons { font-size:18px; }
@@ -89,7 +90,7 @@ include '../templates/sidebar.php';
         @media print {
             @page { 
                 size: A5 portrait; 
-                margin: 10mm; 
+                margin: 0; 
             }
             body { 
                 background: #fff; 
@@ -105,6 +106,7 @@ include '../templates/sidebar.php';
                 display: block !important; 
                 position: static !important;
                 width: 100% !important;
+                visibility: visible !important;
             }
             .invoice-sheet { 
                 border: none !important; 
@@ -169,14 +171,12 @@ include '../templates/sidebar.php';
         </div>
         
         <div class="quick-dates">
-            <div class="quick-dates-label">ทางลัด:</div>
-            <button class="btn-quick" data-range="today">วันนี้</button>
-            <button class="btn-quick" data-range="yesterday">เมื่อวาน</button>
-            <button class="btn-quick" data-range="thisWeek">สัปดาห์นี้</button>
-            <button class="btn-quick" data-range="lastWeek">สัปดาห์ที่แล้ว</button>
-            <button class="btn-quick" data-range="thisMonth">เดือนนี้</button>
-            <button class="btn-quick" data-range="lastMonth">เดือนที่แล้ว</button>
-            <button class="btn-quick" data-range="thisYear">ปีนี้</button>
+            <div class="quick-dates-label">กรองตามประเภทเอกสาร:</div>
+            <button class="btn-quick active" data-doctype="">ทั้งหมด</button>
+            <button class="btn-quick" data-doctype="tax_invoice">ใบกำกับภาษี</button>
+            <button class="btn-quick" data-doctype="payment_voucher">ใบสำคัญจ่าย</button>
+            <button class="btn-quick" data-doctype="quotation">ใบเสนอราคา</button>
+            <button class="btn-quick" data-doctype="invoice">ใบแจ้งหนี้</button>
         </div>
         
         <div class="date-inputs">
@@ -222,18 +222,20 @@ include '../templates/sidebar.php';
         <table id="resultTable">
             <thead>
                 <tr>
-                    <th style="width:120px;">เลขที่</th>
                     <th style="width:110px;">วันที่</th>
+                    <th style="width:120px;">เลขที่</th>
                     <th>ลูกค้า</th>
-                    <th style="width:110px;">ช่องทาง</th>
-                    <th style="width:140px;">ประเภทเอกสาร</th>
-                    <th style="width:120px;" class="text-right">ยอดรวม</th>
-                    <th style="width:120px;" class="text-right">ยอดชำระ</th>
-                    <th style="width:180px;">จัดการ</th>
+                    <th style="width:130px;">เลขผู้เสียภาษี</th>
+                    <th style="width:120px;" class="text-right">มูลค่าสินค้า</th>
+                    <th style="width:100px;" class="text-right">VAT</th>
+                    <th style="width:120px;" class="text-right">ยอดรับ</th>
+                    <th style="width:110px;">ร้าน</th>
+                    <th style="width:130px;">เลขที่อ้างอิง</th>
+                    <th style="width:160px;">จัดการ</th>
                 </tr>
             </thead>
             <tbody id="resultBody">
-                <tr><td colspan="9" class="no-data">กำลังโหลด...</td></tr>
+                <tr><td colspan="10" class="no-data">กำลังโหลด...</td></tr>
             </tbody>
         </table>
     </div>
@@ -327,39 +329,48 @@ include '../templates/sidebar.php';
         };
     }
 
+    let activeDocType = '';
+
+    function applyDocTypeFilter() {
+        if (!activeDocType) {
+            renderTable(currentData);
+        } else {
+            renderTable(currentData.filter(row => row.doc_type === activeDocType));
+        }
+    }
+
     async function fetchList(){
         const params = new URLSearchParams(gatherFilters());
-        resultBody.innerHTML = '<tr><td colspan="9" class="no-data">กำลังโหลด...</td></tr>';
+        resultBody.innerHTML = '<tr><td colspan="10" class="no-data">กำลังโหลด...</td></tr>';
         try {
             const res = await fetch('../api/list_tax_invoices.php?' + params.toString());
             const data = await res.json();
             if (!data.success) throw new Error(data.error || 'ไม่สามารถดึงข้อมูล');
             currentData = data.data || []; // Store data for export
-            renderTable(currentData);
+            applyDocTypeFilter();
         } catch(err){
-            resultBody.innerHTML = `<tr><td colspan="9" class="no-data">เกิดข้อผิดพลาด: ${err.message}</td></tr>`;
+            resultBody.innerHTML = `<tr><td colspan="10" class="no-data">เกิดข้อผิดพลาด: ${err.message}</td></tr>`;
         }
     }
 
     function renderTable(rows){
         if (!rows.length){
-            resultBody.innerHTML = '<tr><td colspan="9" class="no-data">ไม่พบข้อมูล</td></tr>';
+            resultBody.innerHTML = '<tr><td colspan="10" class="no-data">ไม่พบข้อมูล</td></tr>';
             return;
         }
         resultBody.innerHTML = '';
         rows.forEach(row => {
             const tr = document.createElement('tr');
-            const platform = row.platform || '-';
-            const docTypeName = getDocTypeName(row.doc_type);
-            const badgeColor = getDocTypeBadgeColor(row.doc_type);
             tr.innerHTML = `
-                <td>${row.inv_no}</td>
                 <td>${row.inv_date || '-'}</td>
+                <td>${row.inv_no}</td>
                 <td>${row.customer_name || '-'}</td>
-                <td>${platform}</td>
-                <td><span class="badge ${badgeColor}">${docTypeName}</span></td>
+                <td>${row.customer_tax_id || '-'}</td>
                 <td class="text-right">${numberFmt(row.grand_total)}</td>
+                <td class="text-right">${numberFmt(row.vat)}</td>
                 <td class="text-right">${numberFmt(row.payable)}</td>
+                <td>${row.platform || '-'}</td>
+                <td>${row.sales_tag || '-'}</td>
                 <td>
                     <button class="btn btn-secondary" data-id="${row.id}" style="padding:6px 10px;margin-right:5px;">ดู</button>
                     <button class="btn btn-primary" data-id="${row.id}" style="padding:6px 10px;" onclick="printInvoiceDirectly(${row.id})">
@@ -420,37 +431,17 @@ include '../templates/sidebar.php';
     const closePrintModal = document.getElementById('closePrintModal');
     const printContent = document.getElementById('printContent');
     const triggerPrint = document.getElementById('triggerPrint');
+    let currentPrintId = null;
     
     async function openPrintModal(id) {
-        // เรียกใช้ฟังก์ชันจาก tax-invoice-print.js
+        currentPrintId = id;
         await printInvoiceWithPreview(id);
     }
     
-    // ใช้ generateInvoiceHTML จาก tax-invoice-print.js แล้ว
-    
     triggerPrint.addEventListener('click', () => {
-        const invoiceSheet = document.getElementById('invoiceSheetToPrint');
-        if (!invoiceSheet) return;
-        
-        const clonedSheet = invoiceSheet.cloneNode(true);
-        invoiceSheet.classList.add('page-break');
-        clonedSheet.id = 'invoiceSheetCopy';
-        
-        const copyStatus = clonedSheet.querySelector('.invoice-meta > div:last-child');
-        if (copyStatus) {
-            copyStatus.textContent = '(สำเนา / Copy)';
-        }
-        
-        invoiceSheet.parentNode.appendChild(clonedSheet);
-        
-        window.print();
-        
-        setTimeout(() => {
-            invoiceSheet.classList.remove('page-break');
-            if (clonedSheet.parentNode) {
-                clonedSheet.parentNode.removeChild(clonedSheet);
-            }
-        }, 100);
+        if (!currentPrintId) return;
+        printModal.style.display = 'none';
+        printInvoiceDirectly(currentPrintId);
     });
     
     closePrintModal.addEventListener('click', () => { printModal.style.display = 'none'; });
@@ -461,60 +452,15 @@ include '../templates/sidebar.php';
     // Export to global scope
     window.openPrintModal = openPrintModal;
 
-    // Quick date range buttons
+    // Document type filter buttons
     document.querySelectorAll('.btn-quick').forEach(btn => {
         btn.addEventListener('click', function() {
-            const range = this.dataset.range;
-            const today = new Date();
-            let fromDate, toDate;
-            
-            switch(range) {
-                case 'today':
-                    fromDate = toDate = today;
-                    break;
-                case 'yesterday':
-                    fromDate = toDate = new Date(today.setDate(today.getDate() - 1));
-                    break;
-                case 'thisWeek':
-                    const firstDay = today.getDate() - today.getDay();
-                    fromDate = new Date(today.setDate(firstDay));
-                    toDate = new Date();
-                    break;
-                case 'lastWeek':
-                    const lastWeekEnd = new Date(today.setDate(today.getDate() - today.getDay() - 1));
-                    const lastWeekStart = new Date(lastWeekEnd);
-                    lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
-                    fromDate = lastWeekStart;
-                    toDate = lastWeekEnd;
-                    break;
-                case 'thisMonth':
-                    fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
-                    toDate = new Date();
-                    break;
-                case 'lastMonth':
-                    fromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                    toDate = new Date(today.getFullYear(), today.getMonth(), 0);
-                    break;
-                case 'thisYear':
-                    fromDate = new Date(today.getFullYear(), 0, 1);
-                    toDate = new Date();
-                    break;
-            }
-            
-            if (fromDate && toDate) {
-                document.getElementById('date_from').value = formatDate(fromDate);
-                document.getElementById('date_to').value = formatDate(toDate);
-                fetchList();
-            }
+            document.querySelectorAll('.btn-quick').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            activeDocType = this.dataset.doctype;
+            applyDocTypeFilter();
         });
     });
-    
-    function formatDate(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
     
     // Export to Excel Function
     function exportToExcel() {
@@ -526,13 +472,15 @@ include '../templates/sidebar.php';
         // Prepare data for Excel
         const excelData = currentData.map(row => {
             return {
-                'เลขที่ใบกำกับภาษี': row.inv_no || '',
-                'วันทัี่': row.inv_date || '',
+                'วันที่': row.inv_date || '',
+                'เลขที่': row.inv_no || '',
                 'ชื่อลูกค้า': row.customer_name || '',
-                'ช่องทางขาย': row.platform || '',
-                'ประเภทเอกสาร': getDocTypeName(row.doc_type),
-                'ยอดรวม': parseFloat(row.grand_total || 0).toFixed(2),
-                'ยอดชำระ': parseFloat(row.payable || 0).toFixed(2)
+                'เลขประจำตัวผู้เสียภาษี': row.customer_tax_id || '',
+                'มูลค่าสินค้า': parseFloat(row.grand_total || 0).toFixed(2),
+                'VAT': parseFloat(row.vat || 0).toFixed(2),
+                'ยอดรับ': parseFloat(row.payable || 0).toFixed(2),
+                'ร้าน': row.platform || '',
+                'เลขที่อ้างอิง': row.sales_tag || ''
             };
         });
         
@@ -542,13 +490,15 @@ include '../templates/sidebar.php';
         
         // Set column widths
         ws['!cols'] = [
-            { wch: 18 },  // เลขที่
             { wch: 12 },  // วันที่
+            { wch: 18 },  // เลขที่
             { wch: 30 },  // ลูกค้า
-            { wch: 15 },  // ช่องทาง
-            { wch: 20 },  // ประเภท
-            { wch: 15 },  // ยอดรวม
-            { wch: 15 }   // ยอดชำระ
+            { wch: 18 },  // เลขผู้เสียภาษี
+            { wch: 15 },  // มูลค่าสินค้า
+            { wch: 12 },  // VAT
+            { wch: 15 },  // ยอดรับ
+            { wch: 15 },  // ร้าน
+            { wch: 18 }   // เลขที่อ้างอิง
         ];
         
         // Add worksheet to workbook
@@ -567,6 +517,9 @@ include '../templates/sidebar.php';
     document.getElementById('searchBtn').addEventListener('click', fetchList);
     document.getElementById('resetBtn').addEventListener('click', () => {
         ['date_from','date_to'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        activeDocType = '';
+        document.querySelectorAll('.btn-quick').forEach(b => b.classList.remove('active'));
+        document.querySelector('.btn-quick[data-doctype=""]').classList.add('active');
         fetchList();
     });
 

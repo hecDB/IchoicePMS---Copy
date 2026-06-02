@@ -80,7 +80,7 @@ $today = date('Y-m-d');
         .toast.success { background: linear-gradient(135deg, #16a34a, #0f9f57); }
         .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
         @media print {
-            @page { size: A5 portrait; margin: 10mm; }
+            @page { size: A5 portrait; margin: 0; }
             body { background: #fff; margin: 0; padding: 0; }
             .mainwrap, .card, .controls { display: none !important; }
             .page-title { display: none !important; }
@@ -90,10 +90,12 @@ $today = date('Y-m-d');
             .modal-backdrop { display: none !important; }
             .modal { display: none !important; }
             .sidebar, .sidebar-backdrop, .mobile-nav-toggle { display: none !important; }
+            .toast { display: none !important; }
             #hiddenPrintContainer { 
                 display: block !important; 
                 position: static !important;
                 width: 100% !important;
+                visibility: visible !important;
             }
             .invoice-sheet { 
                 border: none !important; 
@@ -139,36 +141,6 @@ $today = date('Y-m-d');
             .footer-note table td div { font-size: 8px !important; line-height: 1.5 !important; }
             .footer-note table td div:not(:first-child) { margin-top: 10px !important; }
             .footer-note > div:last-child { margin-top: 6px !important; }
-        }
-            .invoice-sheet { border: none; padding: 8px !important; font-size: 8px !important; min-height: auto !important; }
-            .invoice-header { padding-bottom: 6px !important; }
-            .invoice-brand h2 { font-size: 11px !important; }
-            .invoice-brand > div > div { font-size: 7px !important; line-height: 1.3 !important; }
-            .invoice-brand > div:first-child { width: 40px !important; height: 40px !important; }
-            .invoice-meta { font-size: 8px !important; }
-            .invoice-meta > div:first-child { font-size: 10px !important; }
-            .invoice-meta > div:nth-child(2) { font-size: 9px !important; }
-            .invoice-meta > div:last-child { font-size: 8px !important; }
-            .invoice-block { margin-top: 6px !important; font-size: 7px !important; }
-            .invoice-block h4 { font-size: 8px !important; margin-bottom: 4px !important; padding-bottom: 3px !important; }
-            .invoice-block > div { gap: 8px !important; }
-            .invoice-block > div > div { padding: 6px !important; }
-            .invoice-block > div > div > div { font-size: 7px !important; line-height: 1.5 !important; }
-            .inv-table { margin-top: 6px !important; font-size: 7px !important; border-collapse: collapse !important; border-spacing: 0 !important; }
-            .inv-table, .inv-table th, .inv-table td, .inv-table thead th { border: 1px solid #000 !important; box-sizing: border-box; padding: 3px 4px !important; }
-            .inv-table thead { border-bottom: 1px solid #000 !important; }
-            .inv-table thead th { background: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .summary-box { margin-top: 6px !important; gap: 6px !important; grid-template-columns: 1fr 140px !important; }
-            .summary-box > div { min-height: 100px !important; }
-            .summary-box > div > div:nth-child(2) { font-size: 7px !important; padding: 4px 6px !important; }
-            .totals td { padding: 2px 4px !important; font-size: 7px !important; line-height: 1.2 !important; }
-            .totals tr:last-child td { font-size: 8px !important; }
-            .footer-note { margin-top: 8px !important; font-size: 7px !important; }
-            .footer-note table { font-size: 7px !important; }
-            .footer-note table td { padding: 4px !important; font-size: 7px !important; }
-            .footer-note table td div { font-size: 7px !important; line-height: 1.4 !important; }
-            .footer-note table td div:not(:first-child) { margin-top: 8px !important; }
-            .footer-note > div:last-child { margin-top: 4px !important; }
         }
     </style>
 </head>
@@ -357,6 +329,10 @@ $today = date('Y-m-d');
                         <tr>
                             <td>หักส่วนลด<br>DISCOUNT</td>
                             <td class="text-right" id="pv_discount">0.00</td>
+                        </tr>
+                        <tr>
+                            <td>ค่าจัดส่ง<br>SHIPPING</td>
+                            <td class="text-right" id="pv_shipping">0.00</td>
                         </tr>
                         <tr>
                             <td>มูลค่าก่อนภาษี<br>BEFORE VAT</td>
@@ -709,13 +685,14 @@ $today = date('Y-m-d');
             });
         }
 
-        const totalAfterDiscount = Math.max(subtotal - discount, 0);
+        const totalAfterDiscount = Math.max(subtotal - discount + shipping, 0);
         const beforeVat = totalAfterDiscount / 1.07;
         const vat = totalAfterDiscount - beforeVat;
         const payable = Math.max(totalAfterDiscount - specialDiscount, 0);
 
         document.getElementById('pv_subtotal').textContent = numberFmt(subtotal);
         document.getElementById('pv_discount').textContent = numberFmt(discount);
+        document.getElementById('pv_shipping').textContent = numberFmt(shipping);
         document.getElementById('pv_before_vat').textContent = numberFmt(beforeVat);
         document.getElementById('pv_vat').textContent = numberFmt(vat);
         document.getElementById('pv_grand').textContent = numberFmt(totalAfterDiscount);
@@ -869,7 +846,7 @@ $today = date('Y-m-d');
     });
     
     // ฟังก์ชันพิมพ์จากข้อมูลฟอร์มปัจจุบัน
-    function printFromCurrentForm() {
+    async function printFromCurrentForm() {
         // รวบรวมข้อมูลจากฟอร์ม
         const docType = document.getElementById('doc_type').value;
         const invNo = document.getElementById('inv_no').value;
@@ -884,6 +861,7 @@ $today = date('Y-m-d');
         const taxId = document.getElementById('tax_id').value;
         const address = document.getElementById('address').value;
         const discount = parseFloat(document.getElementById('discount').value) || 0;
+        const shipping = parseFloat(document.getElementById('shipping').value) || 0;
         const specialDiscount = parseFloat(document.getElementById('special_discount').value) || 0;
         
         // รวบรวมรายการสินค้า
@@ -914,7 +892,7 @@ $today = date('Y-m-d');
             subtotal += item.total_price;
         });
         
-        const totalAfterDiscount = Math.max(subtotal - discount, 0);
+        const totalAfterDiscount = Math.max(subtotal - discount + shipping, 0);
         const beforeVat = totalAfterDiscount / 1.07;
         const vat = totalAfterDiscount - beforeVat;
         const payable = Math.max(totalAfterDiscount - specialDiscount, 0);
@@ -932,6 +910,7 @@ $today = date('Y-m-d');
             customer_address: address,
             subtotal: subtotal,
             discount: discount,
+            shipping: shipping,
             before_vat: beforeVat,
             vat: vat,
             grand_total: grandTotal,
@@ -952,21 +931,24 @@ $today = date('Y-m-d');
             return;
         }
         
-        // สร้าง container สำหรับพิมพ์
+        // สร้าง container สำหรับพิมพ์ (ใช้ off-screen ไม่ใช้ display:none เพื่อให้รูปโหลดได้)
         let container = document.getElementById('hiddenPrintContainer');
         if (!container) {
             container = document.createElement('div');
             container.id = 'hiddenPrintContainer';
-            container.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999;';
             document.body.appendChild(container);
         }
+        container.style.cssText = 'position: fixed; top: -9999px; left: -9999px; width: 148mm; visibility: hidden; z-index: -1;';
         
         // สร้างเอกสารต้นฉบับและสำเนา
         const originalHTML = generateInvoiceHTML(invoice, items, false);
         const copyHTML = generateInvoiceHTML(invoice, items, true);
-        
-        // ใส่ทั้งสองฉบับใน container
         container.innerHTML = originalHTML + copyHTML;
+        
+        // รอให้รูปภาพโหลดเสร็จก่อนพิมพ์
+        if (typeof waitForImages === 'function') {
+            await waitForImages(container);
+        }
         
         // พิมพ์
         window.print();
@@ -974,7 +956,8 @@ $today = date('Y-m-d');
         // ลบเนื้อหาหลังพิมพ์เสร็จ
         setTimeout(() => {
             container.innerHTML = '';
-        }, 100);
+            container.style.cssText = 'display: none;';
+        }, 500);
     }
     
     // จัดการแสดง/ซ่อนช่องระบุช่องทางอื่นๆ
