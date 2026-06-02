@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS tax_invoices (
     id INT AUTO_INCREMENT PRIMARY KEY,
     doc_type VARCHAR(50) NOT NULL COMMENT 'ประเภทเอกสาร: tax_invoice, payment_voucher, quotation, invoice',
-    inv_no VARCHAR(100) NOT NULL UNIQUE COMMENT 'เลขที่เอกสาร',
+    inv_no VARCHAR(100) NOT NULL COMMENT 'เลขที่เอกสาร',
     sales_tag VARCHAR(100) DEFAULT NULL COMMENT 'เลขแท็กรายการขายสินค้า (อ้างอิงจากแท็กสินค้า)',
     inv_date DATE NOT NULL COMMENT 'วันที่ออกเอกสาร',
     platform VARCHAR(100) DEFAULT NULL COMMENT 'ช่องทางการสั่งซื้อ: Shopee, Lazada, Tiktok, อื่นๆ',
@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS tax_invoices (
     status VARCHAR(20) DEFAULT 'active' COMMENT 'สถานะเอกสาร: active, cancelled, void',
     notes TEXT DEFAULT NULL COMMENT 'หมายเหตุเพิ่มเติม',
     
+    UNIQUE KEY uq_doc_type_inv_no (doc_type, inv_no),
     INDEX idx_inv_no (inv_no),
     INDEX idx_doc_type (doc_type),
     INDEX idx_inv_date (inv_date),

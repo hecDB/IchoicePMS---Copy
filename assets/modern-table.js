@@ -303,16 +303,13 @@ class ModernTable {
     }
 
     exportToExcel() {
-        // Simple CSV export (can be enhanced with proper Excel export library)
-        let csvContent = "data:text/csv;charset=utf-8,";
-        
         // Get headers
         const headers = [];
         $(`#${this.tableId} thead th`).each(function() {
             const text = $(this).text().trim();
-            if (text && text !== '') headers.push(text);
+            if (text && text !== '') headers.push('"' + text.replace(/"/g, '""') + '"');
         });
-        csvContent += headers.join(",") + "\n";
+        let csvContent = headers.join(",") + "\n";
 
         // Get data
         this.table.rows().every(function() {
@@ -326,13 +323,18 @@ class ModernTable {
             csvContent += row.join(",") + "\n";
         });
 
-        const encodedUri = encodeURI(csvContent);
+        // Add UTF-8 BOM (\uFEFF) so Excel reads Thai characters correctly
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
+        link.setAttribute("href", url);
         link.setAttribute("download", `table_export_${new Date().getTime()}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
         this.showMessage('ส่งออก Excel สำเร็จ', 'success');
     }

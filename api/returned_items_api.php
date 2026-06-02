@@ -38,6 +38,7 @@ ensureReturnedItemsReceiveIdColumn($pdo);
 ensureReturnedItemsTempProductIdColumn($pdo);
 ensureReturnedItemsNewBarcodeColumn($pdo);
 ensureTempProductsExpiryColumn($pdo);
+ensureReturnedItemsApprovedColumns($pdo);
 
 /**
  * Send clean JSON response
@@ -218,6 +219,24 @@ function ensureTempProductsExpiryColumn(PDO $pdo): void
         }
     } catch (Exception $e) {
         error_log('Failed to ensure temp_products expiry_date column: ' . $e->getMessage());
+    }
+}
+
+function ensureReturnedItemsApprovedColumns(PDO $pdo): void
+{
+    try {
+        $columnsStmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'returned_items'");
+        $columnsStmt->execute();
+        $existing = array_flip(array_column($columnsStmt->fetchAll(PDO::FETCH_ASSOC), 'COLUMN_NAME'));
+
+        if (!isset($existing['approved_by'])) {
+            $pdo->exec("ALTER TABLE returned_items ADD COLUMN approved_by INT NULL COMMENT 'ผู้อนุมัติ' AFTER created_by");
+        }
+        if (!isset($existing['approved_at'])) {
+            $pdo->exec("ALTER TABLE returned_items ADD COLUMN approved_at DATETIME NULL COMMENT 'วันที่อนุมัติ' AFTER approved_by");
+        }
+    } catch (Exception $e) {
+        error_log('Failed to ensure returned_items approved columns: ' . $e->getMessage());
     }
 }
 
@@ -1285,8 +1304,10 @@ if ($action === 'get_returns') {
             WHERE 1=1
         ";
         
+        $params = [];
         if ($status !== 'all') {
-            $sql .= " AND ret.return_status = '" . $pdo->quote($status) . "'";
+            $sql .= " AND ret.return_status = :status";
+            $params[':status'] = $status;
         }
         
         if ($is_returnable !== 'all') {
@@ -1295,19 +1316,23 @@ if ($action === 'get_returns') {
         
         $sql .= " ORDER BY ret.created_at DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
         
-        $stmt = $pdo->query($sql);
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         $returns = $stmt->fetchAll();
         
         // Get total count
         $count_sql = "SELECT COUNT(*) as total FROM returned_items WHERE 1=1";
+        $count_params = [];
         if ($status !== 'all') {
-            $count_sql .= " AND return_status = '" . $pdo->quote($status) . "'";
+            $count_sql .= " AND return_status = :status";
+            $count_params[':status'] = $status;
         }
         if ($is_returnable !== 'all') {
             $count_sql .= " AND is_returnable = " . (int)$is_returnable;
         }
         
-        $count_stmt = $pdo->query($count_sql);
+        $count_stmt = $pdo->prepare($count_sql);
+        $count_stmt->execute($count_params);
         $total = $count_stmt->fetch()['total'];
         
         echo json_encode([

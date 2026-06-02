@@ -145,6 +145,13 @@ $amountText = thaiBahtText($payable);
 try {
     $pdo->beginTransaction();
 
+    // ตรวจสอบว่าเลขที่เอกสารซ้ำกันในประเภทเดียวกันหรือไม่
+    $checkStmt = $pdo->prepare("SELECT id FROM tax_invoices WHERE doc_type = :doc_type AND inv_no = :inv_no LIMIT 1");
+    $checkStmt->execute([':doc_type' => $docType, ':inv_no' => $invNo]);
+    if ($checkStmt->fetch()) {
+        respond(409, ['success' => false, 'error' => 'เลขที่เอกสารซ้ำในประเภทเดียวกัน (' . $invNo . ')']);
+    }
+
     $stmt = $pdo->prepare("INSERT INTO tax_invoices (
         doc_type, inv_no, sales_tag, inv_date, platform,
         customer_name, customer_tax_id, customer_address,
@@ -209,7 +216,7 @@ try {
         $pdo->rollBack();
     }
     if ($e->getCode() === '23000') {
-        respond(409, ['success' => false, 'error' => 'เลขที่ใบกำกับภาษีซ้ำ']);
+        respond(409, ['success' => false, 'error' => 'เลขที่เอกสารซ้ำในประเภทเดียวกัน (' . $invNo . ')']);
     }
     respond(500, ['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
 } catch (Exception $e) {

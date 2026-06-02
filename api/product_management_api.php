@@ -160,7 +160,8 @@ try {
             $unit = $_POST['unit'] ?? '';
             $product_category_id = $_POST['product_category_id'] ?? null;
             $remark_color = $_POST['remark_color'] ?? '';
-            $remark_split = $_POST['remark_split'] ?? '';
+            $remark_split_raw = trim($_POST['remark_split'] ?? '');
+            $remark_split = ($remark_split_raw !== '') ? (int)$remark_split_raw : 0;
             $location_id = $_POST['location_id'] ?? null;
             $is_active = $_POST['is_active'] ?? 1;
             $image = null;
@@ -245,7 +246,8 @@ try {
             $unit = trim($_POST['unit'] ?? '');
             $product_category_id = $_POST['product_category_id'] ?? null;
             $remark_color = $_POST['remark_color'] ?? '';
-            $remark_split = $_POST['remark_split'] ?? '';
+            $remark_split_raw = trim($_POST['remark_split'] ?? '');
+            $remark_split = ($remark_split_raw !== '') ? (int)$remark_split_raw : 0;
             $location_id = $_POST['location_id'] ?? null;
             $is_active = $_POST['is_active'] ?? 1;
             

@@ -17,13 +17,18 @@ if (!$user_id) {
     <meta charset="UTF-8">
     <title>สินค้าตีกลับ - IchoicePMS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/base.css">
     <link rel="stylesheet" href="../assets/sidebar.css">
     <link rel="stylesheet" href="../assets/components.css">
+    <link href="../assets/modern-table.css" rel="stylesheet">
+    <link href="../assets/mainwrap-modern.css" rel="stylesheet">
     
     <style>
         body {
+            font-family: 'Prompt', sans-serif;
             background-color: #f8fafc;
         }
         
@@ -748,10 +753,10 @@ if (!$user_id) {
 
         function getStatusBadge(status) {
             const badges = {
-                'pending': '<span class="badge bg-warning">รอการอนุมัติ</span>',
-                'approved': '<span class="badge bg-info">อนุมัติแล้ว</span>',
+                'pending':   '<span class="badge bg-warning">รอการอนุมัติ</span>',
+                'approved':  '<span class="badge bg-success">เสร็จสิ้น</span>',
                 'completed': '<span class="badge bg-success">เสร็จสิ้น</span>',
-                'rejected': '<span class="badge bg-danger">ปฏิเสธ</span>'
+                'rejected':  '<span class="badge bg-danger">ปฏิเสธ</span>'
             };
             return badges[status] || status;
         }

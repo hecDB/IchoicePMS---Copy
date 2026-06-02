@@ -288,7 +288,6 @@ try {
             // สร้างสินค้าใหม่สำหรับโปรโมชั่น
             $productName = $receiveItem['name'] ?? ($product['name'] ?? 'สินค้าโปรโมชัน');
             $promoProductName = $promoName ? ("{$productName} ({$promoName})") : ($productName . ' (Exp)');
-            $productBarcode = $receiveItem['barcode'] ?? null;
             $productUnit = $receiveItem['product_unit'] ?? null;
             $productImage = $receiveItem['image'] ?? null;
             $productRemarkColor = $receiveItem['remark_color'] ?? null;
@@ -301,7 +300,7 @@ try {
             $insertProductStmt->execute([
                 $promoProductName,
                 $newSku,
-                $productBarcode,
+                null, // barcode จะถูก generate และ update หลัง INSERT
                 $productUnit,
                 $productImage,
                 $productRemarkColor,
@@ -313,6 +312,15 @@ try {
             ]);
 
             $newProductId = $pdo->lastInsertId();
+
+            // สร้างบาร์โค้ดใหม่ รูปแบบ BAR-{id}-{base36(time)+random} เช่น BAR-13-TBBKIOA9B526
+            $barcodeTimestamp = base_convert(time(), 10, 36);
+            $barcodeRandom = substr(bin2hex(random_bytes(3)), 0, 6);
+            $barcodeId = substr(strtoupper($barcodeTimestamp . $barcodeRandom), 0, 12);
+            $newBarcode = 'BAR-' . $newProductId . '-' . $barcodeId;
+
+            $pdo->prepare('UPDATE products SET barcode = ? WHERE product_id = ?')
+                ->execute([$newBarcode, $newProductId]);
 
             // บันทึกลง purchase_order_items สำหรับสินค้าใหม่
             $poId = $receiveItem['po_id'];

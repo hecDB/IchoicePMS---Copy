@@ -19,15 +19,17 @@ if (!$user_id) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/base.css">
     <link rel="stylesheet" href="../assets/sidebar.css">
     <link rel="stylesheet" href="../assets/components.css">
+    <link href="../assets/modern-table.css" rel="stylesheet">
+    <link href="../assets/mainwrap-modern.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     
     <style>
         body {
-            
+            font-family: 'Prompt', sans-serif;
             background-color: #f8fafc;
         }
         
@@ -45,7 +47,25 @@ if (!$user_id) {
             border-left: 4px solid;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
         }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
+        
+        .stat-card.active-filter {
+            box-shadow: 0 0 0 3px currentColor, 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        .stat-card.pending.active-filter  { box-shadow: 0 0 0 3px #f59e0b, 0 4px 12px rgba(245,158,11,0.25); }
+        .stat-card.approved.active-filter  { box-shadow: 0 0 0 3px #3b82f6, 0 4px 12px rgba(59,130,246,0.25); }
+        .stat-card.returnable.active-filter { box-shadow: 0 0 0 3px #10b981, 0 4px 12px rgba(16,185,129,0.25); }
+        .stat-card.non-returnable.active-filter { box-shadow: 0 0 0 3px #ef4444, 0 4px 12px rgba(239,68,68,0.25); }
         
         .stat-card.pending {
             border-left-color: #f59e0b;
@@ -126,28 +146,28 @@ if (!$user_id) {
                 <!-- Stats -->
                 <div class="row mb-4">
                     <div class="col-md-3 mb-3">
-                        <div class="stat-card pending">
+                        <div class="stat-card pending" id="card-pending" onclick="filterByCard('pending')">
                             <span class="material-icons" style="font-size: 2.5rem; color: #f59e0b;">pending_actions</span>
                             <div class="stat-number" id="stat-pending">0</div>
                             <div class="stat-label">รอการอนุมัติ</div>
                         </div>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <div class="stat-card approved">
+                        <div class="stat-card approved" id="card-approved" onclick="filterByCard('approved')">
                             <span class="material-icons" style="font-size: 2.5rem; color: #3b82f6;">check_circle</span>
                             <div class="stat-number" id="stat-approved">0</div>
-                            <div class="stat-label">อนุมัติแล้ว</div>
+                            <div class="stat-label">เสร็จสิ้น</div>
                         </div>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <div class="stat-card returnable">
+                        <div class="stat-card returnable" id="card-returnable" onclick="filterByCard('returnable')">
                             <span class="material-icons" style="font-size: 2.5rem; color: #10b981;">inventory</span>
                             <div class="stat-number" id="stat-returnable">0</div>
                             <div class="stat-label">คืนสต็อกได้</div>
                         </div>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <div class="stat-card non-returnable">
+                        <div class="stat-card non-returnable" id="card-non-returnable" onclick="filterByCard('non-returnable')">
                             <span class="material-icons" style="font-size: 2.5rem; color: #ef4444;">block</span>
                             <div class="stat-number" id="stat-non-returnable">0</div>
                             <div class="stat-label">คืนไม่ได้</div>
@@ -173,8 +193,9 @@ if (!$user_id) {
 
                 <!-- Returns Table -->
                 <div class="card">
-                    <div class="card-header bg-light p-3">
+                    <div class="card-header bg-light p-3 d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">📋 รายการสินค้าตีกลับ</h6>
+                        <div id="active-filter-label"></div>
                     </div>
                     <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
                         <div id="returns-container">
@@ -250,6 +271,49 @@ if (!$user_id) {
         let confirmModalInstance = null;
         let pendingConfirmAction = null;
         let returnsTable = null;
+        let allReturnsData = [];
+        let activeFilter = null;
+
+        const filterConfig = {
+            'pending':        { label: 'รอการอนุมัติ',  fn: r => r.return_status === 'pending' },
+            'approved':       { label: 'เสร็จสิ้น',      fn: r => r.return_status === 'approved' || r.return_status === 'completed' },
+            'returnable':     { label: 'คืนสต็อกได้',   fn: r => r.is_returnable == 1 },
+            'non-returnable': { label: 'คืนไม่ได้',     fn: r => r.is_returnable == 0 }
+        };
+
+        function filterByCard(type) {
+            if (activeFilter === type) {
+                // Toggle off — show all
+                activeFilter = null;
+            } else {
+                activeFilter = type;
+            }
+            updateActiveCardStyle();
+            renderTable(activeFilter ? allReturnsData.filter(filterConfig[type].fn) : allReturnsData);
+            updateFilterLabel();
+        }
+
+        function updateActiveCardStyle() {
+            Object.keys(filterConfig).forEach(key => {
+                const card = document.getElementById('card-' + key);
+                if (card) {
+                    card.classList.toggle('active-filter', activeFilter === key);
+                }
+            });
+        }
+
+        function updateFilterLabel() {
+            const el = document.getElementById('active-filter-label');
+            if (!el) return;
+            if (activeFilter) {
+                el.innerHTML = `<span class="badge bg-secondary" style="font-size:0.85rem; cursor:pointer;" onclick="filterByCard('${activeFilter}')">
+                    <span class="material-icons" style="font-size:0.85rem;vertical-align:middle;">filter_list</span>
+                    กรอง: ${filterConfig[activeFilter].label} &nbsp;✕
+                </span>`;
+            } else {
+                el.innerHTML = '';
+            }
+        }
 
         function escapeForOnclick(value) {
             return String(value ?? '')
@@ -307,99 +371,92 @@ if (!$user_id) {
         });
 
         function loadDashboard() {
-            loadStats();
-            loadReturns();
-        }
-
-        function loadStats() {
             $.get(`${API_URL}?action=get_returns&limit=1000`, function(response) {
-                if (response.status === 'success') {
-                    const data = response.data;
-                    
-                    const pending = data.filter(r => r.return_status === 'pending').length;
-                    const approved = data.filter(r => r.return_status === 'approved').length;
-                    const returnable = data.filter(r => r.is_returnable == 1).length;
-                    const nonReturnable = data.filter(r => r.is_returnable == 0).length;
-                    
-                    $('#stat-pending').text(pending);
-                    $('#stat-approved').text(approved);
-                    $('#stat-returnable').text(returnable);
-                    $('#stat-non-returnable').text(nonReturnable);
-                }
+                if (response.status !== 'success') return;
+                allReturnsData = response.data;
+
+                // Update stat counts
+                $('#stat-pending').text(allReturnsData.filter(r => r.return_status === 'pending').length);
+                $('#stat-approved').text(allReturnsData.filter(r => r.return_status === 'approved' || r.return_status === 'completed').length);
+                $('#stat-returnable').text(allReturnsData.filter(r => r.is_returnable == 1).length);
+                $('#stat-non-returnable').text(allReturnsData.filter(r => r.is_returnable == 0).length);
+
+                // Render table, respecting current filter
+                const displayed = activeFilter
+                    ? allReturnsData.filter(filterConfig[activeFilter].fn)
+                    : allReturnsData;
+                renderTable(displayed);
             });
         }
 
-        function loadReturns() {
-            $.get(`${API_URL}?action=get_returns&limit=100`, function(response) {
-                if (response.status === 'success') {
-                    if (returnsTable) {
-                        returnsTable.destroy();
-                        returnsTable = null;
-                    }
+        function renderTable(data) {
+            if (returnsTable) {
+                returnsTable.destroy();
+                returnsTable = null;
+            }
 
-                    let html = '';
-                    
-                    if (response.data.length === 0) {
-                        html = '<p class="text-muted text-center p-3">ไม่พบข้อมูลสินค้าตีกลับ</p>';
-                    } else {
-                        html = `
-                            <table class="table table-hover mb-0" style="font-size: 0.95rem;" id="returns-table">
-                                <thead class="table-light sticky-top">
-                                    <tr>
-                                        <th>เลขที่</th>
-                                        <th>สินค้า</th>
-                                        <th>จำนวน</th>
-                                        <th>เหตุผล</th>
-                                        <th>ประเภท</th>
-                                        <th>สถานะ</th>
-                                        <th>บันทึกโดย</th>
-                                        <th>วันที่</th>
-                                        <th>ดำเนินการ</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${response.data.map(item => `
-                                        <tr>
-                                            <td><strong>${item.return_code}</strong></td>
-                                            <td>
-                                                ${item.product_name}<br>
-                                                <small class="text-muted">${item.sku}</small>
-                                            </td>
-                                            <td>${item.return_qty}</td>
-                                            <td><small>${item.reason_name}</small></td>
-                                            <td>
-                                                ${item.is_returnable == 1 
-                                                    ? '<span class="badge bg-success">คืนได้</span>' 
-                                                    : '<span class="badge bg-danger">คืนไม่ได้</span>'}
-                                            </td>
-                                            <td>${getStatusBadge(item.return_status)}</td>
-                                            <td><small>${item.created_by_name}</small></td>
-                                            <td><small>${new Date(item.created_at).toLocaleDateString('th-TH')}</small></td>
-                                            <td>
-                                                <button class="btn btn-sm btn-outline-primary btn-action" onclick="viewDetail(${item.return_id})">
-                                                    <span class="material-icons" style="font-size: 1rem;">info</span>
-                                                </button>
-                                                ${item.return_status === 'pending' ? `
-                                                    <button class="btn btn-sm btn-outline-success btn-action" onclick="approveReturn(${item.return_id}, '${escapeForOnclick(item.reason_name || '')}')">
-                                                        <span class="material-icons" style="font-size: 1rem;">check</span>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-danger btn-action" onclick="rejectReturn(${item.return_id})">
-                                                        <span class="material-icons" style="font-size: 1rem;">close</span>
-                                                    </button>
-                                                ` : ''}
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        `;
-                    }
-                    
-                    $('#returns-container').html(html);
-                    initializeReturnsTable();
-                }
-            });
+            let html = '';
+            if (data.length === 0) {
+                html = '<p class="text-muted text-center p-3">ไม่พบข้อมูลสินค้าตีกลับ</p>';
+            } else {
+                html = `
+                    <table class="table table-hover mb-0" style="font-size: 0.95rem;" id="returns-table">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>เลขที่</th>
+                                <th>สินค้า</th>
+                                <th>จำนวน</th>
+                                <th>เหตุผล</th>
+                                <th>ประเภท</th>
+                                <th>สถานะ</th>
+                                <th>บันทึกโดย</th>
+                                <th>วันที่</th>
+                                <th>ดำเนินการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(item => `
+                                <tr>
+                                    <td><strong>${item.return_code}</strong></td>
+                                    <td>
+                                        ${item.product_name}<br>
+                                        <small class="text-muted">${item.sku}</small>
+                                    </td>
+                                    <td>${item.return_qty}</td>
+                                    <td><small>${item.reason_name}</small></td>
+                                    <td>
+                                        ${item.is_returnable == 1
+                                            ? '<span class="badge bg-success">คืนได้</span>'
+                                            : '<span class="badge bg-danger">คืนไม่ได้</span>'}
+                                    </td>
+                                    <td>${getStatusBadge(item.return_status)}</td>
+                                    <td><small>${item.created_by_name}</small></td>
+                                    <td><small>${new Date(item.created_at).toLocaleDateString('th-TH')}</small></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary btn-action" onclick="viewDetail(${item.return_id})">
+                                            <span class="material-icons" style="font-size: 1rem;">info</span>
+                                        </button>
+                                        ${item.return_status === 'pending' ? `
+                                            <button class="btn btn-sm btn-outline-success btn-action" onclick="approveReturn(${item.return_id}, '${escapeForOnclick(item.reason_name || '')}')">
+                                                <span class="material-icons" style="font-size: 1rem;">check</span>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger btn-action" onclick="rejectReturn(${item.return_id})">
+                                                <span class="material-icons" style="font-size: 1rem;">close</span>
+                                            </button>
+                                        ` : ''}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            $('#returns-container').html(html);
+            initializeReturnsTable();
         }
+
+        function loadReturns() { loadDashboard(); }
 
         function initializeReturnsTable() {
             const tableElement = $('#returns-table');
@@ -429,10 +486,10 @@ if (!$user_id) {
 
         function getStatusBadge(status) {
             const badges = {
-                'pending': '<span class="badge bg-warning">รอการอนุมัติ</span>',
-                'approved': '<span class="badge bg-info">อนุมัติแล้ว</span>',
+                'pending':   '<span class="badge bg-warning">รอการอนุมัติ</span>',
+                'approved':  '<span class="badge bg-success">เสร็จสิ้น</span>',
                 'completed': '<span class="badge bg-success">เสร็จสิ้น</span>',
-                'rejected': '<span class="badge bg-danger">ปฏิเสธ</span>'
+                'rejected':  '<span class="badge bg-danger">ปฏิเสธ</span>'
             };
             return badges[status] || status;
         }
