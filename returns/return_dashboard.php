@@ -261,6 +261,168 @@ if (!$user_id) {
         </div>
     </div>
 
+    <!-- Approve Edit Modal -->
+    <div id="approveEditModal" class="modal fade" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="border-left: 4px solid #10b981;">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">
+                        <span class="material-icons" style="vertical-align:middle;color:#10b981;margin-right:0.4rem;">check_circle</span>
+                        <span id="approveEditModalTitle">อนุมัติและนำสินค้ากลับคืนคลัง</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Product info banner -->
+                    <div id="approve-product-banner" class="p-3 rounded mb-3" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="material-icons" style="font-size:2rem;color:#10b981;">inventory_2</span>
+                            <div>
+                                <div id="approve-product-name" style="font-weight:600;font-size:1.05rem;"></div>
+                                <div id="approve-product-sku" class="text-muted" style="font-size:0.85rem;"></div>
+                                <div>
+                                    <span id="approve-return-code" class="badge bg-secondary me-1"></span>
+                                    <span id="approve-returnable-badge"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="approve-return-id">
+                    <input type="hidden" id="approve-reason-name">
+
+                    <div class="mb-2">
+                        <label class="form-label">หมายเหตุ</label>
+                        <input type="text" class="form-control" id="approve-remark">
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">ตำแหน่ง</label>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <select class="form-select" id="approve-row-code">
+                                    <option value="">แถว</option>
+                                    <?php foreach (range('A','X') as $c) echo "<option value=\"{$c}\">{$c}</option>"; ?>
+                                    <option value="T">T(ตู้)</option>
+                                    <option value="sale(บน)">sale(บน)</option>
+                                    <option value="sale(ล่าง)">sale(ล่าง)</option>
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <select class="form-select" id="approve-bin">
+                                    <option value="">ล๊อค</option>
+                                    <?php for ($i=1; $i<=10; $i++) echo "<option value=\"{$i}\">{$i}</option>"; ?>
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <select class="form-select" id="approve-shelf">
+                                    <option value="">ชั้น</option>
+                                    <?php for ($i=1; $i<=10; $i++) echo "<option value=\"{$i}\">{$i}</option>"; ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Price section -->
+                    <div class="card mb-2 border-0" style="background:#f8fafc;border:1px solid #e5e7eb!important;">
+                        <div class="card-body p-2">
+
+                            <!-- ราคาที่ขายไปจริง (แสดงเฉพาะเมื่อมีข้อมูล) -->
+                            <div id="approve-sold-price-row" class="mb-2 d-none">
+                                <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#fef3c7;border:1px solid #f59e0b;">
+                                    <span class="material-icons" style="font-size:1rem;color:#d97706;">sell</span>
+                                    <small style="color:#92400e;font-weight:600;">ราคาที่ขายไป (ล่าสุด):</small>
+                                    <strong id="approve-sold-price-display" style="color:#b45309;font-size:1.05rem;"></strong>
+                                    <span class="badge ms-1" style="background:#f59e0b;color:white;font-size:0.65rem;">บาท</span>
+                                </div>
+                            </div>
+
+                            <!-- ราคาใหม่ (ไม่บังคับ) -->
+                            <div>
+                                <label class="form-label mb-1" style="font-weight:600;color:#374151;">
+                                    <span class="material-icons" style="font-size:0.95rem;vertical-align:middle;margin-right:0.25rem;color:#6b7280;">edit</span>
+                                    อัปเดตราคาขาย
+                                    <span class="text-muted fw-normal" style="font-size:0.8rem;">(ไม่บังคับ — เว้นว่างหากไม่ต้องการเปลี่ยน)</span>
+                                </label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" step="0.01" min="0" class="form-control" id="approve-price-new"
+                                        style="color:#d97706;font-weight:600;" placeholder="ราคาขายใหม่...">
+                                    <span class="input-group-text" style="background:#fef3c7;color:#92400e;font-weight:600;border-color:#fde68a;">บาท</span>
+                                </div>
+                            </div>
+
+                            <input type="hidden" id="approve-exchange-rate" value="1">
+                            <input type="hidden" id="approve-currency-code" value="THB">
+
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label" style="font-weight:600;color:#0f766e;">น้ำหนัก (กก.)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="approve-weight" style="color:#0f766e;font-weight:600;" placeholder="-" readonly>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">จำนวน</label>
+                        <input type="number" min="1" class="form-control" id="approve-receive-qty" readonly style="background:#f3f4f6;cursor:not-allowed;">
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">วันหมดอายุ</label>
+                        <input type="date" class="form-control" id="approve-expiry-date">
+                    </div>
+
+                    <!-- Damaged partial info -->
+                    <div id="approve-damaged-info" class="d-none alert alert-warning p-2 mt-2" style="font-size:0.9rem;">
+                        <span class="material-icons" style="font-size:1rem;vertical-align:middle;">warning</span>
+                        รายการนี้เป็น <strong>สินค้าชำรุดบางส่วน</strong> — ระบบจะส่งเข้าคิวตรวจสอบ ไม่นำเข้าสต็อกทันที
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-success" id="approveEditSaveBtn">
+                        <span class="material-icons" style="vertical-align:middle;margin-right:0.3rem;">check_circle</span>
+                        บันทึกและอนุมัติ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Reason Modal -->
+    <div id="rejectModal" class="modal fade" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-left: 4px solid #ef4444;">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title" id="rejectModalLabel">
+                        <span class="material-icons" style="vertical-align: middle; color: #ef4444; margin-right: 0.4rem;">cancel</span>
+                        ปฏิเสธสินค้าตีกลับ
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3" style="font-size: 0.9rem;">กรุณาระบุเหตุผลในการปฏิเสธรายการนี้</p>
+                    <div class="mb-3">
+                        <label for="rejectReasonInput" class="form-label fw-medium">เหตุผลการปฏิเสธ</label>
+                        <textarea id="rejectReasonInput" class="form-control" rows="3"
+                            placeholder="ระบุเหตุผล..."
+                            style="border-radius: 8px; resize: none;"></textarea>
+                        <div id="rejectReasonError" class="text-danger mt-1" style="font-size: 0.85rem; display: none;">กรุณาระบุเหตุผล</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-danger" id="rejectConfirmBtn">
+                        <span class="material-icons" style="vertical-align: middle; margin-right: 0.3rem; font-size: 1rem;">cancel</span>
+                        ยืนยันปฏิเสธ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -273,6 +435,8 @@ if (!$user_id) {
         let returnsTable = null;
         let allReturnsData = [];
         let activeFilter = null;
+        let pendingRejectId = null;
+        let rejectModalInstance = null;
 
         const filterConfig = {
             'pending':        { label: 'รอการอนุมัติ',  fn: r => r.return_status === 'pending' },
@@ -325,7 +489,7 @@ if (!$user_id) {
 
         // Show Alert Modal
         function showAlert(type, title, message) {
-            const modal = new bootstrap.Modal(document.getElementById('alertModal'));
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('alertModal'));
             const content = document.getElementById('alertModalContent');
             const icon = document.getElementById('alertIcon');
             const titleEl = document.getElementById('alertTitle');
@@ -364,6 +528,12 @@ if (!$user_id) {
             document.getElementById('confirmCancelBtn').addEventListener('click', function() {
                 pendingConfirmAction = null;
             });
+            document.getElementById('rejectConfirmBtn').addEventListener('click', doRejectReturn);
+
+            // Approve Edit Modal
+            const approveEditModalEl = document.getElementById('approveEditModal');
+            window.approveEditModalInstance = new bootstrap.Modal(approveEditModalEl);
+            document.getElementById('approveEditSaveBtn').addEventListener('click', doApproveWithEdit);
 
             loadDashboard();
             // Auto refresh every 30 seconds
@@ -545,6 +715,34 @@ if (!$user_id) {
                             <div class="detail-label">หมายเหตุ</div>
                             <div class="detail-value">${item.notes || '<em class="text-muted">ไม่มี</em>'}</div>
                         </div>
+                        ${item.sale_order_id ? `
+                        <div class="detail-row" style="background:#f0f9ff; margin: 0 -1rem; padding: 0.75rem 1rem;">
+                            <div style="font-weight:600; color:#0369a1; margin-bottom:0.5rem;">
+                                <span class="material-icons" style="font-size:1rem;vertical-align:middle;margin-right:0.3rem;">receipt_long</span>
+                                ข้อมูลการขายที่ตีกลับ
+                            </div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">เลขที่อ้างอิงขาย</div>
+                            <div class="detail-value"><strong>#${item.sale_order_id}</strong></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">เลขแทร็กพัสดุ / Order ID</div>
+                            <div class="detail-value">${item.issue_tag || '<em class="text-muted">-</em>'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">แพลตฟอร์ม</div>
+                            <div class="detail-value">
+                                ${item.platform
+                                    ? `<span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:0.85rem;">${item.platform}</span>`
+                                    : '<em class="text-muted">-</em>'}
+                            </div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">วันที่ขาย</div>
+                            <div class="detail-value">${item.sale_date ? new Date(item.sale_date).toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '<em class="text-muted">-</em>'}</div>
+                        </div>
+                        ` : ''}
                         <div class="detail-row">
                             <div class="detail-label">บันทึกโดย</div>
                             <div class="detail-value">${item.created_by_name} (${date})</div>
@@ -583,83 +781,243 @@ if (!$user_id) {
         }
 
         function approveReturn(returnId, reasonName = '') {
-            const normalizedReason = (reasonName || '').trim();
-            const isDamagedPartial = normalizedReason === 'สินค้าชำรุดบางส่วน';
-            const confirmTitle = 'ยืนยันการอนุมัติ';
-            const confirmMessage = isDamagedPartial
-                ? 'ต้องการส่งรายการนี้เข้าคิวตรวจสอบสินค้าชำรุดหรือไม่? ระบบจะยังไม่นำจำนวนกลับเข้าสต็อก'
-                : 'ต้องการนำสินค้าตีกลับกลับเข้าสต็อกหรือไม่?';
+            // Fetch full data for approve modal
+            $.get(`${API_URL}?action=get_return_approve_data&return_id=${returnId}`, function(response) {
+                if (response.status !== 'success') {
+                    showAlert('error', '✕ โหลดข้อมูลไม่สำเร็จ', response.message || 'เกิดข้อผิดพลาด');
+                    return;
+                }
+                const d = response.data;
+                const isDamagedPartial = (d.reason_name || '').trim() === 'สินค้าชำรุดบางส่วน';
 
-            showConfirm(confirmTitle, confirmMessage, function() {
-                $.ajax({
-                    url: API_URL,
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({
-                        action: 'approve_return',
-                        return_id: returnId
-                    }),
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            const successMessage = isDamagedPartial
-                                ? 'ส่งรายการเข้าคิวตรวจสอบสินค้าชำรุดแล้ว'
-                                : 'นำจำนวนเข้าสต็อกเรียบร้อยแล้ว';
-                            showAlert('success', '✓ อนุมัติสำเร็จ!', successMessage);
-                            const detailModalInstance = bootstrap.Modal.getInstance(document.getElementById('detailModal'));
-                            if (detailModalInstance) {
-                                detailModalInstance.hide();
-                            }
-                            loadDashboard();
-                        } else {
-                            showAlert('error', '✕ เกิดข้อผิดพลาด', response.message);
-                        }
-                    },
-                    error: function(xhr) {
-                        let errorMsg = 'เกิดข้อผิดพลาดในการสื่อสาร';
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.message) {
-                                errorMsg = response.message;
-                            }
-                        } catch(e) {}
-                        showAlert('error', '✕ ข้อผิดพลาด', errorMsg);
+                // Populate modal
+                document.getElementById('approve-return-id').value = d.return_id;
+                document.getElementById('approve-reason-name').value = d.reason_name || '';
+                document.getElementById('approveEditModalTitle').textContent =
+                    isDamagedPartial ? 'ส่งเข้าคิวตรวจสอบสินค้าชำรุด' : 'อนุมัติและนำสินค้ากลับคืนคลัง';
+
+                document.getElementById('approve-product-name').textContent = d.product_name || '-';
+                document.getElementById('approve-product-sku').textContent = `SKU: ${d.sku || '-'}  |  Barcode: ${d.barcode || '-'}`;
+                document.getElementById('approve-return-code').textContent = d.return_code || '';
+                const retBadgeEl = document.getElementById('approve-returnable-badge');
+                retBadgeEl.innerHTML = d.is_returnable == 1
+                    ? '<span class="badge bg-success">คืนสต็อกได้</span>'
+                    : '<span class="badge bg-danger">คืนสต็อกไม่ได้</span>';
+
+                document.getElementById('approve-remark').value = `ตีกลับสินค้าจาก ${d.return_code || ''}`;
+                document.getElementById('approve-receive-qty').value = Math.abs(parseFloat(d.return_qty || 0));
+                document.getElementById('approve-expiry-date').value = d.expiry_date
+                    ? d.expiry_date.substring(0, 10) : '';
+                document.getElementById('approve-weight').value = d.remark_weight || '';
+
+                // Price hidden fields (used for THB conversion when saving)
+                document.getElementById('approve-exchange-rate').value = parseFloat(d.exchange_rate || 1);
+                document.getElementById('approve-currency-code').value = d.currency_code || 'THB';
+
+                // เคลียร์ช่องอัปเดตราคาใหม่ทุกครั้งที่เปิด modal
+                document.getElementById('approve-price-new').value = '';
+
+                // แสดงราคาที่ขายไป
+                const soldRow = document.getElementById('approve-sold-price-row');
+                const soldDisplay = document.getElementById('approve-sold-price-display');
+                const actualSalePrice = parseFloat(d.actual_sale_price || 0);
+                if (actualSalePrice > 0) {
+                    soldDisplay.textContent = actualSalePrice.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    soldRow.classList.remove('d-none');
+                } else {
+                    soldRow.classList.add('d-none');
+                }
+
+                // Location
+                function setSelectOrAdd(sel, val) {
+                    val = (val || '').toString().trim();
+                    const $sel = $(sel);
+                    if (val && $sel.find(`option[value="${val}"]`).length === 0) {
+                        $sel.append(`<option value="${val}">${val}</option>`);
                     }
-                });
+                    $sel.val(val);
+                }
+                setSelectOrAdd('#approve-row-code', d.row_code);
+                setSelectOrAdd('#approve-bin', d.bin);
+                setSelectOrAdd('#approve-shelf', d.shelf);
+
+                // Damaged partial info
+                const dmgInfo = document.getElementById('approve-damaged-info');
+                isDamagedPartial ? dmgInfo.classList.remove('d-none') : dmgInfo.classList.add('d-none');
+
+                // Close detail modal first if open
+                const detailModalEl = document.getElementById('detailModal');
+                const detailModalInst = bootstrap.Modal.getInstance(detailModalEl);
+                if (detailModalInst && detailModalEl.classList.contains('show')) {
+                    detailModalEl.addEventListener('hidden.bs.modal', function openApprove() {
+                        detailModalEl.removeEventListener('hidden.bs.modal', openApprove);
+                        window.approveEditModalInstance.show();
+                    });
+                    detailModalInst.hide();
+                } else {
+                    window.approveEditModalInstance.show();
+                }
+            }).fail(function() {
+                showAlert('error', '✕ ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลได้');
+            });
+        }
+
+        function doApproveWithEdit() {
+            const returnId = document.getElementById('approve-return-id').value;
+            const reasonName = document.getElementById('approve-reason-name').value;
+            const isDamagedPartial = reasonName.trim() === 'สินค้าชำรุดบางส่วน';
+
+            const remark         = document.getElementById('approve-remark').value.trim();
+            const rowCode        = document.getElementById('approve-row-code').value;
+            const bin            = document.getElementById('approve-bin').value;
+            const shelf          = document.getElementById('approve-shelf').value;
+            const receiveQty     = parseFloat(document.getElementById('approve-receive-qty').value) || 0;
+            const expiryDate     = document.getElementById('approve-expiry-date').value;
+            const priceNewRaw    = document.getElementById('approve-price-new').value;
+            const priceNew       = priceNewRaw !== '' ? parseFloat(priceNewRaw) : null;
+
+            if (receiveQty <= 0) {
+                showAlert('error', '✕ กรุณากรอกจำนวน', 'จำนวนต้องมากกว่า 0');
+                return;
+            }
+
+            const finalQty = Math.abs(receiveQty);
+
+            const confirmMsg = isDamagedPartial
+                ? 'ต้องการส่งรายการนี้เข้าคิวตรวจสอบสินค้าชำรุดหรือไม่?'
+                : `ยืนยันการนำสินค้า ${Math.abs(finalQty)} ชิ้น กลับเข้าสต็อก?`;
+
+            const saveBtn = document.getElementById('approveEditSaveBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังบันทึก...';
+
+            $.ajax({
+                url: API_URL,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    action:                'approve_return',
+                    return_id:             parseInt(returnId),
+                    remark:                remark,
+                    row_code:              rowCode,
+                    bin:                   bin,
+                    shelf:                 shelf,
+                    receive_qty_override:  Math.abs(finalQty),
+                    expiry_date_override:  expiryDate || null,
+                    price_per_unit:        null,
+                    sale_price:            priceNew,
+                }),
+                success: function(response) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<span class="material-icons" style="vertical-align:middle;margin-right:0.3rem;">check_circle</span>บันทึกและอนุมัติ';
+                    if (response.status === 'success') {
+                        const successMsg = isDamagedPartial
+                            ? 'ส่งรายการเข้าคิวตรวจสอบสินค้าชำรุดแล้ว'
+                            : 'นำสินค้ากลับเข้าสต็อกเรียบร้อยแล้ว และบันทึกในตารางความเคลื่อนไหวแล้ว';
+                        window.approveEditModalInstance.hide();
+                        showAlert('success', '✓ อนุมัติสำเร็จ!', successMsg);
+                        loadDashboard();
+                    } else {
+                        showAlert('error', '✕ เกิดข้อผิดพลาด', response.message || 'ไม่สามารถบันทึกได้');
+                    }
+                },
+                error: function(xhr) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<span class="material-icons" style="vertical-align:middle;margin-right:0.3rem;">check_circle</span>บันทึกและอนุมัติ';
+                    let errorMsg = 'เกิดข้อผิดพลาดในการสื่อสาร';
+                    try {
+                        const r = JSON.parse(xhr.responseText);
+                        if (r.message) errorMsg = r.message;
+                    } catch(e) {}
+                    showAlert('error', '✕ ข้อผิดพลาด', errorMsg);
+                }
             });
         }
 
         function rejectReturn(returnId) {
-            const reason = prompt('ระบุเหตุผลการปฏิเสธ:');
-            if (reason === null) return;
-            
+            pendingRejectId = returnId;
+            const reasonInput = document.getElementById('rejectReasonInput');
+            const errorEl = document.getElementById('rejectReasonError');
+            reasonInput.value = '';
+            errorEl.style.display = 'none';
+            reasonInput.classList.remove('is-invalid');
+
+            if (!rejectModalInstance) {
+                rejectModalInstance = new bootstrap.Modal(document.getElementById('rejectModal'));
+            }
+
+            // ปิด detail modal ก่อน (ถ้าเปิดอยู่) แล้วค่อยเปิด reject modal
+            // เพื่อป้องกัน backdrop ซ้อนกัน
+            const detailModalEl = document.getElementById('detailModal');
+            const detailModalInstance = bootstrap.Modal.getInstance(detailModalEl);
+            if (detailModalInstance && detailModalEl.classList.contains('show')) {
+                detailModalEl.addEventListener('hidden.bs.modal', function openReject() {
+                    detailModalEl.removeEventListener('hidden.bs.modal', openReject);
+                    rejectModalInstance.show();
+                    document.getElementById('rejectModal').addEventListener('shown.bs.modal', function handler() {
+                        reasonInput.focus();
+                        document.getElementById('rejectModal').removeEventListener('shown.bs.modal', handler);
+                    });
+                });
+                detailModalInstance.hide();
+            } else {
+                rejectModalInstance.show();
+                document.getElementById('rejectModal').addEventListener('shown.bs.modal', function handler() {
+                    reasonInput.focus();
+                    document.getElementById('rejectModal').removeEventListener('shown.bs.modal', handler);
+                });
+            }
+        }
+
+        function doRejectReturn() {
+            const reason = document.getElementById('rejectReasonInput').value.trim();
+            const errorEl = document.getElementById('rejectReasonError');
+            const reasonInput = document.getElementById('rejectReasonInput');
+
+            if (!reason) {
+                errorEl.style.display = 'block';
+                reasonInput.classList.add('is-invalid');
+                reasonInput.focus();
+                return;
+            }
+            errorEl.style.display = 'none';
+            reasonInput.classList.remove('is-invalid');
+
+            const rejectBtn = document.getElementById('rejectConfirmBtn');
+            rejectBtn.disabled = true;
+            rejectBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังบันทึก...';
+
             $.ajax({
                 url: API_URL,
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
                     action: 'reject_return',
-                    return_id: returnId,
+                    return_id: pendingRejectId,
                     reason: reason
                 }),
                 success: function(response) {
+                    rejectBtn.disabled = false;
+                    rejectBtn.innerHTML = '<span class="material-icons" style="vertical-align:middle;margin-right:0.3rem;font-size:1rem;">cancel</span>ยืนยันปฏิเสธ';
                     if (response.status === 'success') {
-                        showAlert('success', '✓ ปฏิเสธสำเร็จ!', 'บันทึกการปฏิเสธเรียบร้อยแล้ว');
-                        const detailModalInstance = bootstrap.Modal.getInstance(document.getElementById('detailModal'));
-                        if (detailModalInstance) {
-                            detailModalInstance.hide();
-                        }
-                        loadDashboard();
+                        const rejectModalEl = document.getElementById('rejectModal');
+                        rejectModalEl.addEventListener('hidden.bs.modal', function onHidden() {
+                            rejectModalEl.removeEventListener('hidden.bs.modal', onHidden);
+                            showAlert('success', '✓ ปฏิเสธสำเร็จ!', 'บันทึกการปฏิเสธเรียบร้อยแล้ว');
+                            loadDashboard();
+                        });
+                        rejectModalInstance.hide();
                     } else {
                         showAlert('error', '✕ เกิดข้อผิดพลาด', response.message);
                     }
                 },
                 error: function(xhr) {
+                    rejectBtn.disabled = false;
+                    rejectBtn.innerHTML = '<span class="material-icons" style="vertical-align:middle;margin-right:0.3rem;font-size:1rem;">cancel</span>ยืนยันปฏิเสธ';
                     let errorMsg = 'เกิดข้อผิดพลาดในการสื่อสาร';
                     try {
-                        const response = JSON.parse(xhr.responseText);
-                        if (response.message) {
-                            errorMsg = response.message;
-                        }
+                        const res = JSON.parse(xhr.responseText);
+                        if (res.message) errorMsg = res.message;
                     } catch(e) {}
                     showAlert('error', '✕ ข้อผิดพลาด', errorMsg);
                 }

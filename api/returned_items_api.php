@@ -1004,8 +1004,8 @@ if ($action === 'get_sales_order_items') {
                 p.image,
                 ii.issue_qty,
                 COALESCE(ret.total_returned, 0) AS returned_qty,
-                CASE WHEN COALESCE(ret.total_returned, 0) > 0 THEN 0 ELSE ii.issue_qty END AS available_qty,
-                CASE WHEN COALESCE(ret.total_returned, 0) > 0 THEN 1 ELSE 0 END AS already_returned
+                GREATEST(ii.issue_qty - COALESCE(ret.total_returned, 0), 0) AS available_qty,
+                CASE WHEN GREATEST(ii.issue_qty - COALESCE(ret.total_returned, 0), 0) <= 0 THEN 1 ELSE 0 END AS already_returned
             FROM issue_items ii
             LEFT JOIN products p ON ii.product_id = p.product_id
             LEFT JOIN (
@@ -1899,6 +1899,143 @@ if ($action === 'process_damaged_inspection') {
     }
 }
 
+// ========== GET RETURN APPROVE DATA (for approve modal) ==========
+if ($action === 'get_return_approve_data') {
+    try {
+        $return_id = $_GET['return_id'] ?? null;
+        if (!$return_id) {
+            sendJsonResponse(['status' => 'error', 'message' => 'Return ID is required'], 400);
+        }
+
+        // Get return item details
+        $stmt = $pdo->prepare("
+            SELECT ret.*,
+                   u.name as created_by_name
+            FROM returned_items ret
+            LEFT JOIN users u ON ret.created_by = u.user_id
+            WHERE ret.return_id = :return_id
+        ");
+        $stmt->execute([':return_id' => $return_id]);
+        $ret = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$ret) {
+            sendJsonResponse(['status' => 'error', 'message' => 'Return not found'], 404);
+        }
+
+        // Get price info from purchase_order_items
+        $price_per_unit = 0;
+        $price_original = 0;
+        $sale_price = 0;
+        $currency_code = 'THB';
+        $exchange_rate = 1;
+
+        if (!empty($ret['po_id']) && !empty($ret['product_id'])) {
+            $stmtPrice = $pdo->prepare("
+                SELECT poi.price_per_unit, poi.sale_price,
+                       COALESCE(NULLIF(poi.price_original, 0), poi.price_per_unit) as price_original,
+                       COALESCE(c.code, 'THB') as currency_code,
+                       COALESCE(c.exchange_rate, 1) as exchange_rate
+                FROM purchase_order_items poi
+                LEFT JOIN purchase_orders po ON poi.po_id = po.po_id
+                LEFT JOIN currencies c ON po.currency_id = c.currency_id
+                WHERE poi.po_id = :po_id AND poi.product_id = :product_id
+                LIMIT 1
+            ");
+            $stmtPrice->execute([':po_id' => $ret['po_id'], ':product_id' => $ret['product_id']]);
+            $priceData = $stmtPrice->fetch(PDO::FETCH_ASSOC);
+            if ($priceData) {
+                $currency_code = $priceData['currency_code'] ?? 'THB';
+                $exchange_rate = (float)($priceData['exchange_rate'] ?? 1);
+                $price_original = (float)($priceData['price_original'] ?? 0);
+                $price_per_unit = ($currency_code !== 'THB' && $exchange_rate > 0)
+                    ? $price_original * $exchange_rate
+                    : $price_original;
+                $sale_price = (float)($priceData['sale_price'] ?? 0);
+            }
+        }
+
+        // Fallback: get latest sale_price for this product
+        if ($sale_price <= 0 && !empty($ret['product_id'])) {
+            $stmtLatest = $pdo->prepare("
+                SELECT poi.sale_price
+                FROM purchase_order_items poi
+                JOIN purchase_orders po ON poi.po_id = po.po_id
+                WHERE poi.product_id = :product_id AND poi.sale_price > 0
+                ORDER BY po.order_date DESC, poi.item_id DESC
+                LIMIT 1
+            ");
+            $stmtLatest->execute([':product_id' => $ret['product_id']]);
+            $latestSale = $stmtLatest->fetchColumn();
+            if ($latestSale) {
+                $sale_price = (float)$latestSale;
+            }
+        }
+
+        // Get product weight from products table
+        $weight = 0;
+        if (!empty($ret['product_id'])) {
+            $stmtW = $pdo->prepare("SELECT remark_weight FROM products WHERE product_id = :pid LIMIT 1");
+            $stmtW->execute([':pid' => $ret['product_id']]);
+            $wRow = $stmtW->fetch(PDO::FETCH_ASSOC);
+            if ($wRow && isset($wRow['remark_weight'])) {
+                $weight = (float)$wRow['remark_weight'];
+            }
+        }
+
+        // Get location
+        $row_code = '';
+        $bin = '';
+        $shelf = '';
+        if (!empty($ret['product_id'])) {
+            $stmtLoc = $pdo->prepare("
+                SELECT l.row_code, l.bin, l.shelf
+                FROM product_location pl
+                LEFT JOIN locations l ON pl.location_id = l.location_id
+                WHERE pl.product_id = :product_id LIMIT 1
+            ");
+            $stmtLoc->execute([':product_id' => $ret['product_id']]);
+            $locData = $stmtLoc->fetch(PDO::FETCH_ASSOC);
+            if ($locData) {
+                $row_code = $locData['row_code'] ?? '';
+                $bin      = $locData['bin'] ?? '';
+                $shelf    = $locData['shelf'] ?? '';
+            }
+        }
+
+        // ราคาที่ขายไปจริง (จาก issue_items ถ้าเป็นสินค้าตีกลับจากการขาย)
+        $actual_sale_price = null;
+        if ((int)($ret['return_from_sales'] ?? 0) === 1 && !empty($ret['item_id'])) {
+            $stmtIssue = $pdo->prepare("SELECT sale_price FROM issue_items WHERE issue_id = :issue_id LIMIT 1");
+            $stmtIssue->execute([':issue_id' => $ret['item_id']]);
+            $issueRow = $stmtIssue->fetch(PDO::FETCH_ASSOC);
+            if ($issueRow && !empty($issueRow['sale_price'])) {
+                $actual_sale_price = (float)$issueRow['sale_price'];
+            }
+        }
+        // ถ้าไม่ใช่ sales return ลองดึงจาก sale_price ล่าสุดของสินค้า
+        if ($actual_sale_price === null && $sale_price > 0) {
+            $actual_sale_price = $sale_price;
+        }
+
+        sendJsonResponse([
+            'status' => 'success',
+            'data' => array_merge($ret, [
+                'price_per_unit'    => round($price_per_unit, 4),
+                'price_original'    => $price_original,
+                'currency_code'     => $currency_code,
+                'exchange_rate'     => $exchange_rate,
+                'sale_price'        => $sale_price,
+                'actual_sale_price' => $actual_sale_price,
+                'remark_weight'     => $weight,
+                'row_code'          => $row_code,
+                'bin'               => $bin,
+                'shelf'             => $shelf,
+            ])
+        ]);
+    } catch (Exception $e) {
+        sendJsonResponse(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+}
+
 // ========== APPROVE RETURN ==========
 if ($action === 'approve_return') {
     try {
@@ -2003,18 +2140,33 @@ if ($action === 'approve_return') {
             }
         }
         
+        // === Override parameters from approve modal ===
+        $override_remark        = isset($data['remark'])              ? trim((string)$data['remark'])           : null;
+        $override_row_code      = isset($data['row_code'])            ? trim((string)$data['row_code'])          : null;
+        $override_bin           = isset($data['bin'])                 ? trim((string)$data['bin'])               : null;
+        $override_shelf         = isset($data['shelf'])               ? trim((string)$data['shelf'])             : null;
+        $override_receive_qty   = isset($data['receive_qty_override']) ? abs((float)$data['receive_qty_override']) : null;
+        $override_expiry_date   = isset($data['expiry_date_override']) && $data['expiry_date_override'] !== ''
+                                    ? $data['expiry_date_override'] : null;
+        $override_price_per_unit = isset($data['price_per_unit']) && $data['price_per_unit'] !== ''
+                                    ? (float)$data['price_per_unit'] : null;
+        $override_sale_price    = isset($data['sale_price']) && $data['sale_price'] !== ''
+                                    ? (float)$data['sale_price'] : null;
+
         // ถ้าเป็นสินค้าที่สามารถคืนสต็อกได้ ให้เพิ่มลงใน receive_items
         if ($return_item['is_returnable'] == 1 && !$isDamagedPartial) {
-            // แน่ใจว่า return_qty เป็นค่าบวก
-            $return_qty = abs((float)$return_item['return_qty']);
-            
+            // ใช้จำนวนจาก override ถ้ามี มิฉะนั้นใช้ return_qty
+            $return_qty = $override_receive_qty ?? abs((float)$return_item['return_qty']);
+
+            // ใช้วันหมดอายุจาก override ถ้ามี
+            $final_expiry = $override_expiry_date ?? $return_item['expiry_date'] ?? null;
+
             // หาข้อมูล PO จากสินค้าที่ตีกลับ
             $po_id = $return_item['po_id'];
             error_log("DEBUG: approve_return - return_id={$return_id}, po_id={$po_id}, product_id={$return_item['product_id']}, return_qty={$return_qty}");
             
             // ถ้าไม่มี po_id ให้ค้นหาจากสินค้า (สร้าง PO สำหรับการคืน หรือใช้ PO สุดท้าย)
             if (!$po_id) {
-                // ค้นหา PO ล่าสุดที่มีสินค้านี้
                 $stmt = $pdo->prepare("
                     SELECT MAX(po.po_id) as po_id 
                     FROM purchase_orders po
@@ -2029,34 +2181,62 @@ if ($action === 'approve_return') {
                 error_log("DEBUG: Found po_id from search: {$po_id}");
             }
             
-            // เพิ่มจำนวนลงใน receive_items
             if ($po_id) {
-                // ค้นหา receive item สำหรับ product นี้จาก PO นี้
-                // receive_items มี item_id (FK to purchase_order_items) ไม่ใช่ product_id
+                // หา item_id จาก purchase_order_items
                 $stmt = $pdo->prepare("
-                    SELECT ri.* FROM receive_items ri
-                    JOIN purchase_order_items poi ON ri.item_id = poi.item_id
-                    WHERE ri.po_id = :po_id AND poi.product_id = :product_id
+                    SELECT poi.item_id FROM purchase_order_items poi
+                    WHERE poi.po_id = :po_id AND poi.product_id = :product_id
                     LIMIT 1
                 ");
                 $stmt->execute([
                     ':po_id' => $po_id,
                     ':product_id' => $return_item['product_id']
                 ]);
-                $receive_item = $stmt->fetch();
-                error_log("DEBUG: receive_item found: " . ($receive_item ? 'YES' : 'NO'));
-                
-                if ($receive_item) {
-                    // Always record a new receive movement entry for returns
-                    $base_remark = $receive_item['remark'] ?? '';
-                    $clean_base = str_replace('ตีกลับ', '', $base_remark);
-                    $clean_base = trim($clean_base);
-                    $remark_lines = [];
-                    if (!empty($clean_base)) {
-                        $remark_lines[] = $clean_base;
+                $poi_row = $stmt->fetch();
+                $use_item_id = $poi_row['item_id'] ?? null;
+
+                // ถ้าไม่พบ item_id ให้ลองหาจาก receive_items
+                if (!$use_item_id) {
+                    $stmt = $pdo->prepare("
+                        SELECT ri.item_id FROM receive_items ri
+                        JOIN purchase_order_items poi ON ri.item_id = poi.item_id
+                        WHERE ri.po_id = :po_id AND poi.product_id = :product_id
+                        LIMIT 1
+                    ");
+                    $stmt->execute([
+                        ':po_id' => $po_id,
+                        ':product_id' => $return_item['product_id']
+                    ]);
+                    $ri_row = $stmt->fetch();
+                    $use_item_id = $ri_row['item_id'] ?? null;
+                }
+
+                // สร้าง remark
+                $auto_remark = "รับคืนจากสินค้าตีกลับ: {$return_item['return_code']}";
+                if ($override_remark !== null && $override_remark !== '') {
+                    $final_remark = $override_remark . "\n" . $auto_remark;
+                } else {
+                    $final_remark = $auto_remark;
+                }
+
+                if ($use_item_id) {
+                    // อัปเดตราคาใน purchase_order_items ถ้ามีการระบุ
+                    if ($override_price_per_unit !== null || $override_sale_price !== null) {
+                        $updateParts = [];
+                        $updateParams = [':item_id' => $use_item_id];
+                        if ($override_price_per_unit !== null) {
+                            $updateParts[] = 'price_per_unit = :price_per_unit';
+                            $updateParams[':price_per_unit'] = $override_price_per_unit;
+                        }
+                        if ($override_sale_price !== null && $override_sale_price > 0) {
+                            $updateParts[] = 'sale_price = :sale_price';
+                            $updateParams[':sale_price'] = $override_sale_price;
+                        }
+                        if ($updateParts) {
+                            $pdo->prepare("UPDATE purchase_order_items SET " . implode(', ', $updateParts) . " WHERE item_id = :item_id")
+                                ->execute($updateParams);
+                        }
                     }
-                    $remark_lines[] = "รับคืนจากสินค้าตีกลับ: {$return_item['return_code']}";
-                    $final_remark = implode("\n", $remark_lines);
 
                     $stmt = $pdo->prepare("
                         INSERT INTO receive_items (
@@ -2066,49 +2246,46 @@ if ($action === 'approve_return') {
                         )
                     ");
                     $stmt->execute([
-                        ':po_id' => $po_id,
-                        ':item_id' => $receive_item['item_id'],
+                        ':po_id'       => $po_id,
+                        ':item_id'     => $use_item_id,
                         ':receive_qty' => $return_qty,
-                        ':expiry_date' => $receive_item['expiry_date'] ?? null,
-                        ':remark' => $final_remark,
-                        ':created_by' => $user_id
+                        ':expiry_date' => $final_expiry,
+                        ':remark'      => $final_remark,
+                        ':created_by'  => $user_id
                     ]);
-                    error_log("DEBUG: INSERT receive_items (existing) - new ID: " . $pdo->lastInsertId());
-                } else {
-                    // ค้นหา item_id สำหรับ product นี้จาก PO นี้
-                    $stmt = $pdo->prepare("
-                        SELECT item_id FROM purchase_order_items 
-                        WHERE po_id = :po_id AND product_id = :product_id
-                        LIMIT 1
-                    ");
-                    $stmt->execute([
-                        ':po_id' => $po_id,
-                        ':product_id' => $return_item['product_id']
-                    ]);
-                    $poi_result = $stmt->fetch();
-                    error_log("DEBUG: poi_result found: " . ($poi_result ? 'YES (item_id=' . $poi_result['item_id'] . ')' : 'NO'));
-                    
-                    if ($poi_result) {
-                        // Create new receive_items record
-                        $stmt = $pdo->prepare("
-                            INSERT INTO receive_items (
-                                po_id, item_id, receive_qty, expiry_date, remark, created_by, created_at
-                            ) VALUES (
-                                :po_id, :item_id, :receive_qty, :expiry_date, :remark, :created_by, NOW()
-                            )
-                        ");
-                        $stmt->execute([
-                            ':po_id' => $po_id,
-                            ':item_id' => $poi_result['item_id'],
-                            ':receive_qty' => $return_qty,
-                            ':expiry_date' => $return_item['expiry_date'] ?? null,
-                            ':remark' => "รับคืนจากสินค้าตีกลับ: {$return_item['return_code']}",
-                            ':created_by' => $user_id
-                        ]);
-                        error_log("DEBUG: INSERT receive_items (new) - new ID: " . $pdo->lastInsertId());
-                    } else {
-                        error_log("ERROR: ไม่พบ item_id สำหรับ product_id={$return_item['product_id']} ใน po_id={$po_id}");
+                    error_log("DEBUG: INSERT receive_items - new ID: " . $pdo->lastInsertId());
+
+                    // อัปเดตตำแหน่งสินค้า (product_location) ถ้ามีการระบุ row/bin/shelf
+                    if ($override_row_code !== null && $override_row_code !== ''
+                        && $override_bin !== null && $override_bin !== ''
+                        && $override_shelf !== null && $override_shelf !== '') {
+                        $locDesc = "{$override_row_code}-{$override_bin}-{$override_shelf}";
+
+                        // หรือสร้าง location ใหม่
+                        $stmtFindLoc = $pdo->prepare("SELECT location_id FROM locations WHERE row_code=? AND bin=? AND shelf=? LIMIT 1");
+                        $stmtFindLoc->execute([$override_row_code, $override_bin, $override_shelf]);
+                        $location_id = (int)($stmtFindLoc->fetchColumn() ?: 0);
+
+                        if (!$location_id) {
+                            $pdo->prepare("INSERT INTO locations (row_code, bin, shelf, description) VALUES (?,?,?,?)")
+                                ->execute([$override_row_code, $override_bin, $override_shelf, $locDesc]);
+                            $location_id = (int)$pdo->lastInsertId();
+                        }
+
+                        if ($location_id && $return_item['product_id']) {
+                            $stmtExistLink = $pdo->prepare("SELECT id FROM product_location WHERE product_id=? LIMIT 1");
+                            $stmtExistLink->execute([$return_item['product_id']]);
+                            $existLinkId = (int)($stmtExistLink->fetchColumn() ?: 0);
+                            if ($existLinkId) {
+                                $pdo->prepare("UPDATE product_location SET location_id=? WHERE id=?")->execute([$location_id, $existLinkId]);
+                            } else {
+                                $pdo->prepare("INSERT INTO product_location (product_id, location_id) VALUES (?,?)")
+                                    ->execute([$return_item['product_id'], $location_id]);
+                            }
+                        }
                     }
+                } else {
+                    error_log("ERROR: ไม่พบ item_id สำหรับ product_id={$return_item['product_id']} ใน po_id={$po_id}");
                 }
             } else {
                 error_log("ERROR: ไม่พบ po_id สำหรับ return_id={$return_id}");
@@ -2153,16 +2330,17 @@ if ($action === 'reject_return') {
         $stmt = $pdo->prepare("
             UPDATE returned_items 
             SET return_status = 'rejected',
-                notes = CONCAT(COALESCE(notes, ''), '\n[REJECTED] ', :reason, ' - by ', :approved_by, ' at ', NOW()),
+                notes = CONCAT(COALESCE(notes, ''), '\n[REJECTED] ', :reason, ' - by ', :approved_by_note, ' at ', NOW()),
                 approved_by = :approved_by,
                 approved_at = NOW()
             WHERE return_id = :return_id
         ");
         
         $stmt->execute([
-            ':return_id' => $return_id,
-            ':reason' => $reason,
-            ':approved_by' => $user_id
+            ':return_id'        => $return_id,
+            ':reason'           => $reason,
+            ':approved_by_note' => $user_id,
+            ':approved_by'      => $user_id
         ]);
         
         echo json_encode([
@@ -2191,10 +2369,17 @@ if ($action === 'get_return') {
             SELECT 
                 ret.*,
                 u.name as created_by_name,
-                u2.name as approved_by_name
+                u2.name as approved_by_name,
+                so.sale_order_id,
+                so.issue_tag,
+                so.platform,
+                so.remark as sale_remark,
+                so.sale_date
             FROM returned_items ret
             LEFT JOIN users u ON ret.created_by = u.user_id
             LEFT JOIN users u2 ON ret.approved_by = u2.user_id
+            LEFT JOIN issue_items ii ON ret.item_id = ii.issue_id AND ret.return_from_sales = 1
+            LEFT JOIN sales_orders so ON ii.sale_order_id = so.sale_order_id
             WHERE ret.return_id = :return_id
         ");
         
