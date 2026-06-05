@@ -737,12 +737,12 @@ $stats = [
     <form id="productForm">
         <div class="form-group-custom">
             <label>ชื่อสินค้า *</label>
-            <input type="text" id="productName" name="name" required>
+            <input type="text" id="productName" name="name" required maxlength="255">
         </div>
 
         <div class="form-group-custom">
             <label>SKU *</label>
-            <input type="text" id="productSku" name="sku" required>
+            <input type="text" id="productSku" name="sku" required maxlength="255">
         </div>
 
         <div class="form-group-custom">
@@ -753,12 +753,12 @@ $stats = [
                     พิมพ์บาร์โค้ด
                 </button>
             </label>
-            <input type="text" id="productBarcode" name="barcode" required>
+            <input type="text" id="productBarcode" name="barcode" required maxlength="50">
         </div>
 
         <div class="form-group-custom">
             <label>หน่วยนับ *</label>
-            <input type="text" id="productUnit" name="unit" required>
+            <input type="text" id="productUnit" name="unit" required maxlength="100">
         </div>
 
         <div class="form-group-custom">

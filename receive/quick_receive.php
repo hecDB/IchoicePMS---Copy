@@ -904,7 +904,7 @@ $(document).ready(function() {
                                class="form-control" 
                                name="expiry_date" 
                                id="expiryDate"
-                               min="${new Date().toISOString().split('T')[0]}">
+                               min="${(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().split('T')[0]; })()}">
                         <small class="text-muted">
                             <span class="material-icons align-middle me-1" style="font-size: 0.8rem;">event</span>
                             วันที่หมดอายุของล็อตนี้
@@ -1076,7 +1076,7 @@ $(document).ready(function() {
                                class="form-control" 
                                name="expiry_date" 
                                id="expiryDate"
-                               min="${new Date().toISOString().split('T')[0]}">
+                               min="${(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().split('T')[0]; })()}">
                         <small class="text-muted">
                             <span class="material-icons align-middle me-1" style="font-size: 0.8rem;">event</span>
                             วันที่หมดอายุของล็อตนี้

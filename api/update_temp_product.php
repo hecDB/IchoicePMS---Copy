@@ -126,7 +126,7 @@ $provisional_sku = isset($_POST['provisional_sku']) ? trim($_POST['provisional_s
 $provisional_barcode = isset($_POST['provisional_barcode']) ? trim($_POST['provisional_barcode']) : '';
 $unit = isset($_POST['unit']) ? trim($_POST['unit']) : '';
 $product_category_id = isset($_POST['product_category_id']) ? trim($_POST['product_category_id']) : '';
-$expiry_date = isset($_POST['expiry_date']) ? $_POST['expiry_date'] : null;
+$expiry_date = (isset($_POST['expiry_date']) && trim($_POST['expiry_date']) !== '') ? trim($_POST['expiry_date']) : null;
 $sale_price_raw = isset($_POST['sale_price']) ? trim($_POST['sale_price']) : null;
 $sale_price = ($sale_price_raw !== null && $sale_price_raw !== '' && is_numeric($sale_price_raw)) ? (float)$sale_price_raw : null;
 $purchase_price_raw = isset($_POST['purchase_price']) ? trim($_POST['purchase_price']) : null;

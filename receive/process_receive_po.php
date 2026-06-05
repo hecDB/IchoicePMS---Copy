@@ -210,9 +210,10 @@ if ($input) {
                     if (!$expiry_date_obj) {
                         throw new Exception('รูปแบบวันที่หมดอายุไม่ถูกต้อง');
                     }
-                    // ตรวจสอบว่าวันที่หมดอายุไม่เป็นอดีต
-                    if ($expiry_date_obj < new DateTime('today')) {
-                        throw new Exception('วันที่หมดอายุไม่สามารถเป็นวันที่ผ่านมาแล้วได้');
+                    // อนุญาตให้ย้อนหลังได้สูงสุด 12 เดือน
+                    $min_allowed = (new DateTime('today'))->modify('-12 months');
+                    if ($expiry_date_obj < $min_allowed) {
+                        throw new Exception('วันที่หมดอายุย้อนหลังได้สูงสุด 12 เดือน');
                     }
                 } else {
                     $expiry_date = null;
@@ -475,8 +476,10 @@ try {
             if (!$expiry_date_obj) {
                 throw new Exception('รูปแบบวันที่หมดอายุไม่ถูกต้อง');
             }
-            if ($expiry_date_obj < new DateTime('today')) {
-                throw new Exception('วันที่หมดอายุไม่สามารถเป็นวันที่ผ่านมาแล้วได้');
+            // อนุญาตให้ย้อนหลังได้สูงสุด 12 เดือน
+            $min_allowed = (new DateTime('today'))->modify('-12 months');
+            if ($expiry_date_obj < $min_allowed) {
+                throw new Exception('วันที่หมดอายุย้อนหลังได้สูงสุด 12 เดือน');
             }
         } else {
             $expiry_date = null;
@@ -536,8 +539,9 @@ try {
             // ตรวจสอบวันที่หมดอายุ (ถ้ามี)
             if ($expiry_date && !empty($expiry_date)) {
                 $expiry_date_obj = DateTime::createFromFormat('Y-m-d', $expiry_date);
-                if (!$expiry_date_obj || $expiry_date_obj < new DateTime('today')) {
-                    continue; // Skip item with invalid expiry date
+                $min_allowed = (new DateTime('today'))->modify('-12 months');
+                if (!$expiry_date_obj || $expiry_date_obj < $min_allowed) {
+                    continue; // Skip item with invalid expiry date (ย้อนหลังเกิน 12 เดือน)
                 }
             } else {
                 $expiry_date = null;

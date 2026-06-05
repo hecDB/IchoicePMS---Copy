@@ -11,6 +11,8 @@ require '../config/db_connect.php';
 
 try {
     $po_id = $_GET['po_id'] ?? null;
+    $type = $_GET['type'] ?? 'unsellable'; // 'unsellable' = is_returnable=0, 'sellable' = is_returnable=1
+    $is_returnable_val = ($type === 'sellable') ? 1 : 0;
     
     if (!$po_id) {
         echo json_encode([
@@ -28,13 +30,13 @@ try {
     $sql = "
         SELECT ri.*
         FROM returned_items ri
-        WHERE (ri.is_returnable = 0 OR ri.is_returnable = '0') 
+        WHERE ri.is_returnable = :is_returnable
         AND ri.po_id = :po_id
         ORDER BY ri.created_at DESC
     ";
     
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([':po_id' => (int)$po_id]);
+    $stmt->execute([':is_returnable' => $is_returnable_val, ':po_id' => (int)$po_id]);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Debug: Log result count

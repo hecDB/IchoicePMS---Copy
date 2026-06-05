@@ -675,10 +675,11 @@ async function submitInspection(event) {
             successMessage = `✓ บันทึกสำเร็จ\n\nสินค้าจัดประเมินว่า:\n• ทิ้ง/ใช้ไม่ได้\n• เก็บไว้เป็นข้อมูลเฉยๆในระบบ`;
         }
         
-        Swal.fire({ 
+        await Swal.fire({ 
             icon: 'success', 
             title: 'ตรวจสอบสินค้าแล้ว', 
             text: successMessage,
+            confirmButtonText: 'ตกลง',
             didOpen: (modal) => {
                 modal.querySelector('.swal2-html-container').style.whiteSpace = 'pre-line';
             }

@@ -1473,6 +1473,17 @@ $(document).ready(function() {
             });
             return;
         }
+
+        // Validate expiry date
+        if (!expiryDate || expiryDate.trim() === '') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'กรุณากรอกวันหมดอายุ',
+                text: 'กรุณาระบุวันที่หมดอายุก่อนบันทึกข้อมูล',
+                confirmButtonText: 'ตกลง'
+            });
+            return;
+        }
         
         // Show loading state
         Swal.fire({

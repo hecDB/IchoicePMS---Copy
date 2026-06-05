@@ -356,7 +356,17 @@ try {
                         <?php foreach ($products as $product): ?>
                         <tr data-id="<?= $product['id'] ?>">
                             <td>
-                                <img src="../images/<?= htmlspecialchars($product['image'] ?? 'noimg.png') ?>" 
+                                <?php
+                                $img_src = '../images/noimg.png';
+                                if (!empty($product['image'])) {
+                                    if (strpos($product['image'], 'images/') === 0) {
+                                        $img_src = '../' . $product['image'];
+                                    } else {
+                                        $img_src = '../images/' . $product['image'];
+                                    }
+                                }
+                                ?>
+                                <img src="<?= htmlspecialchars($img_src) ?>" 
                                      alt="<?= htmlspecialchars($product['product_name']) ?>" 
                                      class="product-image" 
                                      onerror="this.src='../images/noimg.png'">

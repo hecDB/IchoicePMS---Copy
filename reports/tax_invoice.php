@@ -80,7 +80,7 @@ $today = date('Y-m-d');
         .toast.success { background: linear-gradient(135deg, #16a34a, #0f9f57); }
         .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
         @media print {
-            @page { size: A5 portrait; margin: 0; }
+            @page { size: A4 portrait; margin: 10mm 8mm; }
             body { background: #fff; margin: 0; padding: 0; }
             .mainwrap, .card, .controls { display: none !important; }
             .page-title { display: none !important; }
@@ -95,17 +95,21 @@ $today = date('Y-m-d');
                 display: block !important; 
                 position: static !important;
                 width: 100% !important;
+                max-width: 100% !important;
                 visibility: visible !important;
+                overflow: hidden !important;
             }
             .invoice-sheet { 
                 border: none !important; 
-                padding: 12px !important; 
+                padding: 10px !important; 
                 margin: 0 !important;
                 page-break-after: always !important;
                 page-break-inside: avoid !important;
                 min-height: auto !important;
                 width: 100% !important;
+                max-width: 100% !important;
                 box-sizing: border-box !important;
+                overflow: hidden !important;
             }
             .invoice-sheet:last-child { 
                 page-break-after: auto !important; 
@@ -126,17 +130,17 @@ $today = date('Y-m-d');
             .invoice-block > div { gap: 8px !important; }
             .invoice-block > div > div { padding: 8px !important; }
             .invoice-block > div > div > div { font-size: 8px !important; line-height: 1.6 !important; }
-            .inv-table { margin-top: 8px !important; font-size: 7px !important; }
-            .inv-table, .inv-table th, .inv-table td { border: 1px solid #000 !important; padding: 3px !important; font-size: 7px !important; }
+            .inv-table { margin-top: 8px !important; font-size: 8px !important; width: 100% !important; table-layout: fixed !important; word-wrap: break-word !important; }
+            .inv-table, .inv-table th, .inv-table td { border: 1px solid #000 !important; padding: 3px !important; font-size: 8px !important; overflow-wrap: break-word !important; }
             .inv-table thead th { background: #f3f4f6 !important; font-weight: 600 !important; }
-            .summary-box { margin-top: 8px !important; gap: 8px !important; grid-template-columns: 1fr 150px !important; }
+            .summary-box { margin-top: 8px !important; gap: 8px !important; grid-template-columns: 1fr 145px !important; }
             .summary-box > div { min-height: 90px !important; }
             .summary-box > div > div:nth-child(2) { font-size: 8px !important; padding: 6px 8px !important; }
-            .totals { border: 1px solid #000; }
+            .totals { border: 1px solid #000; width: 100% !important; }
             .totals td { padding: 3px 5px !important; font-size: 8px !important; line-height: 1.3 !important; }
             .totals tr:last-child td { font-size: 9px !important; }
             .footer-note { margin-top: 10px !important; font-size: 8px !important; }
-            .footer-note table { font-size: 8px !important; }
+            .footer-note table { font-size: 8px !important; width: 100% !important; }
             .footer-note table td { padding: 6px !important; font-size: 8px !important; }
             .footer-note table td div { font-size: 8px !important; line-height: 1.5 !important; }
             .footer-note table td div:not(:first-child) { margin-top: 10px !important; }

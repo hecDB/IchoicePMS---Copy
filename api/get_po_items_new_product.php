@@ -30,14 +30,16 @@ try {
             poi.total as total_price,
             c.code as currency_code,
             COALESCE(received_summary.total_received, 0) as received_qty,
-            COALESCE(dmg.damaged_qty, 0) as damaged_qty,
-            COALESCE(pending_inspection.pending_qty, 0) as pending_inspection_qty,
+            COALESCE(dmg.damaged_unsellable_qty, 0) + COALESCE(dmg.damaged_sellable_qty, 0) as damaged_qty,
+            COALESCE(dmg.damaged_unsellable_qty, 0) as damaged_unsellable_qty,
+            COALESCE(dmg.damaged_sellable_qty, 0) as damaged_sellable_qty,
+            0 as pending_inspection_qty,
             GREATEST(
                 poi.qty 
                 - COALESCE(received_summary.total_received, 0) 
                 - COALESCE(poi.cancel_qty, 0)
-                - COALESCE(dmg.damaged_qty, 0)
-                - COALESCE(pending_inspection.pending_qty, 0), 
+                - COALESCE(dmg.damaged_unsellable_qty, 0)
+                - COALESCE(dmg.damaged_sellable_qty, 0), 
                 0
             ) as remaining_qty,
             COALESCE(received_summary.expiry_date, NULL) as expiry_date,
@@ -56,20 +58,15 @@ try {
             GROUP BY item_id
         ) received_summary ON poi.item_id = received_summary.item_id
         LEFT JOIN (
-            SELECT item_id, SUM(return_qty) AS damaged_qty
-            FROM returned_items
-            WHERE reason_name = 'สินค้าชำรุดบางส่วน' 
-                AND return_status IN ('approved', 'completed')
-                AND is_returnable = 0
-            GROUP BY item_id
-        ) dmg ON poi.item_id = dmg.item_id
-        LEFT JOIN (
-            SELECT item_id, SUM(return_qty) AS pending_qty
-            FROM returned_items
-            WHERE reason_name = 'สินค้าชำรุดบางส่วน' 
-                AND return_status = 'pending'
-            GROUP BY item_id
-        ) pending_inspection ON poi.item_id = pending_inspection.item_id
+            SELECT ri_poi.temp_product_id, ri.po_id,
+                SUM(CASE WHEN (ri.is_returnable = 0 OR ri.is_returnable = '0') THEN ri.return_qty ELSE 0 END) AS damaged_unsellable_qty,
+                SUM(CASE WHEN (ri.is_returnable = 1 OR ri.is_returnable = '1') THEN ri.return_qty ELSE 0 END) AS damaged_sellable_qty
+            FROM returned_items ri
+            JOIN purchase_order_items ri_poi ON ri.item_id = ri_poi.item_id
+                AND ri_poi.temp_product_id IS NOT NULL
+            WHERE ri.reason_name = 'สินค้าชำรุดบางส่วน'
+            GROUP BY ri_poi.temp_product_id, ri.po_id
+        ) dmg ON poi.temp_product_id = dmg.temp_product_id AND poi.po_id = dmg.po_id
         LEFT JOIN purchase_orders po ON poi.po_id = po.po_id
         LEFT JOIN currencies c ON po.currency_id = c.currency_id
         WHERE poi.po_id = :po_id AND poi.temp_product_id IS NOT NULL
@@ -100,6 +97,8 @@ try {
             'currency_code' => $item['currency_code'] ?? 'THB',
             'received_qty' => (float)$item['received_qty'],
             'damaged_qty' => isset($item['damaged_qty']) ? (float)$item['damaged_qty'] : 0.0,
+            'damaged_unsellable_qty' => isset($item['damaged_unsellable_qty']) ? (float)$item['damaged_unsellable_qty'] : 0.0,
+            'damaged_sellable_qty' => isset($item['damaged_sellable_qty']) ? (float)$item['damaged_sellable_qty'] : 0.0,
             'pending_inspection_qty' => isset($item['pending_inspection_qty']) ? (float)$item['pending_inspection_qty'] : 0.0,
             'remaining_qty' => (float)$item['remaining_qty'],
             'expiry_date' => $item['expiry_date'] ?? null,

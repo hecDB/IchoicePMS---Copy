@@ -3,6 +3,20 @@ session_start();
 header('Content-Type: application/json; charset=utf-8');
 require '../config/db_connect.php';
 
+// Auto-migrate products column lengths if too short
+try {
+    $col_info = $pdo->query("SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products' AND COLUMN_NAME = 'name'")->fetchColumn();
+    if ($col_info && preg_match('/varchar\((\d+)\)/i', $col_info, $m) && (int)$m[1] < 255) {
+        $pdo->exec("ALTER TABLE products MODIFY COLUMN name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL");
+    }
+    $unit_info = $pdo->query("SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products' AND COLUMN_NAME = 'unit'")->fetchColumn();
+    if ($unit_info && preg_match('/varchar\((\d+)\)/i', $unit_info, $m) && (int)$m[1] < 100) {
+        $pdo->exec("ALTER TABLE products MODIFY COLUMN unit VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL");
+    }
+} catch (Exception $e) {
+    // Silently ignore — column may already be correct
+}
+
 $action = $_POST['action'] ?? '';
 
 // Log for debugging
@@ -171,6 +185,9 @@ try {
             if (!$name || !$sku || !$barcode || !$unit) {
                 throw new Exception('กรุณากรอกข้อมูลที่จำเป็น: name=' . ($name ? 'ok' : 'no') . ', sku=' . ($sku ? 'ok' : 'no') . ', barcode=' . ($barcode ? 'ok' : 'no') . ', unit=' . ($unit ? 'ok' : 'no'));
             }
+            if (mb_strlen($name, 'UTF-8') > 255) {
+                throw new Exception('ชื่อสินค้ายาวเกิน 255 ตัวอักษร กรุณาย่อชื่อสินค้า');
+            }
             
             // Handle image upload and compression
             if (isset($_FILES['image'])) {
@@ -253,6 +270,9 @@ try {
             
             if (!$name || !$sku || !$barcode || !$unit || !$product_id) {
                 throw new Exception('กรุณากรอกข้อมูลที่จำเป็น');
+            }
+            if (mb_strlen($name, 'UTF-8') > 255) {
+                throw new Exception('ชื่อสินค้ายาวเกิน 255 ตัวอักษร กรุณาย่อชื่อสินค้า');
             }
             
             // Get current product data (for unchanged keys and existing image)

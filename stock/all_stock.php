@@ -169,6 +169,12 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC) ?: ['total_products' => 0, 'high_s
                 </h1>
                 <p class="text-muted mb-0">ภาพรวมสินค้าคงคลังทั้งหมดในระบบ</p>
             </div>
+            <div>
+                <a href="stock_import_export.php" class="btn-modern btn-modern-primary btn-sm">
+                    <span class="material-icons" style="font-size: 1.1rem;">sync_alt</span>
+                    Import / Export สต็อก
+                </a>
+            </div>
         </div>
 
 

@@ -1242,7 +1242,7 @@ if ($action === 'create_return') {
             ':return_qty' => $return_qty,
             ':reason_id' => $reason_id,
             ':reason_name' => $reason['reason_name'],
-            ':is_returnable' => $reason['is_returnable'],
+            ':is_returnable' => array_key_exists('is_returnable', $data) ? (int)$data['is_returnable'] : (int)$reason['is_returnable'],
             ':return_from_sales' => $return_from_sales,
             ':notes' => $notes,
             ':defect_notes' => ($reason_id == 8) ? $notes : null, // For damaged items, copy notes to defect_notes

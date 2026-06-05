@@ -879,6 +879,10 @@ unset($sortedIndices, $runningTotals);
                             </div>
                         </div>
                         <span id="status-filter-label" class="status-filter-pill me-3">แสดง: ทั้งหมด</span>
+                        <button class="btn-modern btn-modern-success btn-sm me-2" id="export-stock-csv" title="ดาวน์โหลดรายงานสต็อกเข้า CSV">
+                            <span class="material-icons" style="font-size: 1rem;">file_download</span>
+                            Export CSV
+                        </button>
                         <button class="btn-modern btn-modern-secondary btn-sm refresh-table" onclick="refreshTableData()">
                             <span class="material-icons">refresh</span>
                             รีเฟรช
@@ -1880,6 +1884,40 @@ $(document).ready(function() {
             location.reload();
         }, 300);
     }
+
+    // Export stock-in report to CSV
+    $('#export-stock-csv').on('click', function() {
+        const headers = [];
+        $('#receive-table thead th').each(function() {
+            const text = $(this).text().trim();
+            if (text && text !== 'จัดการ') headers.push('"' + text.replace(/"/g, '""') + '"');
+        });
+        let csvContent = headers.join(',') + '\n';
+
+        receiveTable.rows({ search: 'applied' }).every(function() {
+            const rowNode = $(this.node());
+            const row = [];
+            rowNode.find('td').each(function(i, td) {
+                const isLast = i === rowNode.find('td').length - 1;
+                if (isLast) return; // skip action column
+                const text = $(td).text().trim().replace(/\s+/g, ' ');
+                row.push('"' + text.replace(/"/g, '""') + '"');
+            });
+            if (row.length > 0) csvContent += row.join(',') + '\n';
+        });
+
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        link.setAttribute('download', 'stock_in_report_' + dateStr + '.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    });
 
     // ฟังก์ชันโหลดรายการ PO
     function loadPOList(receiveId) {
