@@ -485,10 +485,7 @@ $stats = [
                 </h1>
                 <p class="text-muted mb-0">เพิ่ม แก้ไข ลบ และจัดการสถานะสินค้า</p>
             </div>
-            <button class="btn-modern btn-modern-success" id="addProductBtn">
-                <span class="material-icons" style="font-size: 1.25rem;">add_circle</span>
-                เพิ่มสินค้าใหม่
-            </button>
+
         </div>
 
         <!-- Stats Cards -->
@@ -584,10 +581,6 @@ $stats = [
                 </div>
             </div>
             <div class="table-body">
-                <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="ค้นหาสินค้า (ชื่อ, SKU, Barcode)...">
-                </div>
-
                 <table id="product-table" class="table modern-table table-striped table-hover">
                     <thead>
                         <tr>
@@ -1131,28 +1124,7 @@ function printBarcodes(event) {
 
 // ==================== End Barcode Functions ====================
 
-// เพิ่มสินค้า
-document.getElementById('addProductBtn').addEventListener('click', function() {
-    currentProductId = null;
-    document.getElementById('productForm').reset();
-    
-    // Reset location fields
-    document.getElementById('locationSearch').value = '';
-    document.getElementById('locationSuggestions').style.display = 'none';
-    document.getElementById('productRowCode').value = '';
-    document.getElementById('productBin').value = '';
-    document.getElementById('productShelf').value = '';
-    document.getElementById('productLocation').value = '';
-    
-    // Reset image preview
-    const imagePreview = document.getElementById('imagePreview');
-    const productImage = document.getElementById('productImage');
-    imagePreview.src = '';
-    imagePreview.style.display = 'none';
-    productImage.value = '';
-    
-    openModal('เพิ่มสินค้าใหมแ', false);
-});
+
 
 // แก้ไขสินค้า
 function editProduct(productId) {
@@ -1356,26 +1328,6 @@ function toggleStatus(productId, currentStatus) {
         }
     });
 }
-
-// ค้นหา
-document.getElementById('searchInput').addEventListener('keyup', function() {
-    const searchText = this.value.toLowerCase();
-    const rows = document.querySelectorAll('tbody tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchText) ? '' : 'none';
-    });
-
-    // ยกเลิกเช็กที่ไม่แสดงผลหลังกรองค้นหา
-    document.querySelectorAll('.product-checkbox').forEach(cb => {
-        const row = cb.closest('tr');
-        if (row && row.style.display === 'none') {
-            cb.checked = false;
-        }
-    });
-    updateSelectionCount();
-});
 
 // Initialize DataTable
 $(document).ready(function() {
