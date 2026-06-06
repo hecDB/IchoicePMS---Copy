@@ -702,9 +702,9 @@ function updatePOStatus($pdo, $po_id) {
             $total_cancelled += $cancel_qty;
             $total_pending_inspection += $pending_inspection_qty;
             
-            // Calculate total processed: received + damaged (both types) + cancelled
-            // NOTE: pending_inspection is NOT counted as processed yet
-            $total_processed = $received_qty + $damaged_unsellable_qty + $damaged_sellable_qty + $cancel_qty;
+            // Calculate total processed: received + damaged (all statuses) + cancelled
+            // pending_inspection items ARE counted as processed (quantity is accounted for)
+            $total_processed = $received_qty + $damaged_unsellable_qty + $damaged_sellable_qty + $cancel_qty + $pending_inspection_qty;
             
             // Check if item is fully processed (allow small floating point rounding error)
             if ($total_processed >= $ordered_qty - 0.0001) {
@@ -719,8 +719,8 @@ function updatePOStatus($pdo, $po_id) {
         $new_status = 'pending'; // Default
         $remarks = '';
         
-        // If all items have been fully processed AND no pending inspections
-        if ($fully_processed_items >= $total_items && $total_pending_inspection == 0) {
+        // If all items have been fully processed (received + cancelled + damaged including pending inspection)
+        if ($fully_processed_items >= $total_items) {
             $new_status = 'completed';
             
             // Build summary remarks

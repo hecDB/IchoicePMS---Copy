@@ -2069,16 +2069,21 @@ function displayPoItems(items, mode) {
     } else {
         let rowIndex = 0;
         items.forEach(function(item) {
-            // ซ่อน items ที่มี order_qty = 0 (เป็น item ชำรุดขายได้ที่เพิ่มหลังตรวจสอบ — แสดงในส่วนด้านล่างแทน)
-            if (parseFloat(item.order_qty) === 0) return;
+            const itemOrderQty = parseFloat(item.order_qty);
+            const itemReceivedQty = parseFloat(item.received_qty || 0);
+            // ซ่อนเฉพาะ items ที่มี order_qty = 0 และ received_qty = 0 (ไม่มีข้อมูลแสดง)
+            // items ที่มี order_qty = 0 แต่ received_qty > 0 คือสินค้าชำรุดขายได้ที่ผ่านการอนุมัติ → ต้องแสดง
+            if (itemOrderQty === 0 && itemReceivedQty === 0) return;
             rowIndex++;
             const index = rowIndex - 1;
+            // ตรวจสอบว่าเป็นรายการชำรุดขายได้ที่อนุมัติแล้ว (order_qty=0 แต่ received_qty>0)
+            const isDamagedSellableApproved = (itemOrderQty === 0 && itemReceivedQty > 0);
             const remainingQty = parseFloat(item.remaining_qty);
             const cancelledQty = parseFloat(item.cancel_qty || 0);
             const damagedQty = parseFloat(item.damaged_qty || 0);
             const damagedSellableQty = parseFloat(item.damaged_sellable_qty || 0);
             const damagedUnsellableQty = parseFloat(item.damaged_unsellable_qty || 0);
-            const canReceive = remainingQty > 0;
+            const canReceive = !isDamagedSellableApproved && remainingQty > 0;
             // อนุญาตปุ่มชำรุดสำหรับ: (1) สินค้าปกติที่มี product_id หรือ (2) สินค้าใหม่ในชื่อสั่งซื้อ
             const isNewProductPO = currentPoData.remark && currentPoData.remark.toLowerCase().includes('new product');
             const allowDamaged = !!item.product_id || isNewProductPO;
@@ -2097,9 +2102,17 @@ function displayPoItems(items, mode) {
                 cancelTooltipLines.push(`ยกเลิกเมื่อ: ${cancelDateDisplay}`);
             }
             const cancelTooltip = cancelTooltipLines.join('\n');
+
+            // กำหนด row style ตามประเภทรายการ
+            let rowStyle = '';
+            if (isDamagedSellableApproved) {
+                rowStyle = 'style="background-color: #f0fdf4;"';
+            } else if (isCancelled) {
+                rowStyle = 'style="background-color: #fee2e2; opacity: 0.8;"';
+            }
             
             html += `
-                <tr ${isCancelled ? 'style="background-color: #fee2e2; opacity: 0.8;"' : ''}>
+                <tr ${rowStyle}>
                     <td>${rowIndex}</td>
                     <td class="text-center">
                         <img src="${imageSrc}" alt="${productName}" class="po-item-image" onerror="this.onerror=null;this.src='../images/noimg.png';">
@@ -2107,12 +2120,13 @@ function displayPoItems(items, mode) {
                     <td>
                         <div class="fw-bold">${productName}</div>
                         ${item.barcode ? `<small class="text-muted">Barcode: ${escapeHtml(item.barcode)}</small>` : ''}
+                        ${isDamagedSellableApproved ? `<div><span class="badge bg-success" style="font-size:0.7rem;">ชำรุดขายได้ (อนุมัติแล้ว)</span></div>` : ''}
                     </td>
                     <td><span class="badge bg-secondary">${escapeHtml(item.sku)}</span></td>
                     <td>${escapeHtml(item.unit)}</td>
-                    <td class="fw-bold text-info">${parseFloat(item.order_qty).toLocaleString()}</td>
+                    <td class="fw-bold text-info">${isDamagedSellableApproved ? `<span class="text-muted">-</span>` : itemOrderQty.toLocaleString()}</td>
                     <td>${parseFloat(item.price_original > 0 ? item.price_original : item.unit_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ${escapeHtml(item.currency_code || '')}</td>
-                    <td class="fw-bold text-success">${parseFloat(item.received_qty || 0).toLocaleString()}</td>
+                    <td class="fw-bold text-success">${itemReceivedQty.toLocaleString()}</td>
                     <td class="fw-bold ${cancelledQty > 0 ? 'text-danger' : 'text-muted'}">
                         ${cancelledQty > 0 ? `<span title="${cancelTooltip}">${cancelledQty.toLocaleString()}</span>` : '-'}
                     </td>
@@ -2124,20 +2138,25 @@ function displayPoItems(items, mode) {
                     </td>
                     <td class="fw-bold ${canReceive ? 'text-warning' : 'text-muted'}">${remainingQty.toLocaleString()}</td>
                     <td>
-                        <div class="d-flex align-items-center gap-1 flex-wrap">
-                            <span class="expiry-display" data-item-id="${item.item_id}">
-                                <span class="text-muted">-</span>
-                            </span>
-                            <input type="date" 
-                               class="form-control expiry-date-input" 
-                               data-item-id="${item.item_id}"
-                               value=""
-                               style="width: 120px; height: 32px; font-size: 0.75rem;">
-                        </div>
+                        ${isDamagedSellableApproved
+                            ? `<span class="text-muted">${item.expiry_date ? `<span class="badge bg-info">${formatThaiDate(item.expiry_date)}</span>` : '-'}</span>`
+                            : `<div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="expiry-display" data-item-id="${item.item_id}">
+                                    <span class="text-muted">-</span>
+                                </span>
+                                <input type="date" 
+                                   class="form-control expiry-date-input" 
+                                   data-item-id="${item.item_id}"
+                                   value=""
+                                   style="width: 120px; height: 32px; font-size: 0.75rem;">
+                               </div>`
+                        }
                     </td>
                     <td>`;
             
-            if (mode === 'receive' && canReceive) {
+            if (isDamagedSellableApproved) {
+                html += `<span class="badge bg-success">รับแล้ว (ชำรุดขายได้)</span>`;
+            } else if (mode === 'receive' && canReceive) {
                 html += `
                     <div class="input-group input-group-sm">
                         <input type="number" 

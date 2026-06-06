@@ -58,14 +58,13 @@ try {
             GROUP BY item_id
         ) received_summary ON poi.item_id = received_summary.item_id
         LEFT JOIN (
-            SELECT ri_poi.temp_product_id, ri.po_id,
+            SELECT ri_poi.temp_product_id, ri_poi.po_id,
                 SUM(CASE WHEN (ri.is_returnable = 0 OR ri.is_returnable = '0') THEN ri.return_qty ELSE 0 END) AS damaged_unsellable_qty,
                 SUM(CASE WHEN (ri.is_returnable = 1 OR ri.is_returnable = '1') THEN ri.return_qty ELSE 0 END) AS damaged_sellable_qty
             FROM returned_items ri
             JOIN purchase_order_items ri_poi ON ri.item_id = ri_poi.item_id
                 AND ri_poi.temp_product_id IS NOT NULL
-            WHERE ri.reason_name = 'สินค้าชำรุดบางส่วน'
-            GROUP BY ri_poi.temp_product_id, ri.po_id
+            GROUP BY ri_poi.temp_product_id, ri_poi.po_id
         ) dmg ON poi.temp_product_id = dmg.temp_product_id AND poi.po_id = dmg.po_id
         LEFT JOIN purchase_orders po ON poi.po_id = po.po_id
         LEFT JOIN currencies c ON po.currency_id = c.currency_id

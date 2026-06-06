@@ -188,6 +188,7 @@ try {
     // ตรวจสอบ source_type เพื่อจัดการ purchase_order_items
     $source_type = $temp_product['source_type'] ?? 'NewProduct';
     error_log("source_type: " . $source_type);
+    $new_item_id = null; // สำหรับ source_type=Damaged: เก็บ item_id ใหม่ที่ INSERT ไว้
     
     if ($source_type === 'NewProduct') {
         // กรณี 1: สินค้าใหม่รับเข้าปกติ - UPDATE purchase_order_items ที่มีอยู่แล้ว
@@ -239,18 +240,8 @@ try {
             
             $new_item_id = $pdo->lastInsertId();
             error_log("Inserted new purchase_order_items for Damaged product, item_id: " . $new_item_id . ", product_id: " . $new_product_id);
-            
-            // อัปเดต returned_items ให้ชี้ไป item_id ใหม่
-            $sql_update_returned = "UPDATE returned_items 
-                                    SET item_id = :new_item_id
-                                    WHERE temp_product_id = :temp_product_id";
-            $stmt_update_returned = $pdo->prepare($sql_update_returned);
-            $stmt_update_returned->execute([
-                ':new_item_id' => $new_item_id,
-                ':temp_product_id' => $temp_product_id
-            ]);
-            
-            error_log("Updated returned_items to point to new item_id: " . $new_item_id);
+            // หมายเหตุ: ไม่อัปเดต returned_items.item_id เพื่อให้ returned_items ยังชี้ไป item_id เดิม (X)
+            // ทำให้ subquery คำนวณ damaged_qty สำหรับ item เดิมได้ถูกต้อง
             
         } else {
             error_log("Warning: No PO found for Damaged product, temp_product_id: " . $temp_product_id);
@@ -272,6 +263,11 @@ try {
 
     if ($damagedRow && !empty($damagedRow['item_id'])) {
         $itemId = (int)$damagedRow['item_id'];
+        // สำหรับ source_type = 'Damaged': ใช้ $new_item_id (Y) สำหรับ receive_items
+        // เพื่อให้ receive_items ชี้ไปที่ item ที่สร้างใหม่ ไม่ใช่ item เดิม
+        if ($source_type === 'Damaged' && !empty($new_item_id)) {
+            $itemId = (int)$new_item_id;
+        }
         $poId = !empty($damagedRow['po_id']) ? (int)$damagedRow['po_id'] : null;
         $receiveQty = isset($damagedRow['return_qty']) ? (float)$damagedRow['return_qty'] : 0.0;
 

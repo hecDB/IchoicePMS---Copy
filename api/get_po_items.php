@@ -66,8 +66,7 @@ try {
                 SUM(CASE WHEN (is_returnable = 0 OR is_returnable = '0') THEN return_qty ELSE 0 END) AS damaged_unsellable_qty,
                 SUM(CASE WHEN (is_returnable = 1 OR is_returnable = '1') THEN return_qty ELSE 0 END) AS damaged_sellable_qty
             FROM returned_items
-            WHERE reason_name = 'สินค้าชำรุดบางส่วน'
-                AND product_id IS NOT NULL
+            WHERE product_id IS NOT NULL
             GROUP BY po_id, product_id
         ) dmg ON poi.po_id = dmg.po_id AND poi.product_id = dmg.product_id
         WHERE poi.po_id = :po_id AND poi.temp_product_id IS NULL

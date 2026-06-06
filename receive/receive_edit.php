@@ -465,7 +465,8 @@ function updatePOStatus($pdo, $po_id) {
         $total_cancelled          += $cancel_qty;
         $total_pending_inspection += $pending_inspection_qty;
 
-        $total_processed = $received_qty + $damaged_unsellable_qty + $damaged_sellable_qty + $cancel_qty;
+        // Include pending_inspection_qty: quantity is accounted for even if not yet approved
+        $total_processed = $received_qty + $damaged_unsellable_qty + $damaged_sellable_qty + $cancel_qty + $pending_inspection_qty;
 
         if ($total_processed >= $ordered_qty - 0.0001) {
             $fully_processed_items++;
@@ -477,7 +478,8 @@ function updatePOStatus($pdo, $po_id) {
     $new_status = 'pending';
     $remarks = '';
 
-    if ($fully_processed_items >= $total_items && $total_pending_inspection == 0) {
+    // All quantities accounted for (received + cancelled + damaged including pending inspection)
+    if ($fully_processed_items >= $total_items) {
         $new_status = 'completed';
         $remark_parts = [];
         if ($total_received > 0)           { $remark_parts[] = 'รับดี: '             . round($total_received, 2); }
