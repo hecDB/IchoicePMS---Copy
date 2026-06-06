@@ -24,6 +24,9 @@ if(isset($_POST['submit'])) {
         $message = "❌ ข้อผิดพลาด: ZipArchive extension ไม่ถูกติดตั้ง ระบบไม่สามารถอ่านไฟล์ Excel ได้";
     } else if(isset($_FILES['excel_file']) && $_FILES['excel_file']['error'] == 0) {
 
+        // 'add' = อัพเดทรายการเพิ่ม, 'replace' = แทนที่รายการตาม 4 key fields
+        $import_mode = in_array($_POST['import_mode'] ?? '', ['add', 'replace']) ? $_POST['import_mode'] : 'add';
+
         $pdo->beginTransaction();
         try {
             // ตรวจสอบว่าตาราง purchase_order_items มีคอลัมน์ currency และ original_price หรือไม่
@@ -138,8 +141,31 @@ if(isset($_POST['submit'])) {
 
                     if ($product) {
                         $product_id = $product['product_id'];
-                        $pdo->prepare("UPDATE products SET is_active = 1 WHERE product_id = ?")
-                            ->execute([$product_id]);
+                        if ($import_mode === 'replace') {
+                            // อัพเดทข้อมูลสินค้าที่ไม่ใช่ key fields ด้วยข้อมูลใหม่จาก Excel
+                            $image_path_update = empty($image) ? null : 'images/'.$image;
+                            $pdo->prepare(
+                                "UPDATE products SET name=?, unit=?, image=?, product_category_id=?, is_active=1 WHERE product_id=?"
+                            )->execute([$name, $unit, $image_path_update, $product_category_id, $product_id]);
+
+                            // ลบ receive_items และ purchase_order_items เก่าของสินค้านี้ที่ import มาจาก IMEXCAL
+                            $old_stmt = $pdo->prepare(
+                                "SELECT poi.item_id FROM purchase_order_items poi
+                                 JOIN purchase_orders po ON poi.po_id = po.po_id
+                                 WHERE poi.product_id = ? AND po.po_number LIKE 'IMEXCAL%'"
+                            );
+                            $old_stmt->execute([$product_id]);
+                            $old_item_ids = $old_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                            if (!empty($old_item_ids)) {
+                                $ph = implode(',', array_fill(0, count($old_item_ids), '?'));
+                                $pdo->prepare("DELETE FROM receive_items WHERE item_id IN ($ph)")->execute($old_item_ids);
+                                $pdo->prepare("DELETE FROM purchase_order_items WHERE item_id IN ($ph)")->execute($old_item_ids);
+                            }
+                        } else {
+                            $pdo->prepare("UPDATE products SET is_active = 1 WHERE product_id = ?")
+                                ->execute([$product_id]);
+                        }
                     } else {
                         try {
                             $stmt = $pdo->prepare("INSERT INTO products (name, sku, barcode, unit, image, remark_color, remark_split, product_category_id, is_active, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW())");
@@ -269,6 +295,17 @@ if(isset($_POST['submit'])) {
                 $items_imported++;  // นับแถวที่บันทึกสำเร็จ
             }
 
+            // ====== ลบ IMEXCAL PO ที่ว่างเปล่าหลัง replace (ไม่มี items เหลืออยู่) ======
+            if ($import_mode === 'replace') {
+                $cleanup_stmt = $pdo->prepare(
+                    "DELETE po FROM purchase_orders po
+                     LEFT JOIN purchase_order_items poi ON po.po_id = poi.po_id
+                     WHERE po.po_number LIKE 'IMEXCAL%' AND poi.po_id IS NULL
+                     AND po.po_id != ?"
+                );
+                $cleanup_stmt->execute([$po_id]);
+            }
+
             // ====== คำนวณยอดรวมจากราคา THB และอัพเดต PO ======
             $stmt = $pdo->prepare("SELECT SUM(total) as total_amount FROM purchase_order_items WHERE po_id = ?");
             $stmt->execute([$po_id]);
@@ -280,7 +317,8 @@ if(isset($_POST['submit'])) {
 
             $pdo->commit();
             
-            $message = "Import สำเร็จ! PO = $po_number ({$items_imported} รายการ)";
+            $mode_label = $import_mode === 'replace' ? 'แทนที่รายการ' : 'อัพเดทรายการเพิ่ม';
+            $message = "Import สำเร็จ! PO = $po_number ({$items_imported} รายการ) | โหมด: {$mode_label}";
             $message .= "<br><small style='color: #ff6b35; font-weight: 500;'>⚠️ ตารางยังไม่รองรับสกุลเงินเต็มรูปแบบ - กรุณารัน migration script</small>";
             $message .= "<br><small style='color: #666;'>หากมีสกุลเงินอื่น ระบบจะปรับเป็น THB อัตโนมัติ</small>";
 
@@ -400,10 +438,65 @@ if(isset($_POST['submit'])) {
             color:#666;
             margin-top:8px;
         }
+        .import-mode-select {
+            background:#f8f9fa;
+            border-radius:10px;
+            padding:18px 20px;
+            margin-bottom:20px;
+        }
+        .import-mode-select > p {
+            font-weight:600;
+            color:#2c3e50;
+            margin:0 0 12px 0;
+            text-align:left;
+        }
+        .mode-option {
+            display:flex;
+            align-items:flex-start;
+            gap:10px;
+            padding:10px 12px;
+            border-radius:8px;
+            cursor:pointer;
+            margin-bottom:8px;
+            border:2px solid transparent;
+            background:#fff;
+            transition:all 0.2s ease;
+        }
+        .mode-option:has(input:checked) {
+            border-color:#0072ff;
+            box-shadow:0 2px 8px rgba(0,114,255,0.12);
+        }
+        .mode-option input[type=radio] { margin-top:3px; flex-shrink:0; }
+        .mode-option .mode-texts { display:flex; flex-direction:column; gap:2px; }
+        .mode-option .mode-label { font-weight:600; font-size:14px; }
+        .mode-option .mode-label.add { color:#27ae60; }
+        .mode-option .mode-label.replace { color:#e74c3c; }
+        .mode-option small { color:#666; font-size:12px; line-height:1.4; }
+
+        /* ป้องกัน FOUC */
+        body { visibility: hidden; }
+        body.ready { visibility: visible; }
+        #page-loader {
+            position: fixed; inset: 0;
+            background: #f0f2f5;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.25s ease;
+        }
+        #page-loader.hidden { opacity: 0; pointer-events: none; }
+        .loader-spinner {
+            width: 36px; height: 36px;
+            border: 4px solid #dee2e6;
+            border-top-color: #0072ff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
+<div id="page-loader"><div class="loader-spinner"></div></div>
 <div class="mainwrap">
     <div class="topbar">นำเข้าข้อมูลจาก Excel</div>
     <div class="content-card">
@@ -451,6 +544,23 @@ if(isset($_POST['submit'])) {
         </div> -->
 
         <form method="post" enctype="multipart/form-data">
+            <div class="import-mode-select">
+                <p>เลือกโหมดการ Import:</p>
+                <label class="mode-option">
+                    <input type="radio" name="import_mode" value="add" checked>
+                    <span class="mode-texts">
+                        <span class="mode-label add">อัพเดทรายการเพิ่ม</span>
+                        <small>เพิ่มสินค้าใหม่ หรืออัพเดทสินค้าที่มีอยู่แล้ว (ใช้สำหรับการ import ปกติ)</small>
+                    </span>
+                </label>
+                <label class="mode-option">
+                    <input type="radio" name="import_mode" value="replace">
+                    <span class="mode-texts">
+                        <span class="mode-label replace">แทนที่รายการ</span>
+                        <small>ลบ PO เก่าที่ Import ไว้แล้ว และอัพเดทข้อมูลสินค้าด้วยข้อมูลใหม่ทั้งหมด (ใช้สำหรับแก้ไขข้อมูลช่วงเริ่มระบบ)</small>
+                    </span>
+                </label>
+            </div>
             <div class="file-upload">
                 <input type="file" id="excel_file" name="excel_file" accept=".xlsx" required hidden>
                 <label for="excel_file" class="file-label">
@@ -466,6 +576,46 @@ if(isset($_POST['submit'])) {
                 const fileName = this.files.length > 0 ? this.files[0].name : "ยังไม่ได้เลือกไฟล์";
                 document.getElementById('file-name').textContent = "ไฟล์ที่เลือก: " + fileName;
             });
+
+            document.querySelector('form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const form = this;
+                const mode = document.querySelector('input[name="import_mode"]:checked').value;
+                const fileInput = document.getElementById('excel_file');
+                const fileName = fileInput.files.length > 0 ? fileInput.files[0].name : '';
+
+                if (!fileName) {
+                    Swal.fire({ icon: 'warning', title: 'กรุณาเลือกไฟล์', text: 'กรุณาเลือกไฟล์ Excel ก่อน Import' });
+                    return;
+                }
+
+                const isReplace = mode === 'replace';
+                Swal.fire({
+                    title: 'ยืนยันการ Import',
+                    html:
+                        'โหมด: <b style="color:' + (isReplace ? '#e74c3c' : '#27ae60') + '">' +
+                        (isReplace ? 'แทนที่รายการ' : 'อัพเดทรายการเพิ่ม') + '</b>' +
+                        (isReplace
+                            ? '<br><span style="color:#e74c3c;font-size:13px;">⚠️ ระบบจะลบข้อมูล PO เก่า (IMEXCAL) และอัพเดทข้อมูลสินค้าด้วยข้อมูลใหม่</span>'
+                            : '') +
+                        '<br><br>ไฟล์: <b>' + fileName + '</b>',
+                    icon: isReplace ? 'warning' : 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'ยืนยัน Import',
+                    cancelButtonText: 'ยกเลิก',
+                    confirmButtonColor: isReplace ? '#e74c3c' : '#27ae60',
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        // form.submit() ไม่ส่ง button name จึงต้องเพิ่ม hidden field
+                        const hiddenSubmit = document.createElement('input');
+                        hiddenSubmit.type = 'hidden';
+                        hiddenSubmit.name = 'submit';
+                        hiddenSubmit.value = '1';
+                        form.appendChild(hiddenSubmit);
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+            });
             </script>
 
             <button type="submit" name="submit" class="btn btn-submit">
@@ -474,5 +624,13 @@ if(isset($_POST['submit'])) {
         </form>
     </div>
 </div>
+<script>
+window.addEventListener('load', function () {
+    document.body.classList.add('ready');
+    const loader = document.getElementById('page-loader');
+    loader.classList.add('hidden');
+    setTimeout(function () { loader.remove(); }, 300);
+});
+</script>
 </body>
 </html>
