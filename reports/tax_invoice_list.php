@@ -90,7 +90,7 @@ include '../templates/sidebar.php';
         @media print {
             @page { 
                 size: A5 portrait; 
-                margin: 0; 
+                margin: 5mm 6mm; 
             }
             body { 
                 background: #fff; 
@@ -107,16 +107,20 @@ include '../templates/sidebar.php';
                 position: static !important;
                 width: 100% !important;
                 visibility: visible !important;
+                overflow: hidden !important;
+                padding: 0 !important;
+                margin: 0 !important;
             }
             .invoice-sheet { 
                 border: none !important; 
-                padding: 12px !important; 
+                padding: 4px !important; 
                 margin: 0 !important;
                 page-break-after: always !important;
                 page-break-inside: avoid !important;
                 min-height: auto !important;
                 width: 100% !important;
                 box-sizing: border-box !important;
+                overflow: hidden !important;
             }
             .invoice-sheet:last-child { 
                 page-break-after: auto !important; 
@@ -124,8 +128,10 @@ include '../templates/sidebar.php';
             .invoice-header { 
                 padding-bottom: 6px !important; 
                 margin-bottom: 8px !important;
+                overflow: hidden !important;
             }
-            .invoice-brand h2 { font-size: 12px !important; }
+            .invoice-brand { overflow: hidden !important; flex-shrink: 1 !important; min-width: 0 !important; }
+            .invoice-brand h2 { font-size: 12px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
             .invoice-brand > div > div { font-size: 8px !important; line-height: 1.4 !important; }
             .invoice-brand > div:first-child { width: 45px !important; height: 45px !important; }
             .invoice-meta { font-size: 9px !important; }
@@ -138,7 +144,8 @@ include '../templates/sidebar.php';
             .invoice-block > div > div { padding: 8px !important; }
             .invoice-block > div > div > div { font-size: 8px !important; line-height: 1.6 !important; }
             .inv-table { margin-top: 8px !important; font-size: 7px !important; }
-            .inv-table, .inv-table th, .inv-table td { border: 1px solid #000 !important; padding: 3px !important; font-size: 7px !important; }
+            .inv-table { margin-top: 8px !important; font-size: 7px !important; width: 100% !important; table-layout: fixed !important; word-wrap: break-word !important; }
+            .inv-table, .inv-table th, .inv-table td { border: 1px solid #000 !important; padding: 3px !important; font-size: 7px !important; overflow-wrap: break-word !important; }
             .inv-table thead th { background: #f3f4f6 !important; font-weight: 600 !important; }
             .summary-box { margin-top: 8px !important; gap: 8px !important; grid-template-columns: 1fr 150px !important; }
             .summary-box > div { min-height: 90px !important; }

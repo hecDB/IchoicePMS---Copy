@@ -12,7 +12,7 @@
     if (document.getElementById('taxInvoicePageStyle')) return;
     const style = document.createElement('style');
     style.id = 'taxInvoicePageStyle';
-    style.textContent = '@media print { @page { size: A5 portrait; margin: 0; } }';
+    style.textContent = '@media print { @page { size: A5 portrait; margin: 5mm 6mm; } }';
     document.head.appendChild(style);
 })();
 
@@ -271,7 +271,8 @@ async function printInvoiceDirectly(id, apiPath = '../api/get_tax_invoice_detail
     }
     
     // ซ่อนแบบ off-screen (ไม่ใช้ display:none เพื่อให้รูปโหลดได้)
-    container.style.cssText = 'position: fixed; top: -9999px; left: -9999px; width: 148mm; visibility: hidden; z-index: -1;';
+    // width: 136mm = A5 148mm - 2×6mm page margins
+    container.style.cssText = 'position: fixed; top: -9999px; left: -9999px; width: 136mm; visibility: hidden; z-index: -1;';
     container.innerHTML = '';
     
     try {

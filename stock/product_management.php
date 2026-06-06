@@ -1537,25 +1537,29 @@ function exportToExcel() {
         return;
     }
 
-    // เตรียมข้อมูลด้วย Array-of-Arrays เพื่อบังคับคอลัมน์ให้ครบ
-    const header = ['SKU', '\u0e04\u0e07\u0e40\u0e2b\u0e25\u0e37\u0e2d', '\u0e2b\u0e19\u0e48\u0e27\u0e22', '\u0e2b\u0e21\u0e27\u0e14\u0e2b\u0e21\u0e39\u0e48'];
+    const header = ['\u0e25\u0e33\u0e14\u0e31\u0e1a', 'SKU', '\u0e0a\u0e37\u0e48\u0e2d\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32', '\u0e08\u0e33\u0e19\u0e27\u0e19', '\u0e2b\u0e19\u0e48\u0e27\u0e22', '\u0e2b\u0e21\u0e27\u0e14\u0e2b\u0e21\u0e39\u0e48'];
 
     const sanitizeNumber = (value) => {
         const num = parseFloat(String(value || '').replace(/,/g, ''));
         return Number.isFinite(num) ? num : '';
     };
 
-    const dataRows = selected.map((product) => ([
+    const dataRows = selected.map((product, index) => ([
+        index + 1,
         product.sku || '',
+        product.name || '',
         sanitizeNumber(product.stock_qty),
         product.unit || '',
         product.category || ''
     ]));
 
+    const now = new Date();
+    const dateStr = now.getFullYear().toString() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+
     const worksheet = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
-    XLSX.writeFile(workbook, 'excel.xlsx');
+    XLSX.writeFile(workbook, `stock_in_report_${dateStr}.xlsx`);
 }
 
 // Export to PDF
@@ -1634,53 +1638,48 @@ function exportToPDF() {
     setTimeout(() => printWindow.print(), 500);
 }
 
-// Export for Import - ส่งออกในรูปแบบที่ตรงกับ import template
+// Export to CSV
 function exportForImport() {
     const selected = getSelectedProducts();
     if (selected.length === 0) {
         alert('\u0e01\u0e23\u0e38\u0e13\u0e32\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e19\u0e49\u0e2d\u0e22');
         return;
     }
-    
-    // Create CSV data in import template format
-    // Columns: SKU, Barcode, Name, Image, Unit, Row, Bin, Shelf, Qty, Price, Sale Price, Currency, EXP, Remark Color, Remark Split, Remark
+
+    const escapeCsv = (str) => {
+        if (str == null || str === undefined) str = '';
+        str = String(str);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+    };
+
+    const sanitizeNumber = (value) => {
+        const num = parseFloat(String(value || '').replace(/,/g, ''));
+        return Number.isFinite(num) ? num : '';
+    };
+
     let csvData = '\ufeff'; // UTF-8 BOM
-    csvData += 'SKU,Barcode,Name,\u0e20\u0e32\u0e1e,\u0e2b\u0e19\u0e48\u0e27\u0e22,\u0e41\u0e16\u0e27,\u0e25\u0e47\u0e2d\u0e04,\u0e0a\u0e31\u0e49\u0e19,\u0e08\u0e33\u0e19\u0e27\u0e19,\u0e23\u0e32\u0e04\u0e32\u0e15\u0e49\u0e19\u0e17\u0e39\u0e19,\u0e23\u0e32\u0e04\u0e32\u0e02\u0e32\u0e22,\u0e2a\u0e01\u0e38\u0e25\u0e40\u0e07\u0e34\u0e19,EXP,\u0e2a\u0e35\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32,\u0e0a\u0e19\u0e34\u0e14\u0e01\u0e32\u0e23\u0e41\u0e1a\u0e48\u0e07\u0e02\u0e32\u0e22,\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e2b\u0e15\u0e38\u0e2a\u0e35\n';
-    
-    selected.forEach((product) => {
-        // Escape quotes and handle special characters
-        const escapeCsv = (str) => {
-            if (str == null || str === undefined) str = '';
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                return '"' + str.replace(/"/g, '""') + '"';
-            }
-            return str;
-        };
-        
+    csvData += '\u0e25\u0e33\u0e14\u0e31\u0e1a,SKU,\u0e0a\u0e37\u0e48\u0e2d\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32,\u0e08\u0e33\u0e19\u0e27\u0e19,\u0e2b\u0e19\u0e48\u0e27\u0e22,\u0e2b\u0e21\u0e27\u0e14\u0e2b\u0e21\u0e39\u0e48\n';
+
+    selected.forEach((product, index) => {
+        csvData += (index + 1) + ',';
         csvData += escapeCsv(product.sku) + ',';
-        csvData += escapeCsv(product.barcode) + ',';
         csvData += escapeCsv(product.name) + ',';
-        csvData += escapeCsv(product.image || '') + ',';
+        csvData += sanitizeNumber(product.stock_qty) + ',';
         csvData += escapeCsv(product.unit) + ',';
-        csvData += escapeCsv(product.row_code) + ',';
-        csvData += escapeCsv(product.bin) + ',';
-        csvData += escapeCsv(product.shelf) + ',';
-        csvData += ','; // qty - leave blank for manual entry
-        csvData += ','; // price - leave blank for manual entry
-        csvData += ','; // sale_price - leave blank for manual entry
-        csvData += 'THB,'; // currency default
-        csvData += ','; // expiry_date - leave blank
-        csvData += escapeCsv(product.remark_color) + ',';
-        csvData += escapeCsv(product.remark_split) + ',';
-        csvData += escapeCsv(product.status || '') + '\n'; // using status as remark
+        csvData += escapeCsv(product.category) + '\n';
     });
-    
-    // Create blob and download
+
+    const now = new Date();
+    const dateStr = now.getFullYear().toString() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+
     const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', '\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32_\u0e19\u0e33\u0e40\u0e02\u0e49\u0e32_' + new Date().getTime() + '.csv');
+    link.setAttribute('download', `stock_in_report_${dateStr}.csv`);
     link.click();
     URL.revokeObjectURL(url);
 }

@@ -94,7 +94,7 @@ $sql_stock = "
 ";
 $stmt = $pdo->query($sql_stock);
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$total_products = count($products);
+$total_products = $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
 $total_stock_qty = array_sum(array_column($products, 'total_stock'));
 
 // ====== คำนวณสถานะสต็อกตามเงื่อนไขใหม่ ======
@@ -375,7 +375,7 @@ $expiring_soon_count = count($expiring_soon_products);
         <!-- สถานะสต็อกสินค้า -->
         <div class="card" style="display:flex;gap:32px;flex-wrap:wrap;justify-content:space-between;margin-top:20px;">
           <!-- สต็อกเพียงพอ -->
-          <a href="stock/all_stock.php" 
+          <a href="stock/product_management.php" 
              style="flex:1 1 170px;min-width:155px;max-width:280px;
                     display:flex;align-items:center;gap:17px;
                     text-decoration:none;background:#dcfce7;
@@ -392,7 +392,7 @@ $expiring_soon_count = count($expiring_soon_products);
           </a>
 
           <!-- สต็อกปานกลาง -->
-          <a href="stock/all_stock.php" 
+          <a href="stock/product_management.php" 
              style="flex:1 1 170px;min-width:155px;max-width:280px;
                     display:flex;align-items:center;gap:17px;
                     text-decoration:none;background:#fef3c7;
@@ -448,7 +448,7 @@ $expiring_soon_count = count($expiring_soon_products);
           </a>
 
           <!-- สินค้าคงคลังทั้งหมด -->
-          <a href="stock/all_stock.php" 
+          <a href="stock/product_management.php" 
              style="flex:1 1 170px;min-width:155px;max-width:280px;
                     display:flex;align-items:center;gap:17px;
                     text-decoration:none;background:#f0f8ff;

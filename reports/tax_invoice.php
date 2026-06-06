@@ -80,7 +80,7 @@ $today = date('Y-m-d');
         .toast.success { background: linear-gradient(135deg, #16a34a, #0f9f57); }
         .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
         @media print {
-            @page { size: A4 portrait; margin: 10mm 8mm; }
+            @page { size: A5 portrait; margin: 5mm 6mm; }
             body { background: #fff; margin: 0; padding: 0; }
             .mainwrap, .card, .controls { display: none !important; }
             .page-title { display: none !important; }
@@ -98,10 +98,12 @@ $today = date('Y-m-d');
                 max-width: 100% !important;
                 visibility: visible !important;
                 overflow: hidden !important;
+                padding: 0 !important;
+                margin: 0 !important;
             }
             .invoice-sheet { 
                 border: none !important; 
-                padding: 10px !important; 
+                padding: 4px !important; 
                 margin: 0 !important;
                 page-break-after: always !important;
                 page-break-inside: avoid !important;
@@ -117,8 +119,10 @@ $today = date('Y-m-d');
             .invoice-header { 
                 padding-bottom: 6px !important; 
                 margin-bottom: 8px !important;
+                overflow: hidden !important;
             }
-            .invoice-brand h2 { font-size: 12px !important; }
+            .invoice-brand { overflow: hidden !important; flex-shrink: 1 !important; min-width: 0 !important; }
+            .invoice-brand h2 { font-size: 12px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
             .invoice-brand > div > div { font-size: 8px !important; line-height: 1.4 !important; }
             .invoice-brand > div:first-child { width: 45px !important; height: 45px !important; }
             .invoice-meta { font-size: 9px !important; }
@@ -942,7 +946,7 @@ $today = date('Y-m-d');
             container.id = 'hiddenPrintContainer';
             document.body.appendChild(container);
         }
-        container.style.cssText = 'position: fixed; top: -9999px; left: -9999px; width: 148mm; visibility: hidden; z-index: -1;';
+        container.style.cssText = 'position: fixed; top: -9999px; left: -9999px; width: 136mm; visibility: hidden; z-index: -1;';
         
         // สร้างเอกสารต้นฉบับและสำเนา
         const originalHTML = generateInvoiceHTML(invoice, items, false);
